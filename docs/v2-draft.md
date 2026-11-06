@@ -2,7 +2,7 @@
 
 Nothing built. v1 (one mastery per skill, bonuses that copy the skill's vanilla effects) is described in CLAUDE.md.
 v2 keeps v1's XP capture and changes what the XP is spent on. **Approved** (user, 2026-11-06): the rules under "The
-idea" and the 23 masteries with their members and names. **Not yet approved**: the effects, and everything marked
+idea" and the masteries with their members and names (23 approved, Livestock later dropped: 22). **Not yet approved**: the effects, and everything marked
 "proposed" below.
 
 ## The idea
@@ -18,11 +18,14 @@ idea" and the 23 masteries with their members and names. **Not yet approved**: t
 - Levels 1-10 give the effects (each level a tenth of the mastery-10 value, as in v1), then endless prestige.
 - A picked mastery whose member drops below 10 (Strength / Fitness decay, admin) is inactive (no effects, no
   progress) but keeps its progress and its slot; it works again once the skill is back at 10.
+- **Sandbox choices only for mode gaps** (user, 2026-11-06): an effect that works in only one mode (single player
+  or multiplayer) is paired with an alternative that works everywhere, and a sandbox option picks between them
+  (Swordsmanship's footwork). Effects that work in both modes are simply part of the mastery, with no option.
 - Names are disciplines, never people: no mastery repeats a vanilla trait, profession or skill name (42.21 has
   Marksman, Brawler, Runner, Hunter, Angler, Artisan as traits; Lumberjack, Chef, Farmer, Rancher, Tailor as
   professions; Mechanic, Blacksmith as both).
 
-## The masteries (every vanilla 42.21 skill, 35 skills, 23 masteries)
+## The masteries (every vanilla 42.21 skill, 35 skills, 22 masteries)
 
 | Group | Mastery | Member skills (perk ids) |
 |---|---|---|
@@ -38,7 +41,7 @@ idea" and the 23 masteries with their members and names. **Not yet approved**: t
 | | Stealth | Sneaking, Lightfooted |
 | Crafting | Smithing | Metalworking (Blacksmith), Welding (MetalWelding), Maintenance |
 | | Construction | Carpentry (Woodwork), Masonry |
-| | Auto Repair | Mechanics, Electrical (Electricity) |
+| | Engineering | Mechanics, Electrical (Electricity) |
 | | Salvaging | Welding (MetalWelding), Mechanics |
 | | Handicraft | Carving, Knapping (FlintKnapping), Glassmaking, Pottery |
 | | Mending | Tailoring, Maintenance |
@@ -48,10 +51,13 @@ idea" and the 23 masteries with their members and names. **Not yet approved**: t
 | | Angling | Fishing, Foraging (PlantScavenging) |
 | | Fieldcraft | Foraging (PlantScavenging), Tracking |
 | | Homesteading | Farming, Animal Care (Husbandry) |
-| | Livestock | Animal Care (Husbandry), Butchering |
 
-Skills in more than one mastery: Strength and Butchering (3 each); Fitness, Sneaking, Lightfooted, Welding,
-Mechanics, Maintenance, Tailoring, Foraging, Tracking, Animal Care, Carving (2 each).
+Livestock (Animal Care + Butchering) was **dropped** (user, 2026-11-06): both skills are covered elsewhere
+(Butchering by Provisioning and Hunting, Animal Care by Homesteading, whose animal side was empty), so its effects
+moved to Homesteading. 22 masteries.
+
+Skills in more than one mastery: Strength (3); Butchering, Fitness, Sneaking, Lightfooted, Welding, Mechanics,
+Maintenance, Tailoring, Foraging, Tracking, Carving (2 each).
 
 ## Effects at mastery 10 (proposed)
 
@@ -370,27 +376,118 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     keeps the saving; tearing it down gives back no more than vanilla would for what was really paid. To trace:
     whether picking a built object up as a moveable and placing it again keeps its modData and build materials (if
     not, carry the note on the moveable item).
-- **Auto Repair** (proposed 2026-11-06, **review paused here**: the user stopped mid-review, pick up from this
-  proposal; still to review after it: Salvaging, Mending, Field Medicine, Provisioning, Hunting, Angling,
-  Fieldcraft, Homesteading, Livestock): part install / uninstall time -15%, engine and lightbar repair +1
-  condition per part, hotwire success +10 pts, hotwire time -15%, generator repair +1 condition, dismantle +10 pts
-  on Electrical scrap (all v1), crafting time -25% on Electrical recipes (matching the other crafting masteries; v1
-  had 15%), **tuned parts** (new: parts a master installs or repairs lose 15% less condition from driving),
-  **fuel saver** (new: 15% less fuel burnt while a master drives).
-  - Driving wear (42.21 `server/Vehicles/Vehicles.lua`, server / single player, once a game minute through the
-    cached `Vehicles.Update.*`, so wrap at file load): `Update.Brakes` (~709) and `Vehicles.LowerCondition` (~722;
-    suspension, muffler, tires) take 1 condition on a roll with `part:setCondition` + `transmitPartCondition`. Tuned
-    parts: installing (`ISInstallVehiclePart` complete) and repairing (`ISFixVehiclePartAction`, engine repair)
-    by a master writes a mark in the part item's modData (saved with the part; travels with the item when it is
-    taken out and put in another car). The wrapper gives the point back on a 15% roll for a marked part. Crashes,
-    weapon hits and zombie damage (Java, see ZomboidFixesB42 "Where a vehicle wears down") are not driving wear and
-    stay vanilla.
-  - Fuel (`Update.GasTank` ~450): the burn per minute is computed in Lua from engine quality, mass, gear and engine
+- **Engineering** (renamed from Auto Repair by the user, 2026-11-06; vanilla's Engineer profession is a person, the
+  same split as Hunting / Hunter) (reviewed 2026-11-06, the user moved on; the per-level question for on / off
+  passives is open, see "Open decisions"): part install / uninstall time -15%, engine and lightbar repair +1
+  condition per part, hotwire success +10 pts (vanilla at Electrical 10 is 45-90% by engine quality, so it is not
+  empty), hotwire time -15%, dismantle +10 pts on Electrical scrap, extra Electronics Scrap 25% when dismantling
+  radios, TVs and walkies (moved from Salvaging, 2026-11-06) (all v1), crafting time -25% on Electrical
+  recipes (matching the other crafting masteries; v1 had 15%), **tuned engine** (new, user 2026-11-06: while a master drives, top speed +15% and
+  engine power +15%), and the signature ability **engine overhaul** (new, user 2026-11-06: engine parts raise the
+  car's engine quality, below). All work in single player and multiplayer, so no sandbox option.
+  Trimmed (user, 2026-11-06): tuned parts (driving wear too slow to notice, the most code), generator repair +1
+  condition (too small), careful driver (15% less car damage while a master drives; removed by the user, trace kept
+  below), fuel saver (15% less fuel while a master drives; removed by the user, trace kept below; engine overhaul
+  already lowers fuel burn through quality). Crash safety moved to Field Medicine.
+  - Engine overhaul (signature ability, unlocked at the pick): a new option in the
+    mechanics window's engine menu, beside vanilla's Repair Engine, for a master with a wrench and Engine Parts.
+    Repair raises the engine part's **condition**; overhaul raises the car's **engine quality**, which vanilla sets
+    once at spawn (`Vehicles.Create.Engine`: script quality x vehicle type, randomised, 0-100) and never changes.
+    What quality does (42.21): start attempts retry 1 in quality (`VehicleEngine.updateStarting`); a cold-start
+    failure 31 in (quality + 50 - cold) below 100, none at 100 (`shouldFailToStartDueToCold`; cold adds up to 30
+    below 65 quality at or under 2 C); fuel burn x (1 + (100 - quality) / 200) (`Update.GasTank` ~464); engine
+    power, but only as computed at spawn (script force x max(0.6, min(1, quality x 1.6 / 100)), so full power from
+    quality 63); hotwiring gets harder (chance 100 - quality, clamped 5..50, + 4 x Electrical). **Decided** (user,
+    2026-11-06): +1 quality per Engine Parts used, flat (no mastery scaling; vanilla repair gives up to 5 condition
+    a part, so this is the dearer of the two on purpose), up to 100 (`VehicleEngine.setFeatures` clamps 0..100); power recomputed with vanilla's
+    formula and never lowered (a car whose power is already higher keeps it). Shown by vanilla's "Engine quality"
+    line in the mechanics window. Shared timed action with a server `complete` (re-checks the mastery, the wrench,
+    the parts; removes the parts; `setEngineFeature(quality, getEngineLoudness, power)` + `updatePartStats()`, since
+    loudness is stored x0.37; the server's engine update sends it). Tuned engine must take any engine power that is
+    not its own boosted value as the new vanilla value. Proposed: one action uses every Engine Parts carried (up to
+    the points left to 100) in 300, as vanilla's Repair Engine does.
+  - Tuned engine (42.21 `CarController.update` / `control_ForwardNew`, `BaseVehicle`): the car's physics run on
+    the driver's game (`Bullet.controlVehicle` only when not the server), from that copy's `getEnginePower()` and
+    `getMaxSpeed()`. Engine force = power x (0.5 + rpm / 24000) x (1 - km/h / 200), faded to 0 from `maxSpeed` to
+    `maxSpeed + 20` (Speed Demon from x1.15, so +15% top speed is a second Speed Demon; they stack); gears are spread
+    over `maxSpeed`, so raising it alone lengthens the gears and weakens acceleration, hence the power bonus with
+    it. Out of reach: the hard cap (`updateVelocityMultiplier`: 34 m/s, ~122 km/h, Java) and in MP the server
+    option `SpeedLimit` (default 70 km/h; the client cuts the engine at it), so on a default server only the
+    acceleration shows above 70. `CarController.engineForce` is a field (not readable from Lua).
+    Hook (driver's client, SP and MP): while a master sits in the driver's seat, `setMaxSpeed(script maxSpeed x
+    1.15)` (not saved, reset from the script at `createPhysics`) and raise the engine power with
+    `setEngineFeature(quality, loudness, power x 1.15)` + `updatePartStats()` (loudness is stored x0.37, as the
+    ZomboidFixesB42 notes say); put both back when the master leaves the seat. Engine power is saved and the
+    server re-sends it with the engine state (`transmitEngine`), so the client re-applies it whenever it finds
+    the vanilla value again, keeps the vanilla value in the vehicle's modData to put back, and puts it back
+    before a single player save (in MP the client's copy is never saved). Check in game: vehicle anti-cheat with
+    the higher acceleration.
+  - Careful driver (**removed**, user 2026-11-06; the trace stays for reference) (42.21 `BaseVehicle`): a crash is `crash(delta, front)` (~4634), which on the server / SP
+    lowers the front end durability and damages parts through `addDamageFront/Rear` and injures the occupants
+    with `damagePlayers(delta)`. Single player calls it from Java (physics contact ~3432, `HitByVehicle` ~4630 for
+    car against car), so wrapping `crash` would only work in MP (an MP client sends `vehicle.crash` and the
+    server's VehicleCommands calls it from Lua). Hitting zombies is `damageFromHitChr` -> `addDamage*HitAChr`,
+    also Java in SP. So the hook is a give-back instead, which works in both: each tick, for every vehicle whose
+    driver (`getDriverRegardlessOfTow`, as vanilla's god mode check) is a master, note every part's condition and
+    give back each lost point on a 15% roll (`setCondition` + `transmitPartCondition`), server / SP. That covers
+    crashes, running zombies down, zombie thumps, weapon hits and driving wear alike (`Update.Brakes` ~709,
+    `Vehicles.LowerCondition` ~722: suspension, muffler, tires, 1 condition on a roll, server / SP). A part
+    whose item is gone at 0 (a window dropping its glass, a headlight) cannot be given back; skipped.
+    `currentFrontEndDurability` / `currentRearEndDurability` are not given back: public fields with no setter,
+    only lowered and saved, read by nothing (checked 2026-11-06). `VehiclePart.damage` is `setCondition` +
+    `transmitPartCondition`, or `VehicleWindow.damage` for windows (glass dropped at 0). Cost: about 30-40 parts per vehicle
+    with a master at the wheel, so a handful of vehicles at most.
+  - Fuel saver (**removed**, user 2026-11-06; the trace stays for reference) (`Update.GasTank` ~450): the burn per minute is computed in Lua from engine quality, mass, gear and engine
     speed, then `amount = amount - elapsedMinutes x newAmount` and a leak under 70 condition. Wrapper: when
     `vehicle:getDriver()` is a master, give back 15% of the drop the call made (the wrapper only sees the total, so the
     0.01 leak of a worn tank is included).
-- **Salvaging**: burnt-car scrapping time -15%, +1 salvage roll per burnt car, engine salvage +20% parts, extra
-  Electronics Scrap 25%, metal window pick-up break -5 pts (v1 found no window this applies to).
+- **Salvaging** (**approved**, user 2026-11-06; still to review after it: Mending, Field Medicine, Provisioning,
+  Hunting, Angling, Fieldcraft, Homesteading): burnt-car scrapping time -15%, +1 salvage roll per
+  burnt car, engine salvage +20% parts, **torch fuel for scrapping** (new: 20% of the blowtorch uses a burnt car
+  takes come back), and the signature ability **scrap any car** (new, user 2026-11-06, below). Dropped: metal window
+  pick-up break (v1 found no window it applies to). Extra Electronics Scrap 25% moved to Engineering (it is
+  Electrical's).
+  - Scrap any car (signature, unlocked at the pick): vanilla offers "Remove burnt vehicle" only when the script name
+    contains "Burnt" or "Smashed" (42.21 `client/Vehicles/ISUI/ISVehicleMenu.lua` ~617, a plain `string.match`);
+    the shared `ISRemoveBurntVehicle` itself checks only the blowtorch in hand (>= 10 uses) and that the vehicle
+    still exists, and its server `complete` rolls the salvage, burns 10 torch uses and `permanentlyRemove`s the car.
+    So the ability is the same menu option (and welding mask / torch tooltip) for any vehicle when a Salvaging
+    master opens the menu, plus a server re-check in a wrapped `complete` (burnt / smashed, or the scrapper is a
+    master). Same yield table as a burnt car. To decide (proposed): refuse while anyone sits in the car or any of
+    its containers (trunk, glove box, seats) holds items, and while it tows or is towed; installed parts are
+    destroyed with it (the tooltip warns: take them off first). MP griefing: a master could scrap anyone's car in
+    ~13 s; proposed guard: refuse inside a safehouse the scrapper does not belong to (`SafeHouse.getSafeHouse`).
+    **Guards approved** (user, 2026-11-06): no one inside, every container empty, not towing or towed, installed
+    parts destroyed with the car (tooltip warns), refused in a safehouse the scrapper is not a member of.
+  - Scrap car parts (part of the same signature, user 2026-11-06, proposed): an inventory menu option "Scrap" on
+    vehicle part items (script `VehicleType` set) for a Salvaging master, with a blowtorch and a welding mask as
+    for a car. 42.21 vanilla has no recipe that takes them except brakes (tagged `base:smeltablesteellarge`, and
+    one welded weapon recipe) and whole tires (tag `base:wholetire`, tire armor). Scope: doors, hoods, trunk lids,
+    mufflers, gas tanks, suspension, brakes, seats; not tires (armor, fire fuel), windows (glass), batteries,
+    trunks or glove boxes (the car's storage as an item, not real metal). **Yield: a fixed list per part** (user,
+    2026-11-06; the numbers are a first draft):
+    | Part (items) | Yield |
+    |---|---|
+    | Front / rear door | 1 Sheet Metal, 1-2 Small Sheet Metal, 1 Screws |
+    | Double rear door, hood (EngineDoor), trunk lid (TrunkDoor) | 2 Sheet Metal, 1-2 Small Sheet Metal, 1 Screws |
+    | Muffler | 1-2 Metal Pipe, 1 Scrap Metal |
+    | Gas tank | 1 Sheet Metal, 1-2 Small Sheet Metal |
+    | Suspension | 1 Metal Bar, 1 Scrap Metal |
+    | Brakes | 1-2 Scrap Metal |
+    | Seat | 1 Metal Bar, 1-2 Scrap Metal |
+    Ranges are rolled evenly. The same for every quality grade (1 / 2 / 3); a broken part (condition 0) gives the
+    same, since scrap is scrap. Time and torch: proposed 1 torch use and 100 time a part (a door: ~2 s), 2 uses /
+    150 for the 2-Sheet-Metal parts. Why not the burnt-car table: at Welding 10 it averages ~13.5 items a round
+    over 21 entries (common 1 in 2, uncommon 1 in 5, rare 1 in 15, two tries each, plus lesser fallbacks), so a
+    door would give ~13 random items (Engine Parts and wire from a door). Vanilla bug seen there:
+    `IronBand`'s fallback is `"IronScrap "` with a trailing space (probably gives nothing). Own shared timed
+    action with a server `complete` (re-checks the mastery, tools, the item still in the inventory), items sent
+    with `sendAddItemToContainer`.
+  - Burnt cars (42.21 `shared/Vehicles/TimedActions/ISRemoveBurntVehicle.lua`, server `complete`): needs a
+    blowtorch with at least 10 uses in hand; max(5, Welding) rounds of `checkAddItem` over 16 items, two tries each
+    at 1 in (base - Welding) (Engine Parts use min(Mechanics, Welding)); then 10 x `item:Use()` and
+    `permanentlyRemove`. Torch fuel: wrap `complete`, count the torch's uses before and after, give each burnt use
+    back on a 20% roll (2 a car on average; `setCurrentUses` + `syncItemFields`).
 - **Handicraft** (**approved**, user 2026-11-06): crafting time -25% on Carving / Knapping / Glassmaking / Pottery recipes
   (66 / 11 / 8 / 21 recipes award their XP), tool wear undone 20% on them (new here, Smithing's hook),
   **craftsman's mark** (new: what a master makes there with a condition ignores 15% of its wear, whoever uses it;
@@ -423,20 +520,199 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     Knapping in 11), hand-pressed clay bricks / shingles / tiles (`craftrecipe_handpress.txt`, 1 clay -> 1 item),
     carving recipes with several outputs. Kiln firing runs in the kiln's Java CraftLogic (no `performRecipe`),
     not covered.
-- **Mending**: patch / remove patch time -15%, fabric recovery +10 pts, ripping +1 material, aramid thread +1 use,
-  crafting time -15% on Tailoring recipes.
-- **Field Medicine**: treatment time -15%, treatment strength +15%; one more effect wanted (new, e.g. wounds infect
-  less or stitching speed).
-- **Provisioning**: added ingredient nutrition +15%, add-ingredient time -15%, cooking crafting time -15%; slower
-  spoilage (new, trace).
+- **Mending**: patch / remove patch time -15%, fabric recovery +10 pts, ripping
+  +1 material, aramid thread +1 use (all v1, Tailoring), crafting time -25% on Tailoring recipes (v1 had 15%; the
+  other crafting masteries' value), and for the Maintenance side (its vanilla job, weapon wear, now belongs to each
+  weapon mastery): **careful repairs** (new: repairs restore 15% more condition, and a failed repair costs no
+  condition) and **lasting repairs** (new: a repair counts toward the item's repair count only 80% of the time).
+  **Stronger patches** (new, user 2026-11-06: a master's patches protect **50%** more against scratches and bites),
+  and the signature **restore** (below). **Approved** (user, 2026-11-06).
+  - Patch protection (42.21 `Clothing`): `addPatch(chr, part, fabric)` (from `ISRepairClothing`'s server
+    `complete`) builds a `ClothingPatch(tailorLvl, fabric, hasHole)` whose scratch / bite defense is fabric max x
+    Tailoring / 10 (Cotton 5 / 0, Denim 10 / 5, Leather 20 / 10), stored on the patch as bytes and saved;
+    `getDefForPart` adds it to the garment's defense (or uses it alone where there was a hole). Nothing clamps the
+    level: the public `addPatchForSync(partIdx, tailorLvl, fabricType, hasHole)` rebuilds a patch at any level, and
+    the sync path sends the level, so every copy computes the same numbers. Hook: wrap that `complete`, note the
+    hole before; after it, if the part has a patch, rebuild it at Tailoring 10 + 5 (+50%, 0.5 a mastery level,
+    rounded down: Leather 30 / 15, Denim 15 / 7, Cotton 7 / 0), then `syncItemFields` (carries patches). Shown by
+    vanilla wherever a patch's defense is shown. Catch: Lua cannot read the patch's `hasHole` or `conditionGain`
+    (fields, no getters), and the rebuilt patch has `conditionGain` 0, so removing it would not take back the
+    condition the patch gave (a patch / remove loop would gain condition). So the condition gain vanilla gave (the
+    condition change across the `complete`) goes into the item's modData per part, and a wrapped `ISRemovePatch`
+    `complete` takes it off. `hasHole` = the hole noted before. A patch that fully restores the garment
+    (`canFullyRestore`) leaves no patch: nothing to do.
+  - Repairs (42.21 `FixingManager`, Java, called from Lua: `ISFixAction:complete` ~38 for items,
+    `ISFixVehiclePartAction:complete` ~35 for vehicle parts, both server / SP): success unless
+    rand(100) < fail chance (3 + 2 x (repairs + 1), +30 per missing fixer skill level, -5 per level above); a success
+    adds `missing condition x pct / 100` (pct = 50 / 20 / 10 for the first / second / other fixers, divided by
+    (repairs + 1), +5 per skill level above the fixer's need up to +25, x the Fixing's condition modifier) and raises
+    `haveBeenRepaired` by 1 (the "Repaired x times" that makes every later repair weaker and likelier to fail); a
+    failure takes 1 condition. Hook: wrap both `complete`s, note condition and `haveBeenRepaired` before, then after
+    a success add 15% of the gain (at least 1, within max) and on a 20% roll put `haveBeenRepaired` back; after a
+    failure give the point back; `syncItemFields`. Vehicle part repairs included: Engineering touches no Fixing.
+  - Signature **restore**: a menu option on an item with a repair count: one use of the item's own
+    first fixer (the material its Fix recipe names first) and the same time as a repair set `haveBeenRepaired`
+    back to 0, so the item repairs like new again (condition unchanged). Simple (`setHaveBeenRepaired` exists,
+    sent by `syncItemFields`).
+- **Field Medicine** (**approved**, user 2026-11-06, with the patient's unused supplies handed back): treatment time -15%, treatment strength +15% (both v1), **crash safety** (moved from Engineering by the
+  user, 2026-11-06; proposed trigger: a Field Medicine master **anywhere** in the car, so everyone in it takes 15%
+  less crash injury; works in single player and multiplayer), **sparing disinfectant** (new, user 2026-11-06:
+  disinfecting uses 50% less alcohol), and the signature **field triage** (user 2026-11-06, below).
+  - Sparing disinfectant (42.21 `shared/TimedActions/ISDisinfect.lua` `complete` ~68, server / SP): the part's
+    alcohol level rises by the alcohol's strength (a fluid: 4 x its alcohol share; a drainable: its alcohol
+    power), not by the amount used, so using less does not weaken it. Then a fluid container loses 0.15 L
+    (`adjustAmount(amount - 0.15)` + `sendItemStats`; nothing at all when 0.15 L or less is left, a vanilla quirk)
+    and a drainable one use (`UseAndSync`). Hook: wrap `complete`, note the amount / uses before, then give back
+    50% of the fluid used (`adjustAmount` + `sendItemStats`) or the used use on a 50% roll (`setCurrentUses` +
+    `syncItemFields`). Any disinfecting by a master, from the health panel or anywhere else that queues
+    `ISDisinfect`.
+  - Field triage (signature, unlocked at the pick; the user's design): a right-click option "Tend wounds" on another
+    player and on yourself. It walks to the patient and queues vanilla's own treatment actions for every body part
+    that needs them, in this order: remove glass (`ISRemoveGlass`, by hand with pain when no tweezers / suture
+    needle holder, as vanilla allows), remove bullets (`ISRemoveBullet`, needs tweezers or a suture needle holder:
+    skipped without), splint fractures (`ISSplint`: a splint, or a plank / stick with a rag), then bandage every
+    bleeding or open wound (`ISApplyBandage`: scratches, cuts, deep wounds, bites, the extracted glass and bullet
+    holes). Only these: no stitching, **disinfecting** (never, user 2026-11-06), burns, poultices or pain killers. **Infected parts are
+    skipped** (user). Meant to keep someone alive until proper treatment; parts already bandaged / splinted are left
+    alone. The actions are vanilla's (they already treat another player, server `complete`s), so they get the
+    mastery's treatment time and strength like any other treatment.
+    MP: another player's real body is not on the doctor's client (a remote player's `BodyDamage` is a full-health
+    fake, see ZomboidFixesB42 "Player stats are server-authoritative"), so the plan comes from the server: the
+    option sends `triage {target}`, the server lists the parts and what each needs, the client queues the actions.
+    Self and single player read the body directly. **Decided** (user, 2026-11-06): "infected" = a wound infection,
+    the kind that needs disinfectant (`bodyPart:isInfectedWound()`): such parts are skipped whole; the best
+    bandage carried is used (sterilized bandage > bandage > sterilized rag > rag); supplies come from the doctor
+    **and** the patient (inventories and bags).
+    Supplies (42.21): `ISApplyBandage` / `ISSplint` `complete` remove the item with
+    `self.character:getInventory():Remove` + `sendRemoveItemFromContainer`, i.e. from the doctor's **main**
+    inventory only (an item in a bag would be used and kept; vanilla's health panel moves it out first). So the
+    doctor's own bag items go through `transferIfNeeded` before each action, and the patient's are moved by the
+    server: when the triage plan needs more than the doctor has, the server takes the missing items from the
+    patient's inventory tree into the doctor's main inventory (`DoRemoveItem` + `sendRemoveItemFromContainer`,
+    `AddItem` + `sendAddItemToContainer`, as TienGiveItemMP moves items between players) and lists them in its
+    reply; the doctor's own supplies are used first. Proposed: whatever of the patient's is still unused when the
+    queue ends or is cancelled goes back to the patient (`triageReturn`). Glass and bullets come before bandages so
+    the bandage goes on last (whether vanilla allows removal through a bandage is not traced).
+  - Crash safety (42.21 `BaseVehicle.damagePlayers` ~9390, server / SP, skipped without sandbox
+    PlayerDamageFromCrash): per occupant, `addRandomDamageFromCrash` takes health off 1-3 random body parts and may
+    add a deep wound, a fracture, or window glass (a scratch from the window, sometimes a deep wound with glass),
+    then `OnPlayerGetDamage(chr, "CARCRASHDAMAGE", damage)` fires, then the server sends PlayerDamage to that
+    player. So the event is a window before the send. Hook: each tick, note body part health and wound flags of
+    every occupant of a car with a master on board; in the event give back 15% of each part's health loss,
+    and take back each new deep wound, fracture or glass on its own 15% roll. The changes ride the PlayerDamage
+    packet that follows. Other damage in the same tick gets the same give-back (one tick, negligible).
+- **Provisioning** (**approved**, user 2026-11-06, choice cuts as the signature, butchering time moved here from
+  Hunting): added ingredient nutrition +15%, add-ingredient time -15% (both v1, Cooking), cooking crafting time -25%
+  (v1 had 15%; the other crafting masteries' value), **lasting food** (new: food a master cooks or butchers stays
+  fresh 25% longer), butchering time -15% (v1's, moved here from Hunting, which keeps the part count and part
+  chance: Hunting = how much a carcass gives, Provisioning = how good the meat is and how fast it is cut), and the
+  signature **choice cuts** (user 2026-11-06: meat a master butchers is 15% more filling and nutritious, in full
+  from the pick). Comfort food, briefly the signature, was replaced by choice cuts (note kept below).
+  - Choice cuts (signature, flat x1.15 from the pick) (42.21 `shared/Definitions/animal/ButcheringUtil.lua`, server / SP): `giveMeatModified` (~363)
+    makes each meat item, runs `modifyMeat(item, size, meatRatio, hungerBoost, rotten, deathAge)` (~426: hunger,
+    calories, lipids, proteins, carbs x animal size x meat ratio x the cut's boost, x0.9-1.1 each; sets its age),
+    then `AddItem` + `sendAddItemToContainer`. `modifyMeat` has no player argument, so wrap `giveMeatModified` to
+    note the butcher for the call and wrap `modifyMeat` to scale the item's hunger, base hunger and the four
+    nutrients x1.15 and stretch its spoil times (lasting food) when that butcher is a master;
+    the send that follows carries it. Organs and other parts (`addAnimalPart`) are left as they are.
+  - Lasting food (42.21 `Food`): fresh until `offAge`, rotten at `offAgeMax` (days), both per item, saved and sent
+    with the item (`Food.save`), setters public (`setOffAge` / `setOffAgeMax`, the admin item editor uses them). At
+    creation, x1.25 both (2.5% a level): cooking recipe outputs (the v1 `performRecipe` hook, server / SP; the
+    outputs were already sent by `addOrDropItem`, so re-send with `sendReplaceItemInContainer`, as v1's nutrition
+    does), evolved dishes when a master starts them (`ISAddItemInRecipe:complete`, once per dish: a modData mark,
+    so adding more ingredients never stacks it), and the meat a master butchers (the choice cuts `modifyMeat`
+    wrap, before the send; other parts from `addAnimalPart` still to trace). Items with no spoiling (1e9) untouched.
+  - Comfort food (**replaced** by choice cuts as the signature, user 2026-11-06; kept for reference): dishes a master cooks also lower unhappiness and boredom when eaten
+    (`setUnhappyChange` / `setBoredomChange`, per item and saved like the spoil times), e.g. -10 each for a full
+    serving, so a cooked meal lifts morale like good food does in vanilla.
 - **Hunting**: track find chance +20%, track inspect time -15%, trap catch +5 pts, butchering part count +10%, part
-  chance +15%, butchering time -15%.
-- **Angling**: fishing line tension +15%, natural bait kept +10 pts, big fish +10 pts, junk -20%, trophy +2 pts.
-- **Fieldcraft**: forage radius +15%, spotting time -20%, found item size +10%.
-- **Homesteading**: harvest yield +15%, cure strength +15%, planting health +3, bonus yield +10 pts, curse -10 pts,
-  fertilizing +10 pts, back strain -15%.
-- **Livestock**: animal acceptance +15%, calming +15%, shearing time -15%; nearby animals gain 15% less stress from
-  you (new, server give-back).
+  chance +15% (butchering time moved to Provisioning, 2026-11-06). Signature (user 2026-11-06, two parts like
+  Salvaging's): **sturdy traps** (traps a master sets never lose their bait to animals and are never destroyed)
+  plus **live catch** (animals caught alive in a master's trap survive about 4x longer in it) and **double catch**
+  (25% that a master's trap holds two of the animal it caught) (user 2026-11-06; field dressing dropped: vanilla has
+  it, below). **Approved** (user, 2026-11-06).
+  - Live catch (42.21 `STrapGlobalObject`): only rabbit, mouse, rat and raccoon can be caught alive
+    (`TrapDefinition.lua`, `canBeAlive`). `calculTrap` (every hour) adds 1 to `animalAliveHour` while something is
+    in the trap; taking it out (`addAliveAnimal` ~204) runs the animal's hunger, thirst and health for
+    rand(hours, hours + 15) updates, and if that kills it the player gets a corpse instead. Hook: for a master's
+    trap, wrap `addAliveAnimal` and count only a quarter of the stored hours for the call (the +0..15 stays).
+  - Double catch: on `setAnimal` (~427, the catch) for a master's trap, roll 25% and keep a flag on the trap
+    (saved with its state). Wrap `removeAnimal` (~269): note `self.animal` and `animalAliveHour` before, let vanilla
+    hand over the first (it clears the trap), then put them back for one more call of the same give path and clear
+    again. A second live animal goes in the hands like the first (`addAliveAnimal` calls `forceDropHeavyItems`,
+    which should set the first one down; check in game).
+  - Sturdy traps (42.21 `server/Traps/STrapGlobalObject.lua`, server / SP global object system):
+    `checkDestroy(square)` (~160, every hour) takes the bait 1 in (trap strength + 10) and, while the trap's square is
+    not loaded, destroys the trap 1 in 40 x 1 in trap strength. Placement saves the placer's Trapping in
+    `trappingSkill` (`shared/Traps/TrapSystem.lua` ~46); mark the trap as a master's there too (a field on the
+    global object, saved with its state) and skip `checkDestroy` for marked traps.
+  - Field dressing as first proposed (gut a small catch from the inventory) is vanilla's `ButcherSmallAnimal`
+    (`recipes_cooking.txt` ~702: dead bird / mouse / squirrel / rat / frog / rabbit -> meat, sharp knife or cleaver
+    kept, any surface, time 50).
+- **Angling** (**approved**, user 2026-11-06): fishing line tension +15%, natural bait kept +10 pts, big fish +10 pts, junk
+  -20%, trophy +2 pts (all v1), **bait digger** (new passive, user 2026-11-06: foraging finds worms and insects
+  more often; number and hook to trace) and **big haul** (new passive, user 2026-11-06: a master's fishing nets and
+  fish traps catch more; to trace), and the signature **fish finder** (user 2026-11-06).
+  - Fish finder (signature, client only): while a master aims a rod at water (vanilla's fishing states, `Fishing
+    .Utils.isPlayerAimOnWater` / `getAimCoords`), a small readout beside the cursor (`OnPreUIDraw`, as forage
+    icons draw) shows the aim square's fish (`Fishing.Utils.getFishNumParams(x, y)`: the count and its bite factor,
+    in words: fished out / few / good / rich for x0.1 / 0.5 / 1.0 / 1.5) and trash share
+    (`FishSchoolManager.getInstance():getTrashAbundance(x, y)`, %), the same numbers vanilla's
+    `FishingDebugWindow` reads. Bite chance is rolled on the angler's own game from its own `FishSchoolManager`
+    (`Bobber:attractFish` is client side; the server relays chum with an `addChum` command), so the readout shows
+    what the master's bites will use. Not traced: whether two clients' fish counts agree in MP.
+  - Bite chance (42.21 `shared/Fishing/Bobber.lua` `attractFish` ~222): 0.8 x temperature (1; 0.75 at 0-15 C or
+    30-40 C; 0.5 below 0 or 40+; 0.25 at -10 or less) x weather (fog or wind 0.8, rain 1.2) x time (1.2 at 4-6 and
+    18-20 h) x hook x fish abundance (0 fish 0.1, under 10 0.5, up to 25 1.0, more 1.5), all from
+    `Fishing.Utils.get*Params` (global, wrappable). A caught fish (not trash) calls
+    `FishSchoolManager.getInstance():catchFish(x, y)` (`Fish:getFish` ~247), which depletes the spot; chum
+    (`addChum`) raises it; `getFishAbundance` / `getTrashAbundance` are readable (the debug window shows them).
+- **Fieldcraft** (**approved**, user 2026-11-06): forage radius +15%, spotting time -20%, found item size +10% (all v1),
+  **keen eyes** (new passive, user 2026-11-06: in search mode the darkness, weather and walking penalties are
+  ignored; `forageSystem.getLightLevelPenalty` / `getWeatherPenalty` / `getMovementVisionPenalty`, global Lua,
+  client), and a two-part signature: **forage while fighting** (user 2026-11-06: search mode is not switched off
+  by zombies) and **zombie sense** (user 2026-11-06: in search mode, zombies inside the forage circle are shown
+  wherever they are). Trailblazer (full track details for a master) dropped: empty, see below.
+  - Forage while fighting (42.21 `client/Foraging/ISSearchManager.lua`): `doDisableCheck` counts up while
+    `checkShouldDisable` (~1092) is true and turns search mode off after 15 checks; it is true with any zombie very
+    close (`getNumVeryCloseZombies() > 0`), with 3+ visible and 3+ chasing zombies, while running or sprinting, under
+    the Java override (set only by debug tools and scenarios: `SearchMode.setOverride`, fires
+    `OnOverrideSearchManager`), and in MP inside a safehouse the player may not loot. Hook (client): wrap
+    `checkShouldDisable` for a master and drop the two zombie tests and the running / sprinting test (user
+    2026-11-06: never cancelled by fighting or running); vehicles and the safehouse rule stay vanilla.
+  - Zombie sense (second part of the signature, user 2026-11-06): while a master is in search mode, every zombie
+    inside the forage circle is shown wherever it is (behind the player, behind walls, out of sight). Vanilla
+    decides a zombie's visibility in Java every frame (per-player alpha from line of sight), so forcing the model
+    visible from Lua would be overwritten before it is drawn (to try: `setAlphaAndTarget(playerNum, 1)` each
+    frame). Sure route (client): draw a marker over each such zombie in `OnPreUIDraw` with `isoToScreenX/Y`, as
+    forage icons are drawn, from `getCell():getZombieList()` (on an MP client, the zombies this client knows,
+    i.e. the ones near it); radius = the search manager's current circle. Skips `isReanimatedForGrappleOnly()`
+    corpses being dragged.
+  - Trailblazer, dropped: `ISAnimalTracksUI` (42.21) gates details at Tracking > 4 and words freshness by the
+    level (`getFreshnessString(level)`); a master has Tracking 10, so vanilla already shows everything.
+- **Homesteading** (in review, 2026-11-06): Farming side (all v1): harvest yield +15%, cure strength +15%, planting
+  health +3, bonus yield +10 pts, curse -10 pts, fertilizing +10 pts, back strain -15%. Animal Care side (moved from
+  the dropped Livestock, 2026-11-06): animal acceptance +15%, calming +15%, shearing time -15% (v1), nearby animals
+  gain 15% less stress from you (new, server give-back). All 11 kept (user, 2026-11-06). Signature, two parts
+  (user 2026-11-06, area actions that queue vanilla's own actions, client side): **tend the field** (water the
+  thirsty, cure the sick with the cures carried, fertilize where fertilizer is carried, for every plant in a
+  picked area) and **sow the field** (plant every free plowed square in a picked area with the seeds carried).
+  Tend the herd (milk / shear a whole pen) was added, then **removed** by the user (2026-11-06: nothing special
+  about it); its trace is kept below. **Approved** (user, 2026-11-06).
+  - Areas: a two-click square picker (first corner, second corner; `ISSelectCursor` style with `skipWalk2`, see
+    ZomboidFixesB42 "The whole admin surface"), plants and plowed squares found on the client, each plant's
+    action queued with vanilla's walk-to first. Exact vanilla calls to trace at build time (farming menu in
+    `client/Farming/ISFarmingMenu.lua`).
+  - Tend the herd (**removed**, reference only) (42.21 `client/ISUI/Animal/ISAnimalContextMenu.lua` ~775 / ~840): vanilla's handlers block the
+    animal's movement (`getBehavior():setBlockMovement(true)`), pick the nearer `leftmilk` / `rightmilk` (or
+    `leftshear` / `rightshear`) attachment point, queue `ISWalkToTimedActionF` there, then `ISMilkAnimal(chr,
+    animal, bucket, right, all)` / `ISShearAnimal(chr, animal, shear)` (shears moved to the hands first). Both
+    stop when the player is 3+ squares from the animal; milking also when the inventory is full. Options "Milk the
+    herd" / "Shear the herd" on an animal's menu: every animal in its pen (`DesignationZoneAnimal.getZone` +
+    `getAnimalsConnected()`, loose animals only) that has milk / wool. Blocking all at once would freeze the herd
+    (and `wanderIdle` lifts a block after ~2.8 min), so each animal's turn starts with a one-tick client step that
+    blocks it and inserts the walk and the action right after itself. Milk goes into the carried containers in
+    turn, moving to the next when one is full; the queue ends when none is left.
 
 ## Progress (proposed)
 
@@ -473,7 +749,7 @@ prestige-only mastery would be a trap that wastes a slot); a mod can register it
 
 ## UI
 
-The Mastery tab lists the 23 masteries by group: name, the member skills with a tick for each one at 10, and the
+The Mastery tab lists the 22 masteries by group: name, the member skills with a tick for each one at 10, and the
 state:
 
 - **Locked** (some member below 10), **Available** (all at 10, a slot free: a Start button with a confirmation
@@ -489,7 +765,8 @@ state:
 
 The user wants masteries to give the player something new to do, not only numbers. Parked until the numbers are
 reviewed. Proposed rule: every mastery gets one signature ability, with fewer passives to make room. Open: whether
-the passives are trimmed, and when the ability unlocks (at the pick, at mastery 5 (proposed), or at 10).
+the passives are trimmed. **Decided** (user, 2026-11-06): a signature ability is an unlock, in full at the pick
+(mastery 0), and does not grow with mastery level; only the passives follow the tenth-per-level rule.
 
 - **Axemanship: throw one-handed axes** (user's idea; axe category, not two-handed). Feasible. Reuse
   ZomboidFixesB42's `*_Throwables.lua` flight (fixed 60 Hz steps, same path on client and server, item taken out by
@@ -506,6 +783,8 @@ the passives are trimmed, and when the ability unlocks (at the pick, at mastery 
   To trace: vanilla's sprint collision with zombies (the player's bump / fall).
 - **Bludgeoning: push nearby zombies** (user, 2026-11-06): an active effect that pushes back the zombies close
   around the player. Specifics not discussed yet.
+- **Engineering: engine overhaul** (user, 2026-11-06): Engine Parts raise a car's engine quality; traced and
+  written up under Engineering.
 - **Firearms candidates**: Steady Aim (hold a key while aiming: instant aim-in and faster recoil settling for a few
   seconds, endurance cost, cooldown; recommended), Quickdraw (near-instant handgun draw from a holster / hotbar
   slot, `ISEquipWeaponAction` time), Field strip (mastery-only recipe restoring gun condition; inputs to check).
@@ -519,5 +798,10 @@ the passives are trimmed, and when the ability unlocks (at the pick, at mastery 
    (Stealth, Field Medicine, Provisioning, Handicraft, Fieldcraft) and Salvaging as its own mastery.
 2. Proposed, not confirmed: one effect per mastery; per-mastery point storage; nothing counts before a pick; no
    masteries for other mods' skills.
-3. Removing a pick: does the mastery's progress go too (proposed: yes, a removed pick starts from 0 if picked again)?
-4. v2 replaces v1, not a second mode next to it.
+3. Passives that are on / off (Bludgeoning +1 target, Conditioning's Heavy Load one level lower, Freerunning's safe
+   falls and vault / wall rolls, Stealth's lose them and silent kills, masterwork / craftsman's mark): how they
+   behave below mastery 10. Proposed per-level forms were offered 2026-11-06 (extra target 10% a level, a tenth of
+   the way per level, safe height 0.2 levels a level, unseen time 13 s - 1 s a level, calm 10% a level, mark 1.5%
+   per maker's level fixed at creation); the user will review them later.
+4. Removing a pick: does the mastery's progress go too (proposed: yes, a removed pick starts from 0 if picked again)?
+5. v2 replaces v1, not a second mode next to it.
