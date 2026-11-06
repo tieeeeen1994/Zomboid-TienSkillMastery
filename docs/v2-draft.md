@@ -265,7 +265,7 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
   - **Tall walls**: the success / struggle roll (`getClimbingFailChanceInt`, endurance moodle -5 per level) runs
     before `ClimbOverWallState.enter` and is stored with public `setClimbOverWallSuccess / Struggle`; the state then
     sets `ClimbFenceOutcome` "success" / "fail". Same flip approach and the same MP caveat.
-- **Stealth** (proposed 2026-11-06): **lose them** (sneaking and still, unseen for 3 s: chasing zombies give up),
+- **Stealth** (**approved**, user 2026-11-06): **lose them** (sneaking and still, unseen for 3 s: chasing zombies give up),
   **silent kills** (a kill made while sneaking does not draw zombies: those within 16 tiles that start responding
   to a player sound in the next ~1 s are calmed; the Silent Ambush idea from Knifework), **sneak speed +15%**
   (position nudge, needs an in-game feel test). Vanilla Sneaking / Lightfooted effects stay vanilla: out of reach
@@ -301,19 +301,128 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     `setTarget(nil)` on the zombie's owner (zombie AI runs there; the player's client sends the IDs through the
     server when it does not own them, as the shove-damage relay). The zombie then walks on to where it was going and
     may still respond to sounds (`RespondToSound` after 240 units unseen).
-- **Smithing**: crafting time -15% and dismantle return +10 pts on Metalworking / Welding recipes, tool wear undone
-  20% on smithing recipes. No weapon wear (user, 2026-11-06): each weapon mastery undoes wear on its own category
-  (v1's server-side held weapon wear undo, 20%, limited to the category; Firearms for guns).
-- **Construction**: built structure HP +20% (Carpentry and Masonry builds: the hook checks
+- **Smithing** (**approved**, user 2026-11-06): crafting time **-25%** (user 2026-11-06, up from v1's 15%) and dismantle
+  return +10 pts on Metalworking / Welding recipes, tool wear undone 20% on smithing recipes (v1), **charcoal
+  back** (new, user 2026-11-06: each piece of charcoal a recipe burns comes back on a 20% roll, dropped on the
+  smith's square), plus **masterwork** (new, user 2026-11-06, replacing
+  "forged edges", which the user did not want), **ore yield +15%** (new: iron from ore and blooms only), **torch
+  fuel** (new: 20% of the blowtorch uses a recipe burns are given back). No weapon wear on the smith's own use
+  (user, 2026-11-06): each weapon mastery undoes wear on its own category (v1's server-side held weapon wear undo,
+  20%, limited to the category; Firearms for guns).
+  - Masterwork: every item with a condition that a Smithing master makes in a smithing recipe
+    (`craftRecipe:isSmithing()`: weapons, armor, tools, anything in the Blacksmithing category) is marked in its
+    modData (saved and sent with the item; set after `performRecipe` and sent with `syncItemFields`, the v1
+    crafting hook). A marked item ignores 15% of its wear (user 2026-11-06, down from 25%), **whoever** holds or
+    wears it: each condition, head condition or sharpness point lost is given back on a 15% roll (about 18% longer
+    life). It belongs to the
+    item, so it survives trading and a removed pick. Stacks with a weapon mastery's own undo (an Axemanship master
+    with a masterwork axe: 1 - 0.85 x 0.8 = 32%). Where the wear is caught (server / single player): held items by
+    v1's per-tick compare of the hands; worn armor by the same compare over worn marked items (zombie hits wear
+    clothing on the server); recipe tools in the crafting hook. A tooltip line names it ("Masterwork, forged by
+    X": the forger's name stored as plain text, since a dedicated server has no mod translations).
+    Real max condition is out: `conditionMax` comes from the script at `InstanceItem` and is not saved
+    (`InventoryItem.save` writes only the condition, as a byte), so a raised max would have to be put back on
+    every copy of the item, and any vanilla `setCondition` clamps to the script's max first.
+  - Ore yield: `RecipeCodeOnCreate.smeltIronOrSteel(data, chr, add)` (42.21 ~1319) sets the crucible to
+    uses + add (1 / 2 / 3 / 4 by item size, 12 from ore, `ExtractIronFromIronOre`); `ExtractIronFromIronBloom`
+    gives 12 Base.IronChunk. Only these primary sources: smelting scrap is loopable (an IronBarQuarter is tagged
+    `smeltableironsmall`, +1 use, and casts back from one), so a bonus there would make iron from nothing. +15% of
+    `add` with the fraction rolled, within `getMaxUses()`; chunks: +15% as extra chunks, fraction rolled.
+  - Charcoal back: smithing recipes burn `item N tags[base:charcoal]` (2 to 18 a craft; the tag covers
+    Base.Charcoal, Base.CharcoalCrafted and Base.Coke). The crafting hook notes the charcoal in the craft's
+    containers before `performRecipe` and counts what is gone after it, per type; each piece comes back on its own
+    20% roll as the same type, `square:AddWorldInventoryItem(type, rx, ry, 0)` on the smith's current square
+    (server / single player; the server's call sends it to nearby clients). Only recipes where `isSmithing()`.
+  - Torch fuel: handcraft recipes take blowtorch uses as inputs (`item 2 / 4 / 6 / 8 [Base.BlowTorch]`, 43
+    recipes); note the torches' uses before `performRecipe` and give back each burnt use on a 20% roll. Welded
+    builds (Java `BuildAction`) and burnt-car scrapping are not covered (to trace).
+- **Construction** (**approved**, user 2026-11-06, with spare materials at 15%): built structure HP +20% (Carpentry and Masonry builds: the hook checks
   `involvesSkill(Perks.Woodwork)`, add Masonry), unbarricade time -15%, window pick-up break -5 pts, crafting time
-  -15%, dismantle return +10 pts.
-- **Auto Repair**: part install / uninstall time -15%, engine and lightbar repair +1 condition per part, hotwire
-  success +10 pts, hotwire time -15%, generator repair +1 condition, crafting time -15% and dismantle +10 pts on
-  Electrical recipes.
+  -25% (matching Smithing; v1 had 15%), dismantle return +10 pts, **quiet work** (new: building noise -50%),
+  **more planks** (new, user 2026-11-06: sawing a log gives a 4th plank on a 50% roll, +17%), **more stones** (new,
+  user 2026-11-06: breaking a large stone gives 12 stones instead of 10, +20%).
+  - Planks and stones (42.21 recipes): `SawLogs` (recipes_carpentry.txt: 1 Base.Log -> 3 Base.Plank, saw kept) and
+    `Make_Stones_from_Large_Stone` (recipes_stonemasonry_i.txt: 1 Base.LargeStone -> 10 Base.Stone2, hammer /
+    sledge / maul / pickaxe kept). The v1 crafting hook (`performRecipe`, server / single player) adds the extra
+    items where vanilla put the outputs (`Actions.addOrDropItem`, which sends them). No loop: nothing turns planks
+    back into logs or stones into a large stone.
+  - Quiet work (42.21 `client/BuildingObjects/TimedActions/ISBuildAction.lua` ~73-104, every build-menu build and
+    barricade): the client's `update` calls the global `addSound` with radius 20 x `getHammerSoundMod()` (8 from
+    Carpentry 4) for hammering, 15 for sawing and for a recipe's `craftingBank`. Swap `addSound` during that
+    `update` and halve the radius (8 -> 4, 15 -> 8). A client's world sound reaches the server through
+    `WorldSoundManager`, so the halved one is what zombies hear. The sound you hear is unchanged.
+  - Out of reach (42.21): build time in MP is Java `BuildAction.getDuration` (~81: (200 - 5 x Carpentry, - 50
+    Handy) x 20 ms, i.e. 3 s at Carpentry 10, no Lua between). Plank barricade strength is Java `IsoBarricade.addPlank`
+    (~81: 1000 x condition x `getBarricadeStrengthMod()`, 1.5 at Carpentry 10), and `IsoBarricade.setHealth` clamps
+    every plank to 1000, below vanilla's own 1500, so Lua cannot raise it.
+  - **Spare materials** (approved at 15%, user 2026-11-06): each material a build consumes comes back on a 15% roll.
+    Where: `ISBuildIsoEntity:create` (~501, server / single player) consumes through
+    `self.buildPanelLogic:performCurrentRecipe()`; `getAllConsumedItems()` lists them afterwards (vanilla reads it
+    at ~702), so a wrapper rolls per consumed item and drops the same type on the builder's square. The catch is
+    dismantling, which pays materials back by two paths, both of which a saving could turn into a build / dismantle
+    loop: `ISDismantleAction:complete` (~55) gives 1..n of each entry of the thumpable's `getBuildMaterials()`
+    (n = the need count; a count of 1 always comes back whole), and moveable scrapping
+    (`ISMoveableSpriteProps`, ~3707 / ~4323 read the same table, and the tile's Material scrap definitions, Wood =
+    up to 6 planks at 40% and 4 nails at 50% a roll) gives back by the object's material whatever it cost.
+    Guard: `getBuildMaterials()` is a live, saved Lua table (Java `IsoThumpable` ~175; vanilla's `ISLightSource`
+    writes into it), so the saved count is taken off it, and the object gets a modData note of what was saved,
+    which a wrapper of `getScrapItemsList` (v1 already wraps it) takes out of the scrap list. A standing structure
+    keeps the saving; tearing it down gives back no more than vanilla would for what was really paid. To trace:
+    whether picking a built object up as a moveable and placing it again keeps its modData and build materials (if
+    not, carry the note on the moveable item).
+- **Auto Repair** (proposed 2026-11-06, **review paused here**: the user stopped mid-review, pick up from this
+  proposal; still to review after it: Salvaging, Mending, Field Medicine, Provisioning, Hunting, Angling,
+  Fieldcraft, Homesteading, Livestock): part install / uninstall time -15%, engine and lightbar repair +1
+  condition per part, hotwire success +10 pts, hotwire time -15%, generator repair +1 condition, dismantle +10 pts
+  on Electrical scrap (all v1), crafting time -25% on Electrical recipes (matching the other crafting masteries; v1
+  had 15%), **tuned parts** (new: parts a master installs or repairs lose 15% less condition from driving),
+  **fuel saver** (new: 15% less fuel burnt while a master drives).
+  - Driving wear (42.21 `server/Vehicles/Vehicles.lua`, server / single player, once a game minute through the
+    cached `Vehicles.Update.*`, so wrap at file load): `Update.Brakes` (~709) and `Vehicles.LowerCondition` (~722;
+    suspension, muffler, tires) take 1 condition on a roll with `part:setCondition` + `transmitPartCondition`. Tuned
+    parts: installing (`ISInstallVehiclePart` complete) and repairing (`ISFixVehiclePartAction`, engine repair)
+    by a master writes a mark in the part item's modData (saved with the part; travels with the item when it is
+    taken out and put in another car). The wrapper gives the point back on a 15% roll for a marked part. Crashes,
+    weapon hits and zombie damage (Java, see ZomboidFixesB42 "Where a vehicle wears down") are not driving wear and
+    stay vanilla.
+  - Fuel (`Update.GasTank` ~450): the burn per minute is computed in Lua from engine quality, mass, gear and engine
+    speed, then `amount = amount - elapsedMinutes x newAmount` and a leak under 70 condition. Wrapper: when
+    `vehicle:getDriver()` is a master, give back 15% of the drop the call made (the wrapper only sees the total, so the
+    0.01 leak of a worn tank is included).
 - **Salvaging**: burnt-car scrapping time -15%, +1 salvage roll per burnt car, engine salvage +20% parts, extra
   Electronics Scrap 25%, metal window pick-up break -5 pts (v1 found no window this applies to).
-- **Handicraft**: crafting time -15% and dismantle return +10 pts on Carving / Knapping / Glassmaking / Pottery
-  recipes; an extra-output chance (new) so it is worth a slot.
+- **Handicraft** (**approved**, user 2026-11-06): crafting time -25% on Carving / Knapping / Glassmaking / Pottery recipes
+  (66 / 11 / 8 / 21 recipes award their XP), tool wear undone 20% on them (new here, Smithing's hook),
+  **craftsman's mark** (new: what a master makes there with a condition ignores 15% of its wear, whoever uses it;
+  Smithing's masterwork for wood, stone and clay), **extra output** (new: 15% chance of one more of the recipe's
+  output, on a vetted list of recipes that nothing turns back into their inputs), **deft hands** (new: every timed
+  action in the game -10%, below). v1's dismantle bonus dropped:
+  only Carpentry, Electrical, Masonry and Welding have scrap definitions, so it did nothing for these skills.
+  - **Deft hands** (user 2026-11-06: kept on Handicraft at 10%, chosen over a per-pick bonus or a mastery of its
+    own; item transfers left out for now, parked in TODO): every
+    Lua timed action -10%, whatever it is for (not only Handicraft's skills: eating, reading, first aid, repairs,
+    farming, butchering, everything that goes through `ISBaseTimedAction`).
+    Item transfers (user asked 2026-11-06, 42.21 `client/TimedActions/ISInventoryTransferAction.lua`): single
+    player times them in Lua (`new` ~764: 120 / 50 x weight x capacity factor x 0.1 / 0.2 / 0.5 Dextrous / 2 All
+    Thumbs), and the first batch already goes through `create` -> `adjustMaxTime`; later batches set `maxTime` from
+    the queue (~528) without it, so SP would need that line covered too. In MP the client only waits for the
+    server: `createItemTransaction` (~313 / ~526), the server ends it at Java `Transaction.getDuration` (Dextrous
+    x 0.5 read in Java), and the client reads the length back (`getItemTransactionDuration`, ~169). No Lua hook
+    changes it. The only MP route is the one ZomboidFixesB42 took for fast forward and the Fast Timed Actions cheat:
+    send each batch as a server-run move of our own (`*_Transfer.lua` + its server side, with floor reach, bags in
+    vehicles, ghost items and Reject handling). Possible by porting that code, but a large, fragile piece for 10%. One hook: `ISBaseTimedAction:adjustMaxTime` (42.21 shared ~99: unhappy, drunk, hand
+    pain, temperature; no vanilla subclass overrides it) is what the client's `create` (~79) and the MP server's
+    `NetTimedAction` both run on the duration, so wrapping it scales every action on both sides at once (an action
+    that calls it itself, `ISWashClothing:getDuration`, gets it twice, like vanilla's own factors). Not covered:
+    item transfers (Java `Transaction.getDuration`), build-menu builds (Java `BuildAction.getDuration`), looped
+    actions (-1) and actions that end on anim events (reloading). Stacks multiplicatively with a mastery's own
+    time bonus (Smithing crafting: 0.75 x 0.9 = -32.5%).
+  - Condition at creation is already full: `RecipeCodeOnCreate.minorCondition` (~1079; 21 carving and 10 knapping
+    recipes) sets max condition from skill 10, so a "better made" bonus has to come as wear (the mark).
+  - Extra output list, to vet per recipe: knapping (`knappFlake` already gives an extra sharpened stone at
+    Knapping in 11), hand-pressed clay bricks / shingles / tiles (`craftrecipe_handpress.txt`, 1 clay -> 1 item),
+    carving recipes with several outputs. Kiln firing runs in the kiln's Java CraftLogic (no `performRecipe`),
+    not covered.
 - **Mending**: patch / remove patch time -15%, fabric recovery +10 pts, ripping +1 material, aramid thread +1 use,
   crafting time -15% on Tailoring recipes.
 - **Field Medicine**: treatment time -15%, treatment strength +15%; one more effect wanted (new, e.g. wounds infect
@@ -400,6 +509,9 @@ the passives are trimmed, and when the ability unlocks (at the pick, at mastery 
 - **Firearms candidates**: Steady Aim (hold a key while aiming: instant aim-in and faster recoil settling for a few
   seconds, endurance cost, cooldown; recommended), Quickdraw (near-instant handgun draw from a holster / hotbar
   slot, `ISEquipWeaponAction` time), Field strip (mastery-only recipe restoring gun condition; inputs to check).
+- **Deft hands for item transfers** (user wants faster actions, 2026-11-06; parked): single player is a small
+  change (cover the queued batches' `maxTime`); MP needs ZomboidFixesB42's server-run transfer path ported (see
+  the Handicraft notes).
 
 ## Open decisions
 
