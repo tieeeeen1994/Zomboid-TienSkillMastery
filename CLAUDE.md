@@ -4,7 +4,8 @@ Skills keep going past level 10 as **mastery**: levels 1-10 with small per-skill
 the bonus), then endless prestige with no more bonuses. Mastery is earned only by experience (real XP gains), never
 by reading. Skill Journal (lait, workshop 3776641628) should one day record and restore it (low priority).
 Standalone mod, started 2026-11-05; **built 2026-11-05, not yet played in game or on a server**.
-A v2 (masteries over groups of skills, with effects of their own) is drafted in `docs/v2-draft.md`, not approved.
+A v2 (picked masteries over groups of skills, with effects of their own) is drafted in `docs/v2-draft.md`: rules and
+the 23 masteries approved 2026-11-06, effects still to be reviewed, nothing built.
 
 Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLAUDE.md) and vanilla 42.21 Lua.
 
