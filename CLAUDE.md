@@ -5,7 +5,10 @@ the bonus), then endless prestige with no more bonuses. Mastery is earned only b
 by reading. Skill Journal (lait, workshop 3776641628) should one day record and restore it (low priority).
 Standalone mod, started 2026-11-05; **built 2026-11-05, not yet played in game or on a server**.
 **v2 replaces v1** (picked masteries over groups of skills, with effects of their own; design and every decision in
-`docs/v2-draft.md`). **All of v2 built 2026-11-07** (v0.3.0, not yet played) except what is parked with Stealth and Freerunning: see "v2 build" below. The v1 sections that
+`docs/v2-draft.md`). **All of v2 built 2026-11-07** (v0.3.0, not yet played) except what is parked with Stealth and Freerunning: see "v2 build" below.
+**Played in game (2026-11-07, user):** Firearms' signatures (Quickdraw, reloading while running) and Axemanship's
+(the throw key: held and carried axes, reticle, swing / hit sounds, damage on arrival). Everything else is still
+unplayed, including Spearcraft's throw and every passive. The v1 sections that
 follow still describe the hooks and the parking, which v2 keeps; their per-skill ids and values are superseded.
 
 Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLAUDE.md) and vanilla 42.21 Lua.
