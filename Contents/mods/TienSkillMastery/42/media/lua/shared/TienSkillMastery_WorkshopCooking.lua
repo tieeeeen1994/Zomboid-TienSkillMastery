@@ -3,11 +3,11 @@ Tien's Skill Mastery: Cooking bonuses for adding an ingredient to an evolved-rec
 shared/TimedActions/ISAddItemInRecipe.lua, 42.21). Crafting time of handcraft recipes is not here (ISHandcraftAction
 belongs to the shared crafting hooks).
 
-Cooking.AddTime ("less"): `getDuration` ~224 = 100 - 2.5 x Cooking (1 with Timed Action Instant); `new` ~236 sets
+Provisioning.AddTime ("less"): `getDuration` ~224 = 100 - 2.5 x Cooking (1 with Timed Action Instant); `new` ~236 sets
 `maxTime = o:getDuration()`, so wrapping getDuration covers the client, single player and the server's rebuild
 (shared/TienSkillMastery_Workshop.lua, "computed" actions).
 
-Cooking.Nutrition ("pct"): `complete` ~66 (server, or single player; never on an MP client) calls Java
+Provisioning.Nutrition ("pct"): `complete` ~66 (server, or single player; never on an MP client) calls Java
 `EvolvedRecipe.addItem(base, used, chr)` (~228). That may first replace a base that is not the result item with a
 new result item (nutrients copied from the old one when it was Food, else 0; sent with
 `sendReplaceItemInContainer`), then adds to the dish, with nutritionBoost = 1 + Cooking / 15 and
@@ -32,7 +32,7 @@ require "TienSkillMastery_Workshop"
 local M = TienSkillMastery
 local W = M.Workshop
 
-W.wrapComputedDuration(ISAddItemInRecipe, "Cooking.AddTime")
+W.wrapComputedDuration(ISAddItemInRecipe, "Provisioning.AddTime")
 
 if not ISAddItemInRecipe then return end
 
@@ -99,7 +99,7 @@ local origComplete = ISAddItemInRecipe.complete
 function ISAddItemInRecipe:complete(...)
     current = nil
     if isClient() or not self.character then return origComplete(self, ...) end
-    local mult = M.more(self.character, "Cooking.Nutrition")
+    local mult = M.more(self.character, "Provisioning.Nutrition")
     if mult <= 1 then return origComplete(self, ...) end
     local ctx = { action = self, mult = mult, before = snapshot(self.baseItem) }
     current = ctx
@@ -108,6 +108,26 @@ function ISAddItemInRecipe:complete(...)
     if not ctx.applied and results[1] ~= false then
         if apply(ctx, self.baseItem) and isServer() then
             sendItemStats(self.baseItem)
+        end
+    end
+    return W.unpack(results)
+end
+
+-- Provisioning.LastingFood (phase 2): an evolved dish a master starts or adds to stays fresh longer. Once per dish
+-- (modData `TSM_Lasting`), so adding more ingredients never stacks it: after `ISAddItemInRecipe:complete` (server /
+-- single player) the dish's `setOffAge` / `setOffAgeMax` are stretched and the dish is re-sent whole (spoil times are
+-- saved per item but not in SyncItemFieldsPacket). Wraps the nutrition wrapper above.
+local nutritionComplete = ISAddItemInRecipe.complete
+function ISAddItemInRecipe:complete(...)
+    local results = W.pack(nutritionComplete(self, ...))
+    if results[1] ~= false and not isClient() and self.character then
+        local dish = self.baseItem
+        local f = M.more(self.character, "Provisioning.LastingFood")
+        if f > 1 and dish and instanceof(dish, "Food") and not dish:getModData().TSM_Lasting then
+            if M.stretchFood(dish, f) then
+                dish:getModData().TSM_Lasting = true
+                M.resendItem(dish)
+            end
         end
     end
     return W.unpack(results)

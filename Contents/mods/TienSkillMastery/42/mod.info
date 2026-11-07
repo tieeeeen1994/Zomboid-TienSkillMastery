@@ -1,8 +1,8 @@
 name=Tien's Skill Mastery
 id=TienSkillMastery
-description=Skills keep growing past level 10. A skill at level 10 earns mastery from experience, levels 1 to 10, each giving a tenth of small bonuses made for that skill; mastery 10 is about a fifth better than skill level 10. Past mastery 10, experience counts as prestige. Mastery tab next to Skills, vanilla-style level-ups, and click any skill in the Skills tab to see what its level gives. Works on dedicated servers.
+description=Skills stay vanilla; on top come masteries, named groups of skills (Firearms, Construction, Hunting...) with effects of their own. Pick up to three once every skill in them is at level 10; a picked mastery grows from experience to mastery 10, then prestige. Mastery tab next to Skills, vanilla-style level-ups, and click any skill in the Skills tab to see what its level gives. Works on dedicated servers.
 author=Tien
 poster=poster.png
 icon=icon.png
-modversion=0.1.0
+modversion=0.3.0
 category=Gameplay

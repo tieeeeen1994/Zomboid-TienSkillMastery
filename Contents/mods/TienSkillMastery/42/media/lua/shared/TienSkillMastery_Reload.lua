@@ -21,7 +21,7 @@ if original and not ISReloadWeaponAction.__tsmReload then
     ISReloadWeaponAction.setReloadSpeed = function(character, rack, ...)
         local results = { original(character, rack, ...) }
         if character then
-            local f = M.more(character, "Reloading.ReloadSpeed")
+            local f = M.more(character, "Firearms.ReloadSpeed")
             if f > 1 then
                 character:setVariable("ReloadSpeed", character:getVariableFloat("ReloadSpeed", 1.0) * f)
             end

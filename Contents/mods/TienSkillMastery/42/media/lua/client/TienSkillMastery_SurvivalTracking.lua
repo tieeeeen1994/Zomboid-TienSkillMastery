@@ -1,5 +1,5 @@
 --[[
-Tien's Skill Mastery: Tracking bonuses (Tracking.Find, Tracking.InspectTime). Vanilla 42.21 Lua + Java.
+Tien's Skill Mastery: Tracking bonuses (Hunting.Find, Hunting.InspectTime). Vanilla 42.21 Lua + Java.
 
 Finding tracks:
 - `ISAnimalTracksFinder:update(chr)` (client/Foraging/ISAnimalTracksFinder.lua ~25) runs from the search manager's
@@ -11,7 +11,7 @@ Finding tracks:
   takes every track within 20 + 2 x level tiles and rolls `canFindTrack` (~81): 1 in (definition + track chance) /
   ((level + 1) / 0.7), divided further by 2..3 with distance (by 20 within 4 tiles); a found track is added to the
   world and, on a server, sent to nearby clients (`OnAnimalTracks`). A miss gives 2-4 XP 1 in 10, a find 7-15 XP.
-- Tracking.Find (pct): the find roll and its odds are Java with no Lua hook, so the bonus is extra find attempts: after
+- Hunting.Find (pct): the find roll and its odds are Java with no Lua hook, so the bonus is extra find attempts: after
   each vanilla attempt (the 20-tick timer just ran out), with chance = the bonus percent, the client calls
   `getAndFindNearestTracks` once more (MP: one more request, rolled by the server with vanilla's odds; single player:
   the returned tracks are added exactly as vanilla adds them). With a per-attempt find chance p this gives
@@ -22,7 +22,7 @@ Finding tracks:
 Inspecting a track:
 - `ISInspectAnimalTrackAction` (client/TimedActions/Animal/ISInspectAnimalTrackAction.lua) is client only: it has no
   `complete`, so it never becomes a server action in MP. `getDuration` (~50) = 100 - 1.5 x level (1 with
-  `isTimedActionInstant`); `new` (~57) sets `maxTime = o:getDuration()`. Tracking.InspectTime (less): the wrapper
+  `isTimedActionInstant`); `new` (~57) sets `maxTime = o:getDuration()`. Hunting.InspectTime (less): the wrapper
   scales `getDuration` (not the instant 1).
 ]]
 
@@ -45,7 +45,7 @@ if ISAnimalTracksFinder and ISAnimalTracksFinder.update then
     ISAnimalTracksFinder.update = function(self, chr, ...)
         local due = (tonumber(ISAnimalTracksFinder.tick) or 0) <= 0
         local r = pack(origUpdate(self, chr, ...))
-        if due and chr and M.roll(chr, "Tracking.Find") then
+        if due and chr and M.roll(chr, "Hunting.Find") then
             local tracks = getAndFindNearestTracks(chr)
             if not isClient() and tracks then
                 for i = 0, tracks:size() - 1 do
@@ -67,7 +67,7 @@ if ISInspectAnimalTrackAction and ISInspectAnimalTrackAction.getDuration then
         local r = pack(origDuration(self, ...))
         local chr = self.character
         if chr and type(r[1]) == "number" and r[1] > 1 and not chr:isTimedActionInstant() then
-            r[1] = r[1] * M.less(chr, "Tracking.InspectTime")
+            r[1] = r[1] * M.less(chr, "Hunting.InspectTime")
         end
         return unpack(r, 1, r.n)
     end

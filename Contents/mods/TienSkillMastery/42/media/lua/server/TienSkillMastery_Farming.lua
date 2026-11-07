@@ -22,19 +22,19 @@ Plant objects find methods through the class table (`SPlantGlobalObject` / `SFar
 replacing the class fields at load reaches every plant. `getVegetablesNumber` is a global looked up at call time by
 `SFarmingSystem:harvest`, so replacing the global works.
 
-Farming.Yield: `getVegetablesNumber` (farming_vegetableconf.lua ~17): ZombRand(min, max + 1) by plant health, minus
+Homesteading.Yield: `getVegetablesNumber` (farming_vegetableconf.lua ~17): ZombRand(min, max + 1) by plant health, minus
 pests, + level when ZombRand(10) < level (~67), at least 1. The result is scaled with `M.scaleInt` (fraction rolled).
 Vanilla bug seen (~72-73): the sandbox yield `FarmingAmountNew` is written to a stray global `numberOfVeg` and never
 applied, so that sandbox option does nothing in 42.21.
 
-Farming.Cure: `SPlantGlobalObject:cureMildew/cureFlies/cureAphids/cureSlugs(src, uses, skill)` (~436-498) remove
+Homesteading.Cure: `SPlantGlobalObject:cureMildew/cureFlies/cureAphids/cureSlugs(src, uses, skill)` (~436-498) remove
 `10 + skill` per use (clamped at 0 each use). The wrapper passes a skill that makes that (10 + skill) x (1 + bonus).
 
-Farming.PlantHealth: `SPlantGlobalObject:initHealth(skill)` (~736, only called by `seed`) sets health to
+Homesteading.PlantHealth: `SPlantGlobalObject:initHealth(skill)` (~736, only called by `seed`) sets health to
 ZombRand(57, 64) + skill (best month), 37..43 + skill (cursed) or `SFarmingSystem:getHealth()` + skill. The wrapper
 adds `M.int` (3 at mastery 10, fraction rolled).
 
-Farming.BonusYield / Farming.Curse: `SPlantGlobalObject:seed(type, skill)` (~715), with PlantGrowingSeasons on:
+Homesteading.BonusYield / Homesteading.Curse: `SPlantGlobalObject:seed(type, skill)` (~715), with PlantGrowingSeasons on:
 not a sow month = cursed; elseif risk month and ZombRand(20) < 11 - skill = cursed (~727); elseif best month and
 ZombRand(20) < 9 + skill = bonusYield (~728). After vanilla's roll the wrapper moves the odds by the bonus points: a
 plant the risk roll cursed is uncursed with chance c / p0 (p0 = vanilla's curse chance, so P = p0 - c); then, as in
@@ -42,11 +42,11 @@ vanilla's elseif, a best month rolls the bonus, and the health is rolled again f
 assigns, so this replaces the cursed range); a plant that missed the bonus roll gets it with chance
 (b1 - b0) / (1 - b0), b1 = b0 + points. Then `saveData` again.
 
-Farming.Fertilize: `SPlantGlobalObject:fertilize2(skill)` (~596, from `fertilize` on the first dose and from
+Homesteading.Fertilize: `SPlantGlobalObject:fertilize2(skill)` (~596, from `fertilize` on the first dose and from
 `compostPlant`): outside winter (or with seasons off), nbOfGrow <= 3, not cursed, no weeds: bonusYield when
 ZombRand(20) < 9 + skill (~614). Same top-up roll as above; both callers `saveData` after it.
 
-Farming.BackStrain: every Lua `addBackMuscleStrain` call in vanilla 42.21 is farming work, each in `complete` with
+Homesteading.BackStrain: every Lua `addBackMuscleStrain` call in vanilla 42.21 is farming work, each in `complete` with
 1 - 0.05 x Farming: ISHarvestPlantAction (~57, low plants), ISPlowAction (~106, trowel or hands, x0.7 / x1),
 ISSeedActionNew (~58), ISRemoveGrass (~43), ISRemoveBush (~121, without a weapon; on a server `self.weapon` is unset).
 `IsoGameCharacter.addBackMuscleStrain` (Java ~16389) adds the stiffness to Torso_Upper / Torso_Lower, which reaches the
@@ -133,7 +133,7 @@ local function wrapComplete(class)
         local chr = self.character
         if not chr then return original(self, ...) end
         local prevStrain = strainScale[chr]
-        local f = M.less(chr, "Farming.BackStrain")
+        local f = M.less(chr, "Homesteading.BackStrain")
         if f < 1 then strainScale[chr] = f end
         local prev = current
         current = chr
@@ -182,7 +182,7 @@ if type(originalVegetables) == "function" then
         local results = { originalVegetables(...) }
         local n = results[1]
         if current and type(n) == "number" and n > 0 then
-            results[1] = M.scaleInt(current, "Farming.Yield", n)
+            results[1] = M.scaleInt(current, "Homesteading.Yield", n)
         end
         return unpack(results)
     end
@@ -197,7 +197,7 @@ for _, name in ipairs({ "cureMildew", "cureFlies", "cureAphids", "cureSlugs" }) 
     if type(original) == "function" then
         SPlantGlobalObject[name] = function(self, source, uses, skill, ...)
             if current then
-                local f = M.more(current, "Farming.Cure")
+                local f = M.more(current, "Homesteading.Cure")
                 if f > 1 then
                     -- vanilla removes 10 + skill per use
                     skill = (10 + (tonumber(skill) or 0)) * f - 10
@@ -216,7 +216,7 @@ local originalInitHealth = SPlantGlobalObject.initHealth
 function SPlantGlobalObject:initHealth(skill, ...)
     local results = { originalInitHealth(self, skill, ...) }
     if current and type(self.health) == "number" then
-        local extra = M.int(current, "Farming.PlantHealth")
+        local extra = M.int(current, "Homesteading.PlantHealth")
         if extra > 0 then self.health = self.health + extra end
     end
     return unpack(results)
@@ -232,13 +232,13 @@ function SPlantGlobalObject:seed(typeOfSeed, skill, ...)
 
     local s = tonumber(skill) or 0
     local bonusBase = clamp01((9 + s) / 20)
-    local bonusPts = M.val(player, "Farming.BonusYield") / 100
+    local bonusPts = M.val(player, "Homesteading.BonusYield") / 100
     local changed = false
 
     if self:isRiskMonth() and self.cursed and not cursedBefore then
         -- the risk roll cursed it; take off the bonus points
         local curseBase = clamp01((11 - s) / 20)
-        local cursePts = M.val(player, "Farming.Curse") / 100
+        local cursePts = M.val(player, "Homesteading.Curse") / 100
         if curseBase > 0 and cursePts > 0 and ZombRandFloat(0, 1) < math.min(1, cursePts / curseBase) then
             self.cursed = false
             changed = true
@@ -277,7 +277,7 @@ function SPlantGlobalObject:fertilize2(skill, ...)
     local results = { originalFertilize2(self, skill, ...) }
     if eligible and not bonusBefore and not self.bonusYield then
         local base = (9 + (tonumber(skill) or 0)) / 20
-        if ZombRandFloat(0, 1) < topUp(base, M.val(player, "Farming.Fertilize") / 100) then
+        if ZombRandFloat(0, 1) < topUp(base, M.val(player, "Homesteading.Fertilize") / 100) then
             -- both callers (fertilize, compostPlant) saveData after this
             self.bonusYield = true
         end

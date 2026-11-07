@@ -50,8 +50,8 @@ local function withCareBonus(animal, chr, fn, ...)
     if not animal or not chr or not instanceof(animal, "IsoAnimal") or not instanceof(chr, "IsoPlayer") then
         return fn(...)
     end
-    local calming = M.more(chr, "Husbandry.Calming")
-    local acceptance = M.more(chr, "Husbandry.Acceptance")
+    local calming = M.more(chr, "Homesteading.Calming")
+    local acceptance = M.more(chr, "Homesteading.Acceptance")
     if calming <= 1 and acceptance <= 1 then return fn(...) end
 
     local stress0 = animal:getStress()
@@ -111,7 +111,7 @@ if originalChance then
     ButcheringUtil.getPartChance = function(baseChance, size, meatRatio, player, ...)
         local results = { originalChance(baseChance, size, meatRatio, player, ...) }
         if baseChance and player and type(results[1]) == "number" then
-            results[1] = results[1] * M.more(player, "Butchering.PartChance")
+            results[1] = results[1] * M.more(player, "Hunting.PartChance")
         end
         return unpack(results)
     end
@@ -122,7 +122,7 @@ if originalMeat then
     ButcheringUtil.giveMeatModified = function(meatDef, nb, player, ...)
         if meatPlayer and player == meatPlayer and type(nb) == "number" and nb > 0 then
             meatPlayer = nil   -- one scaling per part
-            nb = M.scaleInt(player, "Butchering.PartCount", nb)
+            nb = M.scaleInt(player, "Hunting.PartCount", nb)
         end
         return originalMeat(meatDef, nb, player, ...)
     end
@@ -131,7 +131,7 @@ end
 local originalPart = ButcheringUtil.addAnimalPart
 ButcheringUtil.addAnimalPart = function(part, player, carcass, ...)
     if extraDepth > 0 or type(part) ~= "table" or not part.item or not player
-            or M.val(player, "Butchering.PartCount") <= 0 then
+            or M.val(player, "Hunting.PartCount") <= 0 then
         return originalPart(part, player, carcass, ...)
     end
 
@@ -149,7 +149,7 @@ ButcheringUtil.addAnimalPart = function(part, player, carcass, ...)
     local text = originalPart(part, player, carcass, ...)
     local got = items:size() - before
     if got <= 0 then return text end
-    local extra = M.scaleInt(player, "Butchering.PartCount", got) - got
+    local extra = M.scaleInt(player, "Hunting.PartCount", got) - got
     if extra <= 0 then return text end
 
     local copy = {}
@@ -163,4 +163,43 @@ ButcheringUtil.addAnimalPart = function(part, player, carcass, ...)
         return text
     end
     return (text or "") .. (more or "")
+end
+
+-- Provisioning.LastingFood (phase 2) and the choice cuts signature (phase 3a): meat a master butchers stays fresh
+-- longer and is more filling and nutritious (hunger, base hunger, calories, lipids, proteins, carbs x 1.15; vanilla's
+-- own `modifyMeat` scales the same fields by animal size and cut). `giveMeatModified(meatDef, nb,
+-- player, ...)` (~363) makes each meat item, runs `modifyMeat(item, size, meatRatio, hungerBoost, rotten, deathAge)`
+-- (~426: nutrition, age), then `AddItem` + `sendAddItemToContainer`. `modifyMeat` has no player, so the butcher is
+-- noted for the giveMeatModified call and modifyMeat's item gets its spoil times stretched before the send.
+-- Organs and other parts (`addAnimalPart` without a meat definition) are left as they are.
+local butcher = nil
+local meatCall = ButcheringUtil.giveMeatModified
+ButcheringUtil.giveMeatModified = function(meatDef, nb, player, ...)
+    local was = butcher
+    butcher = player
+    local results = { pcall(meatCall, meatDef, nb, player, ...) }
+    butcher = was
+    if not results[1] then error(results[2], 0) end
+    return unpack(results, 2)
+end
+local vanillaModifyMeat = ButcheringUtil.modifyMeat
+if vanillaModifyMeat then
+    ButcheringUtil.modifyMeat = function(item, ...)
+        local text = vanillaModifyMeat(item, ...)
+        if butcher and item then
+            M.stretchFood(item, M.more(butcher, "Provisioning.LastingFood"))
+            -- Provisioning's signature, choice cuts: the meat is 15% more filling and nutritious (flat, from the pick).
+            local cuts = M.val(butcher, "Provisioning.SigChoiceCuts")
+            if cuts > 0 and instanceof(item, "Food") then
+                local f = 1 + cuts / 100
+                item:setHungChange(item:getHungChange() * f)
+                item:setBaseHunger(item:getBaseHunger() * f)
+                item:setCalories(item:getCalories() * f)
+                item:setLipids(item:getLipids() * f)
+                item:setProteins(item:getProteins() * f)
+                item:setCarbohydrates(item:getCarbohydrates() * f)
+            end
+        end
+        return text
+    end
 end

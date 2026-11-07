@@ -1,5 +1,5 @@
 --[[
-Tien's Skill Mastery: Trapping catch chance (Trapping.Catch). Vanilla 42.21 Lua.
+Tien's Skill Mastery: Trapping catch chance (Hunting.Catch). Vanilla 42.21 Lua.
 
 Vanilla: placing a trap runs `TrapBO:create` (server/Traps/BuildingObjects/TrapBO.lua ~3; on a server in MP, where the
 build action is completed, locally in single player), which calls `TrapSystem.initObjectModData(isoObject, trapDef,
@@ -33,7 +33,7 @@ if TrapSystem and TrapSystem.initObjectModData then
     TrapSystem.initObjectModData = function(isoObject, trapDef, north, player, ...)
         local r = pack(origInit(isoObject, trapDef, north, player, ...))
         if player and isoObject then
-            local v = M.val(player, "Trapping.Catch")
+            local v = M.val(player, "Hunting.Catch")
             if v > 0 then
                 local modData = isoObject:getModData()
                 if type(modData.trappingSkill) == "number" then

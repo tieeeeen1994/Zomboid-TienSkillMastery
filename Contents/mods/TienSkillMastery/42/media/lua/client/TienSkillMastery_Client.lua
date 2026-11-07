@@ -17,14 +17,19 @@ M.version = M.version or 0   -- bumped on every change, for the Mastery tab
 local answered = false
 local nextAsk = 0
 
---- Vanilla's level-up feedback for a mastery level (see server M.notifyLevelUp): the halo "+1 Axe Mastery" (or
---- "+1 Axe Prestige" past 10) with the up arrow in the good colour, and vanilla's level-up sound.
+--- Display name of a mastery.
+function M.masteryName(masteryId)
+    return getTextOrNull("IGUI_TienSkillMastery_Mastery_" .. tostring(masteryId)) or tostring(masteryId)
+end
+
+--- Vanilla's level-up feedback for a mastery level (see server M.notifyLevelUp): the halo "+1 Firearms Mastery" (or
+--- "+1 Firearms Prestige" past 10) with the up arrow in the good colour, and vanilla's level-up sound.
 function M.showLevelUp(player, args)
-    local perk = player and type(args) == "table" and M.perk(args.perk)
-    if not perk then return end
+    local id = player and type(args) == "table" and args.mastery
+    if not id or not M.masteryById[id] then return end
     local level = tonumber(args.level) or 0
     local key = level > M.BONUS_LEVELS and "IGUI_TienSkillMastery_LevelUpPrestige" or "IGUI_TienSkillMastery_LevelUp"
-    HaloTextHelper.addTextWithArrow(player, getText(key, perk:getName()), "[br/]", true, HaloTextHelper.getGoodColor())
+    HaloTextHelper.addTextWithArrow(player, getText(key, M.masteryName(id)), "[br/]", true, HaloTextHelper.getGoodColor())
     player:playGainExperienceLevelSound()
     M.version = (M.version or 0) + 1
 end
@@ -36,11 +41,19 @@ local function onServerCommand(module, command, args)
     end
     if module ~= M.MODULE or command ~= "state" or type(args) ~= "table" then return end
     if not args.username then return end
-    local xp = {}
-    if type(args.xp) == "table" then
-        for k, v in pairs(args.xp) do xp[k] = tonumber(v) or 0 end
+    local picks, points = {}, {}
+    if type(args.picks) == "table" then
+        -- A table sent by the server arrives with number keys as doubles; rebuild the list in order.
+        local i = 1
+        while args.picks[i] ~= nil do
+            if M.masteryById[args.picks[i]] then table.insert(picks, args.picks[i]) end
+            i = i + 1
+        end
     end
-    M.clientCache[args.username] = xp
+    if type(args.points) == "table" then
+        for k, v in pairs(args.points) do points[k] = tonumber(v) or 0 end
+    end
+    M.clientCache[args.username] = { picks = picks, points = points }
     answered = true
     M.version = M.version + 1
 end

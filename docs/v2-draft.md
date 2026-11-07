@@ -1,6 +1,8 @@
 # Skill Mastery v2: picked masteries (draft, 2026-11-06)
 
-Nothing built. v1 (one mastery per skill, bonuses that copy the skill's vanilla effects) is described in CLAUDE.md.
+All of it built 2026-11-07 (v0.3.0), except what is parked with Stealth and Freerunning (core, picks, points, tab, v1 hooks moved to masteries; then the passives that fit
+existing hooks). CLAUDE.md "v2 build" lists what is not built yet.
+Stealth and Freerunning are parked (hidden, not pickable; user, 2026-11-07) until their remaining effects are built. v1 (one mastery per skill, bonuses that copy the skill's vanilla effects) is described in CLAUDE.md.
 v2 keeps v1's XP capture and changes what the XP is spent on. **Approved** (user, 2026-11-06): the rules under "The
 idea" and the masteries with their members and names (23 approved, Livestock later dropped: 22). **Not yet approved**: the effects, and everything marked
 "proposed" below.

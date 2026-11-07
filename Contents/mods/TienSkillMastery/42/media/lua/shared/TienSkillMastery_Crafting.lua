@@ -2,7 +2,9 @@
 Tien's Skill Mastery: handcraft hooks (every recipe crafted through ISHandcraftAction). This file owns the
 ISHandcraftAction wrappers; no other file touches that class.
 
-Crafting time, `<Perk>.CraftTime` for the 12 crafting skills (both sides)
+Crafting time, `<mastery>.CraftTime` (Construction: Carpentry, Masonry; Smithing: Metalworking, Welding;
+Engineering: Electrical; Handicraft: Carving, Knapping, Glassmaking, Pottery; Mending: Tailoring; Provisioning:
+Cooking; `M.CRAFT_MASTERY`), both sides
 - Vanilla (shared/Entity/TimedActions/ISHandcraftAction.lua, 42.21): `getDuration` (~253) = 1 with
   `isTimedActionInstant`, -1 without a recipe, else `craftRecipe:getTime(character) * 5`; `new` (~391) sets
   `o.maxTime = o:getDuration()` (~411). Java `CraftRecipe.getTime(chr)` (~198) = time - (highest relevant level -
@@ -12,8 +14,8 @@ Crafting time, `<Perk>.CraftTime` for the 12 crafting skills (both sides)
   `ISHandcraftAction.new(...)` and reads `getDuration()` for the real end time. Wrapping `getDuration` therefore
   scales every side once; it computes from scratch each call, so nothing compounds.
 - Which skill: the same set vanilla calls relevant. Mastery only exists at level 10, the highest level, so the
-  "highest relevant skill" vanilla uses is any relevant skill at 10; the bonus is the best `<Perk>.CraftTime` among the
-  recipe's relevant skills (skills without a CraftTime bonus count 0). Values <= 1 (instant, no recipe) are left alone.
+  "highest relevant skill" vanilla uses is any relevant skill at 10; the bonus is the best CraftTime of the masteries
+  the recipe's relevant skills map to (skills without one count 0). Values <= 1 (instant, no recipe) are left alone.
 
 Everything below runs inside `performRecipe` (~221), which vanilla calls only where items are really made:
 `perform` when `not isClient()` (single player, ~191) and `complete` when `isServer()` (MP server, ~210). It runs
@@ -22,21 +24,22 @@ output, then the Java OnCreate (`luaCallOnCreate`). OnCreate changes made after 
 owner by vanilla, so every item this file changes is sent again with `syncItemFields` (carries condition, head
 condition, sharpness, uses) and every item it adds goes out with `sendAddItemToContainer`.
 
-- `Carving.SpearCondition` (CarveSpear, FireHardenSpear): Java `RecipeCodeOnCreate.carveSpear` (~639) /
+- `Spearcraft.SpearCondition` (CarveSpear, FireHardenSpear): Java `RecipeCodeOnCreate.carveSpear` (~639) /
   `fireHardenSpear` (~644) -> `setRandomSpearCondition` = clamp(default + Carving + Rand(0..1), 2, max). After it,
   + `M.int` condition within `getConditionMax()`.
-- `Tailoring.Ripping` (RipClothing, RipDenimClothing; tag RemoveResultItems, so the materials come only from the
+- `Mending.Ripping` (RipClothing, RipDenimClothing; tag RemoveResultItems, so the materials come only from the
   OnCreate): `RecipeCodeOnCreate.ripClothing` (~594) adds clamp(Rand(min..max) + Tailoring / 2, 1, max) of the fabric's
   material (dirty when Rand(99) + 1 <= dirt + blood; clean RippedSheets get modData filterLife) straight to the main
   inventory, max = max(covered parts - (holes + patches), 1). Counted here as the gain of those types in the main
   inventory; + `M.int` more within max, made the same way.
-- `Tailoring.Aramid` (PickAramidThread): `RecipeCodeOnCreate.pickAramidThread` (~1333) sets the created thread's uses to
+- `Mending.Aramid` (PickAramidThread): `RecipeCodeOnCreate.pickAramidThread` (~1333) sets the created thread's uses to
   clamp(Rand(n, 2n + Tailoring / 2), 1, 10). After it, + `M.int` uses within min(10, max uses).
-- `Electricity.Scrap`: one more Base.ElectronicsScrap on a `M.roll`, for any recipe that involves Electricity and
+- `Engineering.Scrap`: one more Base.ElectronicsScrap on a `M.roll`, for any recipe that involves Electricity and
   whose created outputs include Base.ElectronicsScrap (vanilla: DismantleElectronicsDevice with
   `RecipeCodeOnCreate.dismantleElectronics` ~459 / `getRadioBaseItems` ~518 for radios, TVs, walkies; also
   DismantleElectronics and DismantleMiscElectronics). Electrical furniture is in TienSkillMastery_CraftingMoveables.
-- `Blacksmith.ToolWear` (recipes where `craftRecipe:isSmithing()`: involves Blacksmith or category Blacksmithing):
+- `Smithing.ToolWear` (recipes where `craftRecipe:isSmithing()`: involves Blacksmith or category Blacksmithing) and
+  `Handicraft.ToolWear` (recipes whose relevant skills include Carving, Knapping, Glassmaking or Pottery):
   kept tools wear inside `performCurrentRecipe` (Java `CraftRecipeData.processKeepInputItem` ~1260: MayDegradeHeavy /
   MayDegrade / Light / VeryLight = `damageCheck(highest relevant level + maintenance mod, 1 / 2 / 3 / 6)`,
   SharpnessCheck = `sharpnessCheck`; `InventoryItem.damageCheck` ~4520 can take a sharpness step (1 / conditionMax),
@@ -44,6 +47,32 @@ condition, sharpness, uses) and every item it adds goes out with `sendAddItemToC
   craft's containers that a kept, wearing input accepts is noted first; after it, each lost point of the tools
   `getAllKeepInputItems()` reports is put back on its own `M.roll`. Tools tagged BreakOnSmithing (broken on purpose
   by smithing) and a condition forced to 0 by a head at 0 are left alone.
+
+Phase 2 (2026-11-07), also inside `performRecipe`:
+- `Smithing.TorchFuel` (any recipe, Smithing master): blowtorch uses are recipe inputs (`item 2 / 4 / 6 / 8
+  [Base.BlowTorch]`, 43 recipes). Every blowtorch in the inventory tree and the craft's containers is noted before;
+  each use gone after comes back on its own roll (`setCurrentUses` + `syncItemFields`). Welded builds (Java
+  `BuildAction`) are not handcrafts and not covered.
+- `Smithing.CharcoalBack` (`isSmithing()` recipes): smithing recipes burn `item N tags[base:charcoal]` (Charcoal,
+  CharcoalCrafted, Coke). Each consumed piece (`getAllConsumedItems()`, the list vanilla's own performRecipe reads)
+  comes back on its own roll, dropped on the smith's square (`AddWorldInventoryItem`, which the server sends).
+- `Smithing.OreYield` (primary sources only; smelting scrap is loopable: an IronBarQuarter smelts back into the
+  crucible use it was cast from): ExtractIronFromIronOre (`RecipeCodeOnCreate.smeltIronOrSteelIngot`, +12 crucible
+  uses for the ore or bloom) gets `M.scaleInt` of those 12 as extra uses within the crucible's max;
+  ExtractIronFromIronBloom (12 Base.IronChunk) gets the extra as chunks.
+- `Handicraft.CraftsmansMark`: weapons and clothing a Handicraft master makes in a recipe of its skills are marked
+  (modData `TSM_Mark` = the bonus now, percent, fixed for good; `TSM_MarkBy` = the maker's name as plain text, since a
+  dedicated server has no mod translations), sent with `syncItemFields` (carries modData). The mark's wear undo is in
+  server/TienSkillMastery_Physical.lua and works for whoever holds or wears the item.
+- Phase 3a signatures: `Smithing.SigMasterwork` marks what a Smithing master makes in an `isSmithing()` recipe like
+  the craftsman's mark, at 15% (`TSM_MarkKind` "masterwork"; a mark is never lowered); `Construction.SigPlanks` /
+  `SigStones`: SawLogs (1 log -> 3 planks) gives a 4th plank on a 50% roll, Make_Stones_from_Large_Stone (-> 10
+  Stone2) 2 more, added with vanilla's own `Actions.addOrDropItem` (sends; drops on the floor when full). Nothing
+  turns planks back into logs or stones into a large stone, so neither loops. Recipe tools with a mark are not yet
+  given their wear back inside a craft (only held and worn items are watched).
+- `Provisioning.LastingFood` (recipes involving Cooking): created Food stays fresh longer, `setOffAge` /
+  `setOffAgeMax` x the bonus (saved per item; not in SyncItemFieldsPacket, so the item is re-sent whole with
+  `sendReplaceItemInContainer` on a server). Items that never spoil (1e9) are left alone.
 ]]
 
 require "TienSkillMastery"
@@ -65,26 +94,42 @@ end
 -- Crafting time
 -- ---------------------------------------------------------------------------------------------------------------
 
---- Best CraftTime bonus (percent) among the recipe's relevant skills.
-local function craftTimeBonus(chr, recipe)
-    local best = 0
-    local function consider(perk)
-        if perk then
-            local v = M.val(chr, M.perkId(perk) .. ".CraftTime")
-            if v > best then best = v end
-        end
-    end
+--- Perk ids of the recipe's relevant skills (vanilla's `getHighestRelevantSkillLevel` set), as a set.
+local function relevantPerks(recipe)
+    local set = {}
     local function each(count, get)
         for i = 0, count - 1 do
             local entry = get(i)
-            if entry then consider(entry:getPerk()) end
+            local perk = entry and entry:getPerk()
+            if perk then set[M.anyPerkId(perk)] = true end
         end
     end
     each(recipe:getRequiredSkillCount(), function(i) return recipe:getRequiredSkill(i) end)
     each(recipe:getXPAwardCount(), function(i) return recipe:getXPAward(i) end)
     each(recipe:getAutoLearnAnySkillCount(), function(i) return recipe:getAutoLearnAnySkill(i) end)
     each(recipe:getAutoLearnAllSkillCount(), function(i) return recipe:getAutoLearnAllSkill(i) end)
+    return set
+end
+
+--- Best CraftTime bonus (percent) among the masteries of the recipe's relevant skills.
+local function craftTimeBonus(chr, recipe)
+    local best = 0
+    for perkId in pairs(relevantPerks(recipe)) do
+        local v = M.valFor(chr, M.CRAFT_MASTERY, perkId, "CraftTime")
+        if v > best then best = v end
+    end
     return best
+end
+
+--- Which tool wear undo applies to the recipe for this crafter, if any.
+local function toolWearId(chr, recipe)
+    if recipe:isSmithing() and M.val(chr, "Smithing.ToolWear") > 0 then return "Smithing.ToolWear" end
+    if M.val(chr, "Handicraft.ToolWear") > 0 then
+        for perkId in pairs(relevantPerks(recipe)) do
+            if M.CRAFT_MASTERY[perkId] == "Handicraft" then return "Handicraft.ToolWear" end
+        end
+    end
+    return nil
 end
 
 local function scaleCraftDuration(self, d, ...)
@@ -175,16 +220,40 @@ local function snapshotTools(self, recipe)
     return found and tools or nil
 end
 
+--- Every blowtorch the craft could draw on: { [item ID] = { item, uses } }, or nil when there is none.
+local function snapshotTorches(self)
+    local found = nil
+    local function scan(container)
+        if not container then return end
+        local list = container:getAllTypeRecurse("Base.BlowTorch")
+        for i = 0, list:size() - 1 do
+            local t = list:get(i)
+            if instanceof(t, "DrainableComboItem") then
+                found = found or {}
+                found[t:getID()] = { item = t, uses = t:getCurrentUses() }
+            end
+        end
+    end
+    scan(self.character:getInventory())
+    local containers = (self.logic and self.logic:getContainers()) or self.containers
+    if containers then
+        for i = 0, containers:size() - 1 do scan(containers:get(i)) end
+    end
+    return found
+end
+
 local function before(self)
     local chr, recipe = self.character, self.craftRecipe
     if not chr or not recipe then return nil end
     local ctx = { name = shortName(recipe) }
-    if recipe:isSmithing() and M.val(chr, "Blacksmith.ToolWear") > 0 then
+    ctx.toolWear = toolWearId(chr, recipe)
+    if ctx.toolWear then
         ctx.tools = snapshotTools(self, recipe)
     end
-    if RIP_RECIPES[ctx.name] and M.val(chr, "Tailoring.Ripping") > 0 then
+    if RIP_RECIPES[ctx.name] and M.val(chr, "Mending.Ripping") > 0 then
         ctx.fabric = countFabric(chr:getInventory())
     end
+    if M.val(chr, "Smithing.TorchFuel") > 0 then ctx.torches = snapshotTorches(self) end
     return ctx
 end
 
@@ -194,8 +263,8 @@ local function addToInventory(chr, item)
     sendAddItemToContainer(inv, item)
 end
 
-local function undoToolWear(chr, item, s)
-    local function lucky() return M.roll(chr, "Blacksmith.ToolWear") end
+local function undoToolWear(chr, item, s, id)
+    local function lucky() return M.roll(chr, id) end
     local changed = false
     local headBackFromZero = false
     if s.h and item:hasHeadCondition() then
@@ -248,13 +317,13 @@ local function undoToolWear(chr, item, s)
     if changed then item:syncItemFields() end
 end
 
-local function afterToolWear(chr, data, tools)
+local function afterToolWear(chr, data, tools, id)
     local keep = data:getAllKeepInputItems()
     for i = 0, keep:size() - 1 do
         local item = keep:get(i)
         local s = item and tools[item:getID()]
         if s and not item:hasTag(ItemTag.BREAK_ON_SMITHING) then
-            undoToolWear(chr, item, s)
+            undoToolWear(chr, item, s, id)
         end
     end
 end
@@ -279,7 +348,7 @@ local function afterRipping(chr, data, counts)
     end
     if gained < 1 then return end
     local maxMaterial = math.max(clothing:getNbrOfCoveredParts() - (clothing:getHolesNumber() + clothing:getPatchesNumber()), 1)
-    local extra = math.min(M.int(chr, "Tailoring.Ripping"), maxMaterial - gained)
+    local extra = math.min(M.int(chr, "Mending.Ripping"), maxMaterial - gained)
     if extra <= 0 then return end
     local grime = math.min(clothing:getDirtiness() + clothing:getBloodLevel(), 100)
     for _ = 1, extra do
@@ -297,7 +366,7 @@ end
 local function afterSpear(chr, created)
     local item = created:size() > 0 and created:get(0)
     if not item then return end
-    local n = M.int(chr, "Carving.SpearCondition")
+    local n = M.int(chr, "Spearcraft.SpearCondition")
     if n <= 0 then return end
     local target = math.min(item:getCondition() + n, item:getConditionMax())
     if target > item:getCondition() then
@@ -309,7 +378,7 @@ end
 local function afterAramid(chr, created)
     local item = created:size() > 0 and created:get(0)
     if not item then return end
-    local n = M.int(chr, "Tailoring.Aramid")
+    local n = M.int(chr, "Mending.Aramid")
     if n <= 0 then return end
     local maxUses = math.min(10, item:getMaxUses())
     local target = math.min(item:getCurrentUses() + n, maxUses)
@@ -329,9 +398,142 @@ local function afterScrap(chr, recipe, data, created)
             break
         end
     end
-    if hasScrap and M.roll(chr, "Electricity.Scrap") then
+    if hasScrap and M.roll(chr, "Engineering.Scrap") then
         local item = instanceItem("Base.ElectronicsScrap")
         if item then addToInventory(chr, item) end
+    end
+end
+
+local CHARCOAL = nil
+local function charcoalTag()
+    if CHARCOAL == nil then
+        local ok, tag = pcall(function() return ItemTag.get(ResourceLocation.of("base:charcoal")) end)
+        CHARCOAL = ok and tag or false
+    end
+    return CHARCOAL or nil
+end
+
+local function afterTorches(chr, torches)
+    for _, t in pairs(torches) do
+        local item = t.item
+        local now = item:getCurrentUses()
+        if now < t.uses and item:getContainer() then
+            local back = 0
+            for _ = 1, t.uses - now do
+                if M.roll(chr, "Smithing.TorchFuel") then back = back + 1 end
+            end
+            if back > 0 then
+                item:setCurrentUses(math.min(t.uses, now + back))
+                item:syncItemFields()
+            end
+        end
+    end
+end
+
+local function afterCharcoal(chr, data)
+    local tag = charcoalTag()
+    local square = chr:getCurrentSquare()
+    if not tag or not square then return end
+    local used = data:getAllConsumedItems()
+    for i = 0, used:size() - 1 do
+        local item = used:get(i)
+        if item and item:hasTag(tag) and M.roll(chr, "Smithing.CharcoalBack") then
+            square:AddWorldInventoryItem(item:getFullType(), ZombRandFloat(0.2, 0.8), ZombRandFloat(0.2, 0.8), 0)
+        end
+    end
+end
+
+local ORE_USES = 12
+local function afterOre(chr, name, created)
+    if M.val(chr, "Smithing.OreYield") <= 0 then return end
+    local extra = M.scaleInt(chr, "Smithing.OreYield", ORE_USES) - ORE_USES
+    if extra <= 0 then return end
+    if name == "ExtractIronFromIronOre" then
+        for i = 0, created:size() - 1 do
+            local item = created:get(i)
+            if item and item.getCurrentUses and item.getMaxUses then
+                local now = item:getCurrentUses()
+                local target = math.min(item:getMaxUses(), now + extra)
+                if target > now then
+                    item:setCurrentUses(target)
+                    item:syncItemFields()
+                end
+                return
+            end
+        end
+    elseif name == "ExtractIronFromIronBloom" then
+        for _ = 1, extra do addToInventory(chr, instanceItem("Base.IronChunk")) end
+    end
+end
+
+local function involves(recipe, mastery)
+    for perkId in pairs(relevantPerks(recipe)) do
+        if M.CRAFT_MASTERY[perkId] == mastery then return true end
+    end
+    return false
+end
+
+--- Marks weapons and clothing just made: `TSM_Mark` (percent of wear ignored, never lowered), maker, kind.
+local function markCreated(chr, created, mark, kind)
+    if mark <= 0 then return end
+    for i = 0, created:size() - 1 do
+        local item = created:get(i)
+        if item and (instanceof(item, "HandWeapon") or instanceof(item, "Clothing")) then
+            local md = item:getModData()
+            local value = math.floor(mark * 10 + 0.5) / 10
+            if (tonumber(md.TSM_Mark) or 0) < value then
+                md.TSM_Mark = value
+                md.TSM_MarkBy = chr:getDisplayName() or chr:getUsername()
+                md.TSM_MarkKind = kind
+                item:syncItemFields()
+            end
+        end
+    end
+end
+
+-- Handicraft.ExtraOutput (phase 3c, "pts"): one more of the recipe's first output on a roll, only for recipes vetted
+-- so that nothing turns the output back into its inputs (42.21 scripts): knapping (flakes, blades, drills, axe and maul
+-- heads), carving end products (spoons, forks, pipes, goblets, cutting boards, dice, stakes, knapping tools) and the
+-- hand press (unfired bricks, shingles, tiles: nothing turns them back into clay). Kiln firing runs in the kiln's
+-- Java CraftLogic (no performRecipe), not covered. Added with vanilla's `Actions.addOrDropItem`.
+local EXTRA_OUTPUT = {
+    MakeSharpFlintFlake = true, MakeStoneBlade = true, MakeStoneDrill = true, MakeLargeStoneAxeHead = true,
+    MakeStoneMaulHead = true, CarveWoodenSpoon = true, CarveWoodenFork = true, CarvePipe = true, CarveGoblets = true,
+    CarveCuttingBoards = true, CarveDice = true, MakeStake = true, CarveKnappingTools = true,
+    PressClayBrick = true, PressClayShingle = true, PressClayTile = true, PressClayTileManually = true,
+}
+
+local function afterExtraOutput(chr, name, created)
+    if not EXTRA_OUTPUT[name] or not M.roll(chr, "Handicraft.ExtraOutput") then return end
+    local first = created:get(0)
+    local extra = first and instanceItem(first:getFullType())
+    if extra then Actions.addOrDropItem(chr, extra) end
+end
+
+local function afterMark(chr, created)
+    markCreated(chr, created, M.val(chr, "Handicraft.CraftsmansMark"), "craftsman")
+end
+
+--- Construction's signature: a 4th plank per sawn log on a roll, 12 stones instead of 10 from a large stone.
+local function afterConstruction(chr, name)
+    if name == "SawLogs" then
+        local chance = M.val(chr, "Construction.SigPlanks")
+        if chance > 0 and ZombRandFloat(0, 100) < chance then
+            Actions.addOrDropItem(chr, instanceItem("Base.Plank"))
+        end
+    elseif name == "Make_Stones_from_Large_Stone" then
+        for _ = 1, math.floor(M.val(chr, "Construction.SigStones")) do
+            Actions.addOrDropItem(chr, instanceItem("Base.Stone2"))
+        end
+    end
+end
+
+local function afterLastingFood(chr, created)
+    local f = M.more(chr, "Provisioning.LastingFood")
+    if f <= 1 then return end
+    for i = 0, created:size() - 1 do
+        local item = created:get(i)
+        if M.stretchFood(item, f) then M.resendItem(item) end
     end
 end
 
@@ -339,10 +541,20 @@ local function after(self, ctx)
     local chr, recipe = self.character, self.craftRecipe
     local data = self.logic and self.logic:getRecipeData()
     if not chr or not recipe or not data then return end
-    if ctx.tools then afterToolWear(chr, data, ctx.tools) end
+    if ctx.tools then afterToolWear(chr, data, ctx.tools, ctx.toolWear) end
     if ctx.fabric then afterRipping(chr, data, ctx.fabric) end
+    if ctx.torches then afterTorches(chr, ctx.torches) end
+    if recipe:isSmithing() and M.val(chr, "Smithing.CharcoalBack") > 0 then afterCharcoal(chr, data) end
     local created = data:getAllCreatedItems()
     if created:size() == 0 then return end
+    afterOre(chr, ctx.name, created)
+    if involves(recipe, "Handicraft") then
+        afterMark(chr, created)
+        afterExtraOutput(chr, ctx.name, created)
+    end
+    if recipe:isSmithing() then markCreated(chr, created, M.val(chr, "Smithing.SigMasterwork"), "masterwork") end
+    afterConstruction(chr, ctx.name)
+    if involves(recipe, "Provisioning") then afterLastingFood(chr, created) end
     if SPEAR_RECIPES[ctx.name] then afterSpear(chr, created) end
     if ARAMID_RECIPES[ctx.name] then afterAramid(chr, created) end
     afterScrap(chr, recipe, data, created)

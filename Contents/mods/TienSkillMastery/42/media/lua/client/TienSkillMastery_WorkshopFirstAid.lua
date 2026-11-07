@@ -1,5 +1,5 @@
 --[[
-Tien's Skill Mastery: First Aid medical check time (Doctor.TreatTime). The other treatments are in
+Tien's Skill Mastery: First Aid medical check time (FieldMedicine.TreatTime). The other treatments are in
 shared/TienSkillMastery_WorkshopFirstAid.lua.
 
 ISMedicalCheckAction (client/TimedActions/ISMedicalCheckAction.lua, 42.21) is a client-only action: it has no
@@ -13,4 +13,4 @@ require "TienSkillMastery"
 require "TienSkillMastery_Workshop"
 local M = TienSkillMastery
 
-M.Workshop.wrapStoredDuration(ISMedicalCheckAction, "Doctor.TreatTime")
+M.Workshop.wrapStoredDuration(ISMedicalCheckAction, "FieldMedicine.TreatTime")

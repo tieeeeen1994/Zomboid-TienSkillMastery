@@ -8,13 +8,15 @@ for the info panel (~945), which then shows the mastery value too (a client know
 ISThumpableSpriteProps (~4202) inherits these methods through its metatable, so wrapping ISMoveableSpriteProps
 covers it.
 
-- `Woodwork.WindowBreak` / `MetalWelding.WindowBreak`: `getBreakChance(player)` (~327) = 0 with the movables cheat,
+- `Construction.WindowBreak`: `getBreakChance(player)` (~327) = 0 with the movables cheat,
   else by the pick-up tool definition's perk (ISMoveableDefinitions.lua ~311: Hammer / Crowbar / Cutter /
   Screwdriver = Woodwork, "Metal" = MetalWelding, Electrician = Electricity, Wrench = none): windows
   5 + (10 - level) x 5 (5 % at level 10), other furniture (10 - level) x 7.5 (0 at 10, so nothing to take off there).
-  For a window the `<tool perk>.WindowBreak` points come off (never below 0); `doBreakTest` (~350) rolls
+  For a window picked up with a Carpentry tool the points come off (never below 0; v1's metal window bonus was
+  dropped in v2: no window is picked up with the "Metal" tool); `doBreakTest` (~350) rolls
   ZombRand(1, 101) <= chance.
-- `<Perk>.Dismantle` (each crafting skill): deviation from the design note. `getChanceByDef(scrapDef, chr)` (~3834) =
+- `<mastery>.Dismantle` (by the material's skill, `M.DISMANTLE_MASTERY`: Construction for Carpentry / Masonry,
+  Smithing for Welding / Metalworking, Engineering for Electrical): deviation from the design note. `getChanceByDef(scrapDef, chr)` (~3834) =
   10 + 10 x level + baseChance clamped to 0..100 is already 100 from level 9 for every vanilla scrap definition
   (baseChance >= 0), and `addScrapItemToList` (~3350) only scales by it while 0 < chance <= 100, so points added
   there would change nothing. The bonus goes on the per-roll chance instead: `getScrapItemsList(chr)` (~3304) calls
@@ -22,8 +24,8 @@ covers it.
   return item, which keeps each roll when ZombRandFloat(0, 101) < chancePerRoll / 100 x chance (80 % / 70 % for
   most items at level 10). During a `getScrapItemsList` call the material's perk is noted in `getChanceByDef`, and
   `addScrapItemToList` gets vanilla's effective per-roll chance plus `<perk>.Dismantle` points (passed with no
-  skill factor, which vanilla then uses as is). Materials of other perks (Strength for Stone) get nothing.
-- `Electricity.Scrap` (electrical furniture): the "Electric" scrap material (ISMoveableDefinitions.lua ~403, perk
+  skill factor, which vanilla then uses as is) the mastery's Dismantle points. Materials of other perks (Strength for Stone) get nothing.
+- `Engineering.Scrap` (electrical furniture): the "Electric" scrap material (ISMoveableDefinitions.lua ~403, perk
   Electricity, ElectronicsScrap and ElectricWire at 80 per roll). After `getScrapItemsList`, one more
   Base.ElectronicsScrap joins the usable list on a `M.roll`; vanilla then adds the list to the square or inventory
   (`addAllScrapItemsToSquare` / `addAllScrapItemsToInventory`, which send it themselves). Electronics dismantled by
@@ -49,8 +51,8 @@ if vanillaGetBreakChance then
         if type(chance) == "number" and chance > 0 and player and self.type == "Window" and self.pickUpTool then
             local toolDef = ISMoveableDefinitions:getInstance().getToolDefinition(self.pickUpTool)
             local perkId = toolDef and toolDef.perk and M.perkId(toolDef.perk)
-            if perkId then
-                chance = math.max(0, chance - M.val(player, perkId .. ".WindowBreak"))
+            if perkId == "Woodwork" then
+                chance = math.max(0, chance - M.val(player, "Construction.WindowBreak"))
             end
         end
         return chance, ...
@@ -82,7 +84,7 @@ function ISMoveableSpriteProps:getChanceByDef(scrapDef, chr, ...)
     if scrapCtx then
         scrapCtx.bonus = 0
         if scrapDef and scrapDef.perk and scrapCtx.chr then
-            local ok, v = pcall(M.val, scrapCtx.chr, M.perkId(scrapDef.perk) .. ".Dismantle")
+            local ok, v = pcall(M.valFor, scrapCtx.chr, M.DISMANTLE_MASTERY, M.perkId(scrapDef.perk), "Dismantle")
             if ok and v then scrapCtx.bonus = v end
         end
     end
@@ -109,7 +111,7 @@ local function finishScrapList(self, chr, ok, items, ...)
     if not ok then error(items, 0) end
     if type(items) == "table" and type(items.usable) == "table" and chr and hasElectricMaterial(self) then
         local def = ISMoveableDefinitions:getInstance().getScrapDefinition("Electric")
-        if def and def.perk == Perks.Electricity and M.roll(chr, "Electricity.Scrap") then
+        if def and def.perk == Perks.Electricity and M.roll(chr, "Engineering.Scrap") then
             table.insert(items.usable, "Base.ElectronicsScrap")
         end
     end

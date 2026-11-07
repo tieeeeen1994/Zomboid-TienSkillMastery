@@ -1,5 +1,5 @@
 --[[
-Tien's Skill Mastery: Foraging found item size (PlantScavenging.Size). Vanilla 42.21 Lua.
+Tien's Skill Mastery: Foraging found item size (Fieldcraft.Size). Vanilla 42.21 Lua.
 
 Vanilla: `forageSystem.doWildFoodSpawn(character, inventory, itemDef, items)` (shared/Foraging/forageSystem.lua ~2266)
 gives every foraged wild food a size: sizeModifier = (ZombRand(45) + 5) / 100 + (ZombRand(level) + 1) x 0.05, applied
@@ -19,7 +19,7 @@ Because the references are taken when the definition files load, replacing `fora
 no one. So once `forageSystem.init` has built `forageSystem.itemDefs` (it runs on `OnLoadedMapZones`, registered by
 vanilla before this file, so it has run when our handler does; `importDef` keeps the definition tables themselves),
 every `spawnFuncs` entry that is vanilla's function is swapped for a wrapper that calls it and then scales the same
-values by `M.more(character, "PlantScavenging.Size")`. Poison and freshness are left alone (user's decision).
+values by `M.more(character, "Fieldcraft.Size")`. Poison and freshness are left alone (user's decision).
 ]]
 
 require "TienSkillMastery"
@@ -46,7 +46,7 @@ end
 local function wildFoodSpawn(character, inventory, itemDef, items, ...)
     local result = origWildFood(character, inventory, itemDef, items, ...)
     local list = result or items
-    local m = character and M.more(character, "PlantScavenging.Size") or 1
+    local m = character and M.more(character, "Fieldcraft.Size") or 1
     if m > 1 and list then
         for i = 0, list:size() - 1 do
             scaleFood(list:get(i), m)

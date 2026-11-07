@@ -2,7 +2,7 @@
 Tien's Skill Mastery: First Aid (perk Doctor) bonuses. Bonuses belong to the doctor (`self.character`); the patient
 (`self.otherPlayer`, whose body part `self.bodyPart` is) may be another player.
 
-Doctor.TreatTime ("less"). Every vanilla medical action reads the doctor's level for its time (42.21, shared/
+FieldMedicine.TreatTime ("less"). Every vanilla medical action reads the doctor's level for its time (42.21, shared/
 TimedActions unless noted). `new` stores `o.doctorLevel = character:getPerkLevel(Perks.Doctor)` on whichever side
 builds the action, so the server's copy uses the server's level.
 - computed (`new` sets `maxTime = o:getDuration()`): ISApplyBandage:getDuration ~153 (120 - 4L, also removing a
@@ -14,7 +14,7 @@ builds the action, so the server's copy uses the server's level.
   client-only action: no `complete`) `new` ~85 `150 - 2.5L`, see client/TienSkillMastery_WorkshopFirstAid.lua.
 See shared/TienSkillMastery_Workshop.lua for why these wrappers work on every side.
 
-Doctor.TreatStrength ("pct"). What each `complete` derives from the doctor level (complete runs on the server, or
+FieldMedicine.TreatStrength ("pct"). What each `complete` derives from the doctor level (complete runs on the server, or
 single player; never on an MP client), scaled after vanilla set it, then re-sent with vanilla's own
 `syncBodyPart(part, mask)` (server only; single player has nothing to send). The whole value is scaled:
 - ISApplyBandage:complete ~112 bandage life = ZombRandFloat((L+1) x 0.5, (L+1) x 1) + bandage power (dirty: 0),
@@ -36,8 +36,8 @@ require "TienSkillMastery_Workshop"
 local M = TienSkillMastery
 local W = M.Workshop
 
-local TIME = "Doctor.TreatTime"
-local STRENGTH = "Doctor.TreatStrength"
+local TIME = "FieldMedicine.TreatTime"
+local STRENGTH = "FieldMedicine.TreatStrength"
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Treatment time
@@ -124,3 +124,42 @@ end, function(self, mult, hadBullet)
     part:setDeepWoundTime(t / mult)
     syncBodyPart(part, 0x40460108)
 end)
+
+-- ---------------------------------------------------------------------------------------------------------------
+-- FieldMedicine.Disinfectant (phase 2): sparing disinfectant. `ISDisinfect:complete` (~68, server / single player)
+-- raises the part's alcohol level by the alcohol's strength (fluid: 4 x its alcohol share; drainable: its alcohol
+-- power), not by the amount used, so using less does not weaken it. Then a fluid container loses 0.15 L
+-- (`adjustAmount(amount - 0.15)` + `sendItemStats`; nothing at all at 0.15 L or less, a vanilla quirk) and a
+-- drainable one use (`UseAndSync`). Afterwards the bonus share of the fluid used is put back (`adjustAmount` sets the
+-- amount) and sent, or the used use comes back on a roll of the bonus (`setCurrentUses` + `syncItemFields`).
+-- ---------------------------------------------------------------------------------------------------------------
+
+if ISDisinfect and ISDisinfect.complete then
+    local vanillaDisinfect = ISDisinfect.complete
+    function ISDisinfect:complete(...)
+        local doctor, alcohol = self.character, self.alcohol
+        local share = doctor and M.val(doctor, "FieldMedicine.Disinfectant") / 100 or 0
+        if share <= 0 or not alcohol then return vanillaDisinfect(self, ...) end
+        local fluid = alcohol:hasComponent(ComponentType.FluidContainer) and alcohol:getFluidContainer() or nil
+        local amountBefore = fluid and fluid:getAmount()
+        local usesBefore = instanceof(alcohol, "DrainableComboItem") and alcohol:getCurrentUses() or nil
+        local results = { vanillaDisinfect(self, ...) }
+        local ok, err = pcall(function()
+            if fluid and amountBefore then
+                local used = amountBefore - fluid:getAmount()
+                if used > 0 then
+                    fluid:adjustAmount(fluid:getAmount() + used * share)
+                    sendItemStats(alcohol)
+                end
+            elseif usesBefore and alcohol:getContainer() then
+                local now = alcohol:getCurrentUses()
+                if now < usesBefore and ZombRandFloat(0, 1) < share then
+                    alcohol:setCurrentUses(now + 1)
+                    alcohol:syncItemFields()
+                end
+            end
+        end)
+        if not ok then print("[TienSkillMastery] sparing disinfectant failed: " .. tostring(err)) end
+        return unpack(results)
+    end
+end

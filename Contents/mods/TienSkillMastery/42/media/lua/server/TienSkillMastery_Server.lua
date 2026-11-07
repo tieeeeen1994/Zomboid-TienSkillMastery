@@ -1,8 +1,10 @@
 --[[
 Tien's Skill Mastery: server core (also runs in single player). See shared/TienSkillMastery.lua for the mechanism.
 
-- `Events.AddXP` turns every gain on a parked skill into mastery XP and parks the skill again; negative XP comes out of
-  mastery first. The event fires on the server / single player only (`XP.AddXP`, `!GameClient.client`).
+- `Events.AddXP` turns every gain on a parked skill into points for every picked, active mastery that lists the skill
+  (a share of the skill's level-10 step, see the shared core) and parks the skill again; a gain no picked mastery
+  takes is lost, as in vanilla. Negative XP (Strength / Fitness decay) comes out of every such mastery that still
+  has points; the skill drops below 10 only once none could pay. The event fires on the server / single player only (`XP.AddXP`, `!GameClient.client`).
 - A pass every second notes every online player's XP object (for the getXP wrapper), parks level-10 skills that sit
   at total(10) (just reached, an older save, Skill Journal, admin /addxp), and sends changed mastery to the owner.
 - Not experience: Skill Journal's restore (lait, 3776641628) calls the 6-argument `AddXP`, which fires the event too;
@@ -76,7 +78,7 @@ local function checkCharacter(player, e)
     local hours = player:getHoursSurvived()
     if e.hours and hours + 0.5 < e.hours then
         print("[TienSkillMastery] " .. tostring(player:getUsername()) .. " is a new character, mastery reset")
-        e.xp = {}
+        e.picks, e.points = {}, {}
         markDirty(player)
     end
     e.hours = hours
@@ -87,8 +89,8 @@ end
 --- `sendObjectChange(PLAY_GAIN_EXPERIENCE_LEVEL_SOUND)` on a server, `playGainExperienceLevelSound()` locally) runs
 --- where the player is local, so the server sends "levelUp" and the client plays both
 --- (client/TienSkillMastery_Client.lua M.showLevelUp); single player calls it directly.
-function M.notifyLevelUp(player, perk, level)
-    local args = { perk = perk:getId(), level = level }
+function M.notifyLevelUp(player, masteryId, level)
+    local args = { mastery = masteryId, level = level }
     if isServer() then
         sendServerCommand(player, M.MODULE, "levelUp", args)
     elseif M.showLevelUp then
@@ -96,11 +98,25 @@ function M.notifyLevelUp(player, perk, level)
     end
 end
 
-local function addMastery(player, perk, amount)
+--- Picked masteries listing the skill whose members are all at 10 (those earn and pay).
+local function activeMasteriesOf(player, perk)
+    local list = {}
+    for _, id in ipairs(M.masteriesOf[perk:getId()] or {}) do
+        if M.isPicked(player, id) and M.membersAt10(player, id) then table.insert(list, id) end
+    end
+    return list
+end
+
+local function addPoints(player, masteryId, points)
     local e = M.entry(player, true)
-    local id = perk:getId()
-    e.xp[id] = math.max(0, (e.xp[id] or 0) + amount)
+    local before = e.points[masteryId] or 0
+    local after = math.max(0, before + points)
+    e.points[masteryId] = after
     markDirty(player)
+    if points > 0 then
+        local l1, l2 = M.levelInfo(before), M.levelInfo(after)
+        if l2 > l1 then M.notifyLevelUp(player, masteryId, l2) end
+    end
 end
 
 -- ---------------------------------------------------------------------------------------------------------------
@@ -133,32 +149,35 @@ local function onAddXP(player, perk, amount)
         return
     end
 
+    local earners = activeMasteriesOf(player, perk)
     if amount > 0 then
-        if suppress <= 0 then
+        if suppress <= 0 and #earners > 0 then
             -- Mastery is experience, never reading: take a skill book multiplier back out.
             local mult = player:getXp():getMultiplier(perk)
             local earned = mult > 1 and amount / mult or amount
-            local before = M.levelInfo(perk, M.getXp(player, perk))
-            addMastery(player, perk, earned)
-            local after = M.levelInfo(perk, M.getXp(player, perk))
-            if after > before then M.notifyLevelUp(player, perk, after) end
+            local points = M.pointsFor(perk, earned)
+            for _, id in ipairs(earners) do addPoints(player, id, points) end
         end
         park(player, perk)
         return
     end
 
-    -- Negative XP (decay): mastery pays first.
-    local need = -amount
+    -- Negative XP (decay): Conditioning slows it, then every earning mastery listing the skill pays what it can.
+    -- The skill stays at 10 while at least one paid in full.
+    local need = -amount * M.less(player, "Conditioning.Decay")
+    local needPts = M.pointsFor(perk, need)
     local e = M.entry(player, true)
-    local id = perk:getId()
-    local have = e.xp[id] or 0
-    if have >= need then
-        addMastery(player, perk, -need)
+    local paid = 0
+    for _, id in ipairs(earners) do
+        local pay = math.min(e.points[id] or 0, needPts)
+        if pay > 0 then addPoints(player, id, -pay) end
+        paid = math.max(paid, pay)
+    end
+    if paid >= needPts - 0.000001 then
         park(player, perk)
         return
     end
-    if have > 0 then addMastery(player, perk, -have) end
-    local rest = need - have
+    local rest = M.xpForPoints(perk, needPts - paid)
     -- Back to vanilla's state: total(10), then the rest through AddXP so its lose-level loop drops the skill.
     if setRawXp(player, perk, M.total10(perk)) and rest > 0 then
         adjusting = true
@@ -212,11 +231,12 @@ end
 
 local function stateFor(player)
     local e = M.entry(player, false)
-    local xp = {}
+    local picks, points = {}, {}
     if e then
-        for k, v in pairs(e.xp) do xp[k] = v end
+        for i, id in ipairs(e.picks) do picks[i] = id end
+        for k, v in pairs(e.points) do points[k] = v end
     end
-    return { username = player:getUsername(), xp = xp }
+    return { username = player:getUsername(), picks = picks, points = points }
 end
 
 local function send(player)
@@ -278,44 +298,64 @@ Events.OnCharacterDeath.Add(onCharacterDeath)
 -- directly, and only offers it with -debug (vanilla gates its single player admin tools the same way).
 -- ---------------------------------------------------------------------------------------------------------------
 
-local MAX_XP = 1e9
+local MAX_POINTS = 1e7
 
---- Total mastery XP needed to reach `level`.
-local function xpForLevel(perk, level)
-    local total = 0
-    for n = 1, level do total = total + M.costFor(perk, n) end
-    return total
+--- Picking a mastery (the Mastery tab's Pick button). Checked here, whoever asks: the mastery exists, is not picked,
+--- a slot is free and every member skill is at 10. Returns true when picked.
+function M.pick(player, masteryId)
+    if not player or type(masteryId) ~= "string" or not M.masteryById[masteryId] then return false end
+    local e = M.entry(player, true)
+    if M.isPicked(player, masteryId) or #e.picks >= M.MAX_PICKS or not M.membersAt10(player, masteryId) then
+        print("[TienSkillMastery] refused pick of " .. masteryId .. " by " .. tostring(player:getUsername()))
+        return false
+    end
+    table.insert(e.picks, masteryId)
+    e.points[masteryId] = 0
+    markDirty(player)
+    print(string.format("[TienSkillMastery] %s picked %s (%d of %d)", tostring(player:getUsername()), masteryId,
+        #e.picks, M.MAX_PICKS))
+    return true
 end
 
---- args: { perk = id, op = "add" | "remove" | "level" | "clear", amount = n, level = n }. Returns true when applied.
+--- args: { mastery = id, op = "add" | "remove" | "level" | "clear" | "unpick", amount = points, level = n }, on a
+--- picked mastery of the admin's own character. Removing a pick takes its progress too (user, 2026-11-07).
+--- Returns true when applied.
 function M.adminChange(player, args)
-    if type(args) ~= "table" then return false end
-    local perk = M.perk(args.perk)
-    if not perk or not player then return false end
+    if type(args) ~= "table" or not player then return false end
+    local id = args.mastery
+    if type(id) ~= "string" or not M.masteryById[id] or not M.isPicked(player, id) then return false end
     local e = M.entry(player, true)
-    local id = perk:getId()
-    local before = e.xp[id] or 0
-    local xp = before
-    local amount = math.max(0, math.min(MAX_XP, math.floor(tonumber(args.amount) or 0)))
+    local before = e.points[id] or 0
+    local points = before
+    local amount = math.max(0, math.min(MAX_POINTS, tonumber(args.amount) or 0))
     if args.op == "add" then
-        xp = math.min(MAX_XP, xp + amount)
+        points = math.min(MAX_POINTS, points + amount)
     elseif args.op == "remove" then
-        xp = math.max(0, xp - amount)
+        points = math.max(0, points - amount)
     elseif args.op == "level" then
         local level = math.max(0, math.min(100, math.floor(tonumber(args.level) or 0)))
-        xp = xpForLevel(perk, level)
+        points = M.pointsForLevel(level)
     elseif args.op == "clear" then
-        xp = 0
+        points = 0
+    elseif args.op == "unpick" then
+        for i = #e.picks, 1, -1 do
+            if e.picks[i] == id then table.remove(e.picks, i) end
+        end
+        e.points[id] = nil
+        markDirty(player)
+        print(string.format("[TienSkillMastery] %s removed own pick %s (%.1f points)", tostring(player:getUsername()),
+            id, before))
+        return true
     else
         return false
     end
-    e.xp[id] = xp
+    e.points[id] = points
     markDirty(player)
     -- Same level-up feedback as earned mastery (user, 2026-11-06), once for the new level, only when it went up.
-    local levelBefore, levelAfter = M.levelInfo(perk, before), M.levelInfo(perk, xp)
-    if levelAfter > levelBefore and player:getPerkLevel(perk) >= 10 then M.notifyLevelUp(player, perk, levelAfter) end
-    print(string.format("[TienSkillMastery] %s set own %s mastery XP %d -> %d (%s)",
-        tostring(player:getUsername()), id, math.floor(before), math.floor(xp), tostring(args.op)))
+    local levelBefore, levelAfter = M.levelInfo(before), M.levelInfo(points)
+    if levelAfter > levelBefore and M.membersAt10(player, id) then M.notifyLevelUp(player, id, levelAfter) end
+    print(string.format("[TienSkillMastery] %s set own %s mastery points %.1f -> %.1f (%s)",
+        tostring(player:getUsername()), id, before, points, tostring(args.op)))
     return true
 end
 
@@ -365,6 +405,8 @@ local function onClientCommand(module, command, player, args)
         M.noteOwner(player)
         checkCharacter(player, M.entry(player, true))
         send(player)
+    elseif command == "pick" then
+        if M.pick(player, type(args) == "table" and args.mastery) then send(player) end
     elseif command == "adminChange" or command == "adminSkill" then
         local role = player and player:getRole()
         if not (role and role:hasCapability(Capability.AddXP)) then

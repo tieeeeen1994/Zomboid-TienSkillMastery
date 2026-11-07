@@ -1,7 +1,7 @@
 --[[
 Tien's Skill Mastery: action times of Butchering and Animal Care (shearing).
 
-Butchering.Time. The vanilla 42.21 butchering actions that read the skill (shared/TimedActions/Animals) store
+Provisioning.ButcherTime. The vanilla 42.21 butchering actions that read the skill (shared/TimedActions/Animals) store
 `o.perkLevel = Butchering` in `new` and set `o.maxTime = o:getDuration()`:
   ISButcherAnimal:getDuration (~62)            900 - 20 x level   (corpse on the ground)
   ISPutAnimalOnHook:getDuration (~96)          250 - 10 x level
@@ -17,7 +17,7 @@ rebuilt by `Type.new`, which runs the client `new` code again with the server's 
 reduction (a client knows the mastery of its local players). Left alone: `ISGatherBloodFromAnimal` (time does not
 use the skill), `ISGetAnimalBones` / `ISKillAnimal` (fixed), instant actions (1).
 
-Husbandry.ShearTime. `ISShearAnimal:new(character, animal, shear)` (~151) sets `timePerLiter` = 100 (60 electric)
+Homesteading.ShearTime. `ISShearAnimal:new(character, animal, shear)` (~151) sets `timePerLiter` = 100 (60 electric)
 - 2 x Husbandry; `getDuration` (~138) = wool x timePerLiter + 1, `serverStart` (~133) emulates an "update" event every
 timePerLiter x 20 ms (one shearing step each), and single player's `update` steps every timePerLiter of the game
 timer. So the per-litre time is what has to shrink: `new` is wrapped (keeping vanilla's parameter names, which
@@ -57,7 +57,7 @@ end
 
 for _, entry in ipairs(BUTCHERING) do
     require(entry[1])
-    shortenDuration(entry[2](), "Butchering.Time")
+    shortenDuration(entry[2](), "Provisioning.ButcherTime")
 end
 
 require "TimedActions/Animals/ISShearAnimal"
@@ -68,7 +68,7 @@ if ISShearAnimal and ISShearAnimal.new and not ISShearAnimal.__tsmShearTime then
     function ISShearAnimal:new(character, animal, shear, ...)
         local o = originalNew(self, character, animal, shear, ...)
         if o and character and type(o.timePerLiter) == "number" and o.timePerLiter > 0 then
-            local f = M.less(character, "Husbandry.ShearTime")
+            local f = M.less(character, "Homesteading.ShearTime")
             if f < 1 then
                 o.timePerLiter = o.timePerLiter * f
                 o.maxTime = o:getDuration()

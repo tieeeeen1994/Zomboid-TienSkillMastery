@@ -3,11 +3,11 @@ Tien's Skill Mastery: Welding (perk MetalWelding) bonuses for scrapping a burnt 
 shared/Vehicles/TimedActions/ISRemoveBurntVehicle.lua, 42.21). Blowtorch dismantling and metal furniture pick-up
 are not here (ISMoveableSpriteProps belongs to the shared crafting hooks).
 
-MetalWelding.BurntCarTime ("less"): getDuration ~179 = 800 - 20 x Welding (10 with the mechanics cheat or Timed
+Salvaging.BurntCarTime ("less"): getDuration ~179 = 800 - 20 x Welding (10 with the mechanics cheat or Timed
 Action Instant, left alone); `new` ~194 `maxTime = o:getDuration()`: a "computed" action, one getDuration wrapper
 covers the client, single player and the server's rebuild (shared/TienSkillMastery_Workshop.lua).
 
-MetalWelding.SalvageRoll ("int", one extra roll at mastery 10, a tenth of a chance per level below): `complete` ~60
+Salvaging.SalvageRoll ("int", one extra roll at mastery 10, a tenth of a chance per level below): `complete` ~60
 (server / single player) runs max(5, Welding) rounds (~63); each round calls `self:checkAddItem(type, baseChance)`
 twice for each of 17 materials (~68-129): 1 in (baseChance - level) drops the item on the car's square, else
 1 in (baseChance - Welding) a lesser item (~143-177), with `square:AddWorldInventoryItem(type, x, y, 0)`, which
@@ -27,14 +27,14 @@ local function mechanicsCheat(action)
     return action.character:isMechanicsCheat()
 end
 
-W.wrapComputedDuration(ISRemoveBurntVehicle, "MetalWelding.BurntCarTime", mechanicsCheat)
+W.wrapComputedDuration(ISRemoveBurntVehicle, "Salvaging.BurntCarTime", mechanicsCheat)
 
 if not ISRemoveBurntVehicle or not ISRemoveBurntVehicle.complete then return end
 
 local origComplete = ISRemoveBurntVehicle.complete
 function ISRemoveBurntVehicle:complete(...)
     if isClient() or not self.character or not self.vehicle then return origComplete(self, ...) end
-    local extra = M.int(self.character, "MetalWelding.SalvageRoll")
+    local extra = M.int(self.character, "Salvaging.SalvageRoll")
     if extra <= 0 then return origComplete(self, ...) end
 
     local square = self.vehicle:getSquare()
@@ -58,6 +58,33 @@ function ISRemoveBurntVehicle:complete(...)
             end
         end
         self.vehicle = vehicle
+    end
+    return W.unpack(results)
+end
+
+-- Salvaging.TorchFuel (phase 2, "pts"): `complete` burns 10 blowtorch uses (`self.item:Use(false, false, true)` x10,
+-- `self.item` = the primary hand item from `serverStart`). Each burnt use comes back on its own roll; sent with
+-- `syncItemFields` (carries uses). Wraps the wrapper above.
+local salvageComplete = ISRemoveBurntVehicle.complete
+function ISRemoveBurntVehicle:complete(...)
+    local chr = self.character
+    local torch = self.item or (chr and chr:getPrimaryHandItem())
+    if isClient() or not chr or not torch or M.val(chr, "Salvaging.TorchFuel") <= 0
+        or not instanceof(torch, "DrainableComboItem") then
+        return salvageComplete(self, ...)
+    end
+    local before = torch:getCurrentUses()
+    local results = W.pack(salvageComplete(self, ...))
+    local now = torch:getCurrentUses()
+    if now < before and torch:getContainer() then
+        local back = 0
+        for _ = 1, before - now do
+            if M.roll(chr, "Salvaging.TorchFuel") then back = back + 1 end
+        end
+        if back > 0 then
+            torch:setCurrentUses(now + back)
+            torch:syncItemFields()
+        end
     end
     return W.unpack(results)
 end

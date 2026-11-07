@@ -4,10 +4,185 @@ Skills keep going past level 10 as **mastery**: levels 1-10 with small per-skill
 the bonus), then endless prestige with no more bonuses. Mastery is earned only by experience (real XP gains), never
 by reading. Skill Journal (lait, workshop 3776641628) should one day record and restore it (low priority).
 Standalone mod, started 2026-11-05; **built 2026-11-05, not yet played in game or on a server**.
-A v2 (picked masteries over groups of skills, with effects of their own) is drafted in `docs/v2-draft.md`: rules and
-the 23 masteries approved 2026-11-06, effects still to be reviewed, nothing built.
+**v2 replaces v1** (picked masteries over groups of skills, with effects of their own; design and every decision in
+`docs/v2-draft.md`). **All of v2 built 2026-11-07** (v0.3.0, not yet played) except what is parked with Stealth and Freerunning: see "v2 build" below. The v1 sections that
+follow still describe the hooks and the parking, which v2 keeps; their per-skill ids and values are superseded.
 
 Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLAUDE.md) and vanilla 42.21 Lua.
+
+## v2 build (phase 1, 2026-11-07, not yet played)
+
+- Core (`shared/TienSkillMastery.lua`): `M.mastery(id, group, members)` for the 22 masteries (ids without spaces:
+  `StreetFighting`, `FieldMedicine`; names in `IGUI_TienSkillMastery_Mastery_<id>`), `M.def(mastery, name, at10,
+  kind, extra)` effects with ids `<Mastery>.<Name>` (kind "step" = `steps = { { level, value } }` + `unit`; `when`
+  = a sandbox condition, e.g. Bludgeoning's ExtraTarget with MultiHitZombies on, its Reach with it off). Maps:
+  `M.WEAPON_MASTERY` (melee perk -> mastery), `M.CRAFT_MASTERY` (crafting time), `M.DISMANTLE_MASTERY`;
+  `M.weaponMastery(weapon)` (Firearms for aimed firearms), `M.valFor(player, map, perk, name)`.
+- Storage `TienSkillMastery[username] = { picks = { ids }, points = { [id] = n }, hours }` (v1 `xp` entries are
+  dropped on read; v1 was never played). Client cache has the same shape. `M.state` = picked / inactive / available /
+  locked / closed; `M.level` is 0 unless picked and every member at 10; `M.MAX_PICKS` = 3 (code constant).
+- Points: a gain on a parked skill adds `amount / xp10 x 100` to every picked, active mastery listing it (none =
+  lost). Level n costs `100 x base% x (1 + growth%)^n` points (rounded to 0.1; 105 .. 162.9, 1-10 = 1320.7). Decay
+  (x `Conditioning.Decay`) is paid by every earning mastery listing the skill; the skill stays at 10 while one paid
+  in full, else the rest goes the vanilla way.
+- Server: `M.pick` (client command `pick`, checked: exists, not picked, slot free, members at 10), `M.adminChange`
+  on picked masteries only (`add` / `remove` points, `level`, `clear`, `unpick` = pick and progress gone).
+- Panel: groups, name coloured by state, boxes / Pick button (ISModalDialog confirm) / Locked / Closed, members green
+  at 10, click for effects, right-click cheats. `M.masteryName` lives in the client core.
+- Hooks moved to mastery ids; v1 effects dropped in v2: Fitness attack speed, Strength damage / knockback (each weapon
+  mastery has its own), Aiming crit, Nimble strafe variable (Swordsmanship gets a position nudge later), Electrical
+  generator repair, Welding metal window break. Swing endurance and wear undo now cover every weapon mastery's
+  category (wear: Firearms for guns); structure HP covers Masonry recipes too; tool wear undo also on Handicraft
+  recipes; firearm damage is new (same min / max scaling as melee).
+- Tests: lupa harness (session scratchpad `tsm/harness.lua` + `tests.lua`, not kept) loads the real core and server
+  files: 92 checks (costs, picks, slots, gains before a pick lost, shared skills, inactive, decay, admin, steps).
+  The mock's lose-level loop must only fire on a downward crossing, as Java's does, or every park looks like a drop.
+- **Parked: Stealth and Freerunning** (user, 2026-11-07: hidden from production until their missing effects are
+  built). `M.PARKED` in the core: a parked mastery keeps its definition, effects and hooks, but is left out of
+  `M.masteries` / `M.masteryById` / `M.masteriesOf` (not listed, not pickable, earns nothing), its effects read 0
+  (`M.enabled`), and a pick of it in saved data is dropped on read (points kept). Sprinting and Lightfooted belong to
+  no shown mastery meanwhile. README / workshop.txt do not list them. Remove an id from `M.PARKED` to bring it back.
+- Phase 2 (same day): the passives that fit existing hooks. Files: `shared/*_Relay.lua` (extra damage on a zombie's
+  owner: own zombie inside `OnWeaponHitCharacter`, before `hitConsequences`; remote one via `zombieHit` -> server
+  amount from its own copy of the mastery, 4-tile check -> `zombieDamage` to `getOwnerPlayer()`), `shared/*_Falls.lua`
+  (safe falls: `lastFallSpeed` held at 90% of the no-damage impact speed, both sides), `shared/*_WeaponsShared.lua`
+  (jams via HandWeapon's class-table `checkJam`; tree damage taken off `IsoTree:setHealth` before vanilla's hit,
+  since `getTreeDamage()` includes sharpness and the script has no getter), `shared/*_Repairs.lua` (careful /
+  lasting repairs around `FixingManager.fixItem`'s callers; stronger patches via `addPatchForSync` at Tailoring
+  10 x 1.5, vanilla's condition gain kept in modData `TSM_PatchGain` because the rebuilt patch has none),
+  `client/*_Movement.lua` (strafe / sneak position nudge), `client/*_BuildNoise.lua` (quiet work: `addSound` swapped
+  during `ISBuildAction:update`). Extended: Combat (fire rate: shoot speed variables + recoil-delay drain floored at
+  150 ms per shot for `AntiCheatHitWeapon`; Gunworks via its `getWeaponRPM` during `canFire`; Knifework's melee-delay
+  drain; stomp via the shoes' `setStompPower`; Executioner finds the close-kill target itself because
+  `AttackVars.closeKill` has no getter), Physical (sneak-run endurance, recovery, muscle strain, wear undo over both
+  hands and marked worn items, animal stress, crash safety from `OnPlayerGetDamage` "CARCRASHDAMAGE"), Crafting
+  (torch fuel, charcoal back, ore yield, craftsman's mark modData `TSM_Mark` / `TSM_MarkBy`, lasting food), FirstAid
+  (sparing disinfectant), Welding (scrapping torch fuel), Cooking / FarmAnimals (lasting food: evolved dishes once
+  per dish, `TSM_Lasting`; meat through a `modifyMeat` wrap during `giveMeatModified`), Foraging (keen eyes:
+  light, weather and moving penalty multipliers eased toward 1). `M.stretchFood` / `M.resendItem` in the core.
+  Second harness file `tests2.lua`: 13 checks (safe-fall caps per level and drop, relay amounts, Executioner per
+  level, food stretching).
+- Phase 3a (same day): signature abilities that hook vanilla systems. Kind "sig" in the core (`M.sig`,
+  `M.hasSignature`: picked and members at 10, on at mastery 0, fixed value); the panel lists them as "Signature: ..."
+  unlocked / unlocks when picked. Built: Heavy Load one level lower (Combat +0.07 combat speed; Physical: drop x
+  next-lower factor running, walking at 3 / 4, vanilla regen re-added at 2); masterwork (smithing recipes mark at
+  15%, `TSM_MarkKind`); planks / stones (`Actions.addOrDropItem`); choice cuts (`modifyMeat` wrap x1.15, so meat is
+  also 15% heavier: Food weight follows hunger); `server/*_HuntingTraps.lua` (trap modData `tsmTrap` / `tsmDouble`
+  through `fromModData` / `toModData`; no `checkDestroy`; `animalAliveHour` / 4; second hand-over in
+  `removeAnimal`); Fieldcraft (`checkShouldDisable` without the zombie / running tests; red dots in `OnPreUIDraw`);
+  `shared/*_Signatures.lua` (run-and-gun `stopOnRun = false` and quickdraw maxTime / 4 + animSpeed x4 in
+  `ISBaseTimedAction:create` by `self.Type`; quickdraw also lowers `maxTimeInit`, a `new` parameter name, so the
+  MP server rebuilds the action with the short time; the put-away of whatever is in hand before a pistol draw is
+  quick too (user, 2026-11-07: `ISHotbar:equipItem` is marked while it queues it, since the put-away begins before
+  the draw is queued; plus a 3-action look-ahead in the queue); deft hands via
+  `ISBaseTimedAction:adjustMaxTime` x0.9). **Never wrap a timed action's `new` here**: Gunworks (and Hot Brass)
+  replace the reload actions' `new` with extra parameters (`gunworksRackPhase`, `gunworksReloadStep`, `ammoLimit`,
+  `ammoTypeOverride`, `gunworksReloadAiming`), and the MP server rebuilds an action from the outermost `new`'s
+  parameter names; the first version wrapped them with vanilla's names and Gunworks reloads looped (rack, rack,
+  reload again; reported 2026-11-07). Running still restarted the reload: the `run` / `sprint` action states have no
+  `to_actions.xml` and no `actions` child tag (idle and walk do), so the reload clip's substate is dropped and
+  re-entered from frame 0, and single player advances the reload on the clip's events. **Action groups cannot be
+  modded** (`ActionGroup.load` reads only `ZomboidFileSystem.getMediaFile`, the game folder; mod files there are
+  never read). So in single player a master's reload is driven by time like an MP server: after `start`, the
+  action's own `serverStart` runs with `emulateAnimEvent(Once)` swapped for Lua timers (real ms), `netAction` is a
+  stand-in, the timers fire `animEvent`, and the animation's copies of those events are ignored. The clip still
+  cannot play while running; restore
+  (`shared/*_RestoreAction.lua` + `client/*_Restore.lua`, `FixingManager.useFixer` of the first fixer, then
+  `setHaveBeenRepaired(0)`); the lunge (Combat: knife `setMinRange` x1.5 while 0-1 chasers, vanilla value kept per
+  hand item and put back; eased toward the target for 0.25 s); `client/*_FishFinder.lua`. Gaps: no item tooltip line
+  for marks yet; marked recipe tools are not given wear back inside a craft. Third harness file `tests3.lua` (14
+  checks: signatures at mastery 0, inactive, the trap wrappers against a mock `STrapGlobalObject`). The harness needs
+  `unpack = table.unpack` for Lua 5.5.
+- Phase 3b, first part (same day): the relay grew zombie actions (`zombieAct` -> server: signature, distance, and
+  push back's 0.01 endurance per zombie taken there -> `zombieActApply` to the owner; applied next tick, never inside
+  the hit): Bludgeoning's push back (cone noted at `OnWeaponSwingHitPoint`, the ones `OnWeaponHitCharacter` did not
+  report are staggered: attack position, hit force 0.6, hit dir, `setStaggerBack`, "wasHit") and Swordsmanship's
+  hamstring (`knockDown(false)` + `setBecomeCrawler(true)` + `setCanWalk(false)`). `shared/*_EngineOverhaul.lua` +
+  `client/*_EngineOverhaulMenu.lua` (quality +1 per Engine Parts, power by vanilla's spawn formula, never lowered,
+  vanilla spawn loudness then `updatePartStats`, `transmitEngine`). `shared/*_Scrap.lua` + `client/*_ScrapMenu.lua`
+  (any car through vanilla's ISRemoveBurntVehicle with a server re-check of the signature and guards; part items by
+  type pattern, `M.SCRAP_PARTS` yield table). Fourth harness file `tests4.lua` (17 checks: part table, guards, the
+  wrapped complete, push back's endurance).
+- Phase 3b, second part: `shared/*_Triage.lua` + `client/*_TriageMenu.lua` (plan rules in `M.Triage.plan`; another
+  player's plan from the server, which also borrows the doctor's missing supplies from the patient and gives the
+  unused ones back after the queue: `triage` / `triagePlan` / `triageReturn`; the client queues once the borrowed
+  item IDs are in its inventory or after 3 s). `client/*_Fields.lua` (two `ISSelectCursor` picks, at most 15 x 15;
+  tend = water / the four cures / first fertilizer, sow = one seed item per plowed square; a walk before every plant,
+  since vanilla's `walkToPlant` judges adjacency at queue time). Bowl them over in `client/*_Movement.lua`: the
+  nearest standing zombie within a tile in front is set as `setBumpedChr` (vanilla bumps, and so trips, only a
+  character that is not the last bumped one, `IsoMovingObject.separate` ~1221) and knocked down through the relay
+  (kind "bowl", 0.02 endurance; relay costs are `R.COST`). Fifth harness file `tests5.lua` (triage plan order and
+  rules, borrowing, giving back).
+- Phase 3b, throws: `shared/*_Throw.lua`. Only the throw key throws (below). The first trigger, a swing at a zombie
+  beyond reach (`OnWeaponSwing` + `getAttackTargetSquare()`, `OnWeaponSwingHitPoint` sending `throwWeapon`), was
+  dropped 2026-11-07: the user kept throwing the axe with the attack button. Targeting still uses what it taught: the
+  zombie whose on-screen body (feet to 0.75 levels up, `isoToScreenX/Y`) holds the mouse, since the iso floor square
+  under the mouse lies a tile or two behind a zombie aimed at chest-high. Range 12 (axe, one-handed only) / 10
+  (spear) tiles. The server re-checks hand
+  item ID, category and signature, resolves the flight at once: aimed in a straight line from hand height (0.55
+  levels) at the target's head (0.65) with gravity (the game's 5.0010414 levels/s^2) pulling it down, axe 22 / spear
+  20 tiles a second (user, 2026-11-07: aim for the head, gravity arcs it down); 0.2-tile steps, `isBlockedTo` walls,
+  the floor (lands short), first standing zombie within 0.45 while below 0.8; the height there picks head (>= 0.55,
+  x3) / body / legs (< 0.2, x0.05), vanilla's `CombatConfigKey` head / leg factors. With these numbers an axe hits the
+  head to ~4.4 tiles and the floor at ~11, a spear to ~4 and ~10. Thrown axes deal x1.5 (`Th.THROW_DAMAGE`; user,
+  2026-11-07: farther and harder). All are `Th.*` constants. Then it takes the weapon
+  out, deals its damage roll x the mastery's damage x the part factor through the relay (owner;
+  else local with `Kill(thrower)` at 0) plus a stagger (`R.queueAct`, no endurance); every throw, hit or miss (user, 2026-11-07), rolls vanilla's melee
+  wear (1 in ConditionLowerChance + Maintenance + skill / 2, one point; WearUndo and the mark can cancel it, since
+  Physical's per-tick undo only sees held items); drops it at
+  the end, broadcasts `throwFly` (clients draw it with `Render3DItem`). Sixth harness file `tests6.lua` (4 flight
+  checks against a mock grid).
+  Throw key (user, 2026-11-07): a vanilla key binding `TsmThrowAxe` (section `[TienSkillMastery]`, default Space,
+  appended to `keyBinding`, tested with `getCore():isKey` in `OnKeyStartPressed`), only in combat stance
+  (`isAiming()`), throws `Th.throwable`: the primary hand item when throwable (sent as held), else a carried
+  one-handed axe without equipping it: loose in the main inventory first, then one on the hotbar, never from bags
+  (`Th.findCarriedAxe`, sent `carried`). Aim: the zombie whose on-screen body holds the mouse, else the floor
+  under the cursor (`ISCoordConversion.ToWorld`), clamped to 12 tiles. Space is vanilla's Melee key: `IsoPlayer`
+  (~2508, on foot) starts a shove on **every update the key is down** unless `bannedAttacking`; a `WeaponSwing` hook
+  returning true only reverts `SwipeStatePlayer`, the shove animation still plays (seen in game 2026-11-07, twice
+  while held). Keys are read (`GameWindow.logic`: `GameKeyboard.update` → `OnKeyStartPressed`) before the players
+  update in that frame, so the press sets `setBannedAttacking(true)` (old value restored once the key is up and no
+  throw is queued) and queues the client-only `TienSkillMasteryThrowAction` at once (`stopOnAim = false`; plays `AnimSets/player/actions/TsmThrowAxe.xml`
+  = `Bob_AttackThrowMolotov`, 1.47 s, at speed 1.6, with a `TsmThrowRelease` event at 0.3 = vanilla's release point,
+  ~0.28 s in; action 45 units ≈ the whole clip; a job-delta release at 0.6 only as a fallback: the first version
+  released at 0.35 of 30 units, before the arm got there, reported 2026-11-07) with the axe as the
+  hand model; the release sends `throwWeapon { carried = true }`, and the server takes the axe only from the main
+  inventory itself (`getItemById`, container check), detaches it from the hotbar (`removeAttachedItem` + slot fields)
+  and resolves it like a held throw. Reticle: `IsoReticle` is not exposed, so while a throw is ready (held throwable
+  beyond reach, or the key's carried axe, with a zombie under the cursor in range) `OnPreUIDraw` draws the player's
+  aim circle and crosshair textures (`media/ui/Reticle/aimCircleNN.png`, `crosshairXY.png`, texture / 16, / zoom with
+  the camera-zoom option) at the mouse. `tests9.lua` (axe order, combat stance only, attack ban held and restored).
+  Arrival (user, 2026-11-07: damage came before the axe got there): `Th.resolve` still works out the path at the
+  throw, takes the weapon out and rolls wear, but the hit and the landing go into `Th.inFlight` and an OnTick (server
+  / SP; 100 ms server ticks) applies them at throw + distance flown / speed, the time clients draw the flight over.
+  The zombie must still be alive and within `Th.TRACK_RADIUS` (1 tile) of where it was headed, else a miss.
+  `tests10.lua`. Sounds (user, 2026-11-07): the key throw's release plays the weapon's `getSwingSound()` with
+  `character:playSound` (an MP client relays it itself; the held throw is a real swing and has vanilla's); a hit on
+  arrival sends `throwHit` to every client (`Th.playHit`: `getZombieHitSound()`, the script's `HitSound`, through
+  `playSoundImpl` on the zombie's emitter, as vanilla's melee hit, else `getWorld():getFreeEmitter(x, y, z)`).
+- Phase 3c: spare materials (`ISBuildingObject:updateModData` wrap in `server/*_CraftingBuild.lua`: rolls per new
+  `need:` unit, drops the spared items and lowers the count, so dismantling never pays back the saving); tuned engine
+  (`client/*_TunedEngine.lua`, driver's client, power / max speed x f, vanilla values per vehicle, re-boosted when the
+  server or an overhaul changes them, restored on leaving the seat and before `OnSave`); extra output (Crafting,
+  vetted `EXTRA_OUTPUT` recipe names); bait digger (`forageSystem.getCategoryBonus` + points for "FishBait" /
+  "Insects", vanilla's specialisation lever); big haul (`server/*_FishingNets.lua`: a second run of
+  `fishingNet.checkTrap` for the bonus share of the hours, at most 5, so no break roll and no extra bait).
+- **Not built**: only what is parked with its mastery (Stealth: lose them, quiet hands, sneak speed, distraction
+  throw; Freerunning: vault / wall rolls, safe falls, evasion). Spear condition still covers carved / fire-hardened
+  spears only. No tooltip line for marked items yet.
+- MP checks owed (from reading only): whether the server runs `updateFalling` for players, whether stomp's
+  `ItemBodyLocation.SHOES` lookup works from Lua, `OnWeaponHitCharacter` on the attacker for a remote zombie, the
+  strafe / sneak nudge feel, Gunworks bursts with the RPM wrap, and where combat muscle strain lands in MP; for 3a:
+  reload animation while running, quickdraw look, the lunge distance and feel, zombie sense dot placement, fish
+  counts between clients, a second live animal from a double catch; for 3b: whether a Lua-set stagger / knockdown
+  on a zombie is picked up outside a hit, the crawler getting up, the engine state reaching clients after
+  `transmitEngine`, triage's item arrival order and bandages on another player, the area picker's cursor, whether
+  `setBumpedChr` set before `separate` really stops the sprint trip; for the throws and 3c: the swing reaching
+  `OnWeaponSwingHitPoint` with no target in reach, the flight visual, tuned engine against the vehicle anti-cheat,
+  whether the build's `need:` counts really become the thumpable's build materials.
+- workshop.txt: `scripts/make_workshop.py` cuts the README's "Masteries and their effects" section down to names and
+  skills plus a pointer to the Mastery tab (Steam's 8000-character cap; 5261 after 3a). README keeps the full list
+  and a "Signature abilities" section.
 
 ## Why mastery and not real levels 11+
 

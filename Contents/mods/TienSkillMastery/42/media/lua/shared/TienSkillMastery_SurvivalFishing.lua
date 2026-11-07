@@ -18,21 +18,21 @@ Where fishing runs in multiplayer:
   owner (client ServerCommands.lua ~46). A skipped `removeLure` sends nothing, so the owner's rod keeps its lure too.
 
 Bonuses:
-- Fishing.Tension (pct): `updateLine` ~118 tensionLimit = (120 + 10 x level) x rodCoeff (x3 on a first fishing trip)
+- Angling.Tension (pct): `updateLine` ~118 tensionLimit = (120 + 10 x level) x rodCoeff (x3 on a first fishing trip)
   is how long the line may stay at high / low tension before it breaks or the fish escapes. `rodCoeff` (~26) is read
   nowhere else, so the rod table's `rodCoeff` is multiplied once in `FishingRod.new` (client: the owner's local player).
-- Fishing.Bait (pts on the keep chance): natural bait is consumed when ZombRand(20) > level (45% at 10, kept 55%),
+- Angling.Bait (pts on the keep chance): natural bait is consumed when ZombRand(20) > level (45% at 10, kept 55%),
   artificial lures 1 in 30 x (level + 1) (not touched: already 1 in 330). While `consumeLure` runs, the rod gets an
   instance `removeLure` that skips a natural bait's removal with chance points / consumed%, so the keep chance rises
   by exactly the bonus points.
-- Fishing.Junk (less): `getFishByLure` returns (item, isTrash). On a trash result, with chance = the bonus percent, it
+- Angling.Junk (less): `getFishByLure` returns (item, isTrash). On a trash result, with chance = the bonus percent, it
   is called again (up to 12 times) until it gives a fish, so junk catches drop by the bonus percent and the fish is
   drawn from vanilla's own fish branch (lure, river / lake, size limit, predators). A lure no fish takes stays junk.
-- Fishing.BigFish (pts): `createFish` ~140 takes small / medium / big chances from
+- Angling.BigFish (pts): `createFish` ~140 takes small / medium / big chances from
   `Fishing.Utils.getFishSizeChancesBySkillLevel(lvl, nearShore, fishNum)` (FishingUtils.lua ~185; 10 / 40 / 50 at
   level 10, halved to the small share near the shore, 100 / 0 / 0 when the school is empty). While our `createFish`
   wrapper runs, the bonus points move from the small share to the big one (empty schools left alone).
-- Fishing.Trophy (pts): `createFish` ~153 rolls `ZombRand(20) == 0` (5%) for a Big fish at level 8+. It is the first
+- Angling.Trophy (pts): `createFish` ~153 rolls `ZombRand(20) == 0` (5%) for a Big fish at level 8+. It is the first
   `ZombRand` call of `createFish` (the size roll before it is `ZombRandFloat`), so during the call the global
   `ZombRand` is swapped for one that, on that first call with 20, turns a miss into 0 with chance points / 95: the
   trophy chance becomes 5% + points.
@@ -68,7 +68,7 @@ FishingRod.new = function(self, player, ...)
     local r = pack(origRodNew(self, player, ...))
     local o = r[1]
     if type(o) == "table" and player and type(o.rodCoeff) == "number" then
-        o.rodCoeff = o.rodCoeff * M.more(player, "Fishing.Tension")
+        o.rodCoeff = o.rodCoeff * M.more(player, "Angling.Tension")
     end
     return unpack(r, 1, r.n)
 end
@@ -84,7 +84,7 @@ FishingRod.consumeLure = function(self, isTrash, ...)
     end
     local lure = self.rodItem:getModData().fishing_Lure
     local artificial = Fishing.lure and Fishing.lure.ArtificalLure and Fishing.lure.ArtificalLure[lure]
-    local v = (lure ~= nil and not artificial) and M.val(self.player, "Fishing.Bait") or 0
+    local v = (lure ~= nil and not artificial) and M.val(self.player, "Angling.Bait") or 0
     -- ZombRand(20) > level: 19 - level of the 20 outcomes consume the bait.
     local consumedPct = math.max(0, 19 - (self.skillLevel or 0)) * 5
     if v <= 0 or consumedPct <= 0 then
@@ -109,7 +109,7 @@ local JUNK_RETRIES = 12
 local origGetFishByLure = Fish.getFishByLure
 Fish.getFishByLure = function(self, ...)
     local r = pack(origGetFishByLure(self, ...))
-    if r[2] and self.character and M.roll(self.character, "Fishing.Junk") then
+    if r[2] and self.character and M.roll(self.character, "Angling.Junk") then
         for _ = 1, JUNK_RETRIES do
             local again = pack(origGetFishByLure(self, ...))
             if again[1] ~= nil and not again[2] then return unpack(again, 1, again.n) end
@@ -140,8 +140,8 @@ local origCreateFish = Fish.createFish
 Fish.createFish = function(self, fishConfig, ...)
     local chr = self.character
     if not chr then return origCreateFish(self, fishConfig, ...) end
-    local big = M.val(chr, "Fishing.BigFish")
-    local trophy = (self.fishingLvl or 0) >= 8 and M.val(chr, "Fishing.Trophy") or 0
+    local big = M.val(chr, "Angling.BigFish")
+    local trophy = (self.fishingLvl or 0) >= 8 and M.val(chr, "Angling.Trophy") or 0
     if big <= 0 and trophy <= 0 then return origCreateFish(self, fishConfig, ...) end
 
     bigFishPoints = big > 0 and big or nil
