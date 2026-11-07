@@ -20,7 +20,7 @@ idea" and the masteries with their members and names (23 approved, Livestock lat
   progress) but keeps its progress and its slot; it works again once the skill is back at 10.
 - **Sandbox choices only for mode gaps** (user, 2026-11-06): an effect that works in only one mode (single player
   or multiplayer) is paired with an alternative that works everywhere, and a sandbox option picks between them
-  (Swordsmanship's footwork). Effects that work in both modes are simply part of the mastery, with no option.
+  (none left: Swordsmanship's footwork choice went once strafe worked in single player). Effects that work in both modes are simply part of the mastery, with no option.
 - Names are disciplines, never people: no mastery repeats a vanilla trait, profession or skill name (42.21 has
   Marksman, Brawler, Runner, Hunter, Angler, Artisan as traits; Lumberjack, Chef, Farmer, Rancher, Tailor as
   professions; Mechanic, Blacksmith as both).
@@ -69,7 +69,25 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
 - **Firearms** (in review): damage +10%, fire rate +10% (new), hit chance +5 pts, range +10%, aim-in speed +15%,
   reload and rack speed +15%, jam chance -25% (new), firearm wear undone 20%. Crit +5 pts dropped, a third damage
   multiplier. **Approved** (user, 2026-11-06), fire rate covering vanilla and Gunworks guns, bursts included.
-  - Damage: same per-shot min / max scaling as melee in `OnWeaponSwingHitPoint` (the firearm damage roll comes after
+  Signature, two parts (user 2026-11-06; Steady Aim declined): **quickdraw** (drawing and holstering a one-handed
+  gun is always fast, whatever the hands held; vanilla's hand rules are unchanged) and **run-and-gun reload**
+  (reloading does not stop when the master runs or sprints).
+  - Run-and-gun reload (42.21): every reload action sets `stopOnRun = true` in `new` (`ISReloadWeaponAction` ~292,
+    `ISInsertMagazine` ~146, `ISEjectMagazine` ~107, `ISLoadBulletsInMagazine` ~166, `ISRackFirearm` ~210,
+    `ISUnloadBulletsFromFirearm` ~129, `ISUnloadBulletsFromMagazine` ~146), read by Java `BaseAction` on the
+    client; `stopOnWalk` and `stopOnAim` are already false. Hook: wrap those `new`s and set `stopOnRun = false` for
+    a master. Vanilla keeps some animated actions going while running (`ISOpenCloseDoor`, `ISToggleLightAction`,
+    `ISDumpWaterAction` set it false), so the upper-body action anim should layer over the run; check in game that
+    the reload anim plays and that its anim events still arrive while running (the server's emulated events time
+    the reload either way, see ZomboidFixesB42 "Reload timing"), with Gunworks guns too.
+  - Quickdraw (42.21 `shared/TimedActions/ISEquipWeaponAction.lua`, `ISUnequipAction.lua`): the caller passes the
+    time (`maxTimeInit`); from a hotbar / holster slot `animSpeed` = maxTime / `adjustMaxTime(maxTime)`, and with
+    maxTime -1 the action ends on the anim event (`detachConnect` when drawing, `attachConnect` when holstering).
+    `complete` (server / SP) applies vanilla's hand rules: a handgun clears a HandWeapon from the off hand (~194),
+    a primary clears a both-hands item, `forceDropHeavyItems`. Hook: wrap both `new`s (the server rebuilds the
+    action with `new` from its parameters, so it gets the same time) for a HandWeapon that `isRanged()` and is not
+    `isTwoHandWeapon()` / `isRequiresEquippedBothHands()`, held by a master: maxTime x0.25 (at least 1) and
+    animSpeed x4, so an anim-timed draw reaches its event 4x sooner. Proposed x4; check the look in game. same per-shot min / max scaling as melee in `OnWeaponSwingHitPoint` (the firearm damage roll comes after
     it, ~783; the hit packet carries the damage, `AntiCheatHitDamage` only refuses > 100).
   - Fire rate (42.21): semi-auto waits for the character's recoil delay (`HandWeapon.getRecoilDelay(owner)`, set in
     `pressedAttack` ~3209, drained 0.625 x multiplier per update, `IsoPlayer` ~2567 fires only at 0) and plays at
@@ -100,15 +118,20 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
 - **Axemanship** (**approved**, user 2026-11-06): damage +10%, attack speed +5%, crit reroll 10%, reach +10%, swing
   endurance -15% (also covers tree chopping: `ISChopTreeAction:useEndurance` drains in the same held-axe,
   not-running window the give-back watches), knockback +20%, tree damage per chop +20% (new), axe wear undone 20%
-  (added by the user, 2026-11-06; covers chopping wear too).
+  (added by the user, 2026-11-06; covers chopping wear too). Signature **throw axes** (one-handed axes; user
+  2026-11-06, design under "TODO: signature abilities"). Trigger (user 2026-11-07): swinging a one-handed axe while
+  the reticle is on a zombie beyond the axe's reach throws it.
   - Tree damage (42.21): the server's `ISChopTreeAction:serverStart` emulates `ChopTree` every 1500 ms; its
     `animEvent` calls `IsoTree.WeaponHit`, which takes `weapon:getTreeDamage()` (x1.5 Ax-pert) off the tree's
     health ((log yield - 1) x 80, min 40) and topples it at 0. Hook: wrap that `animEvent` on the server and raise
     the axe's `setTreeDamage` (int, rounded) for the call. Attacking a tree outside the action is Java only
     (`CombatManager.processTreeHit`), so not covered. A shorter emulator period would desync the client's chop anim.
 - **Bludgeoning** (**approved**, user 2026-11-06): damage +10%, attack speed +5%, crit reroll 5%, +1 target per
-  swing with sandbox MultiHitZombies on, reach +10% instead while it is off (so the effect is never empty), swing
+  swing at mastery 5 and +2 at mastery 10 (user 2026-11-07) with sandbox MultiHitZombies on, reach instead while it is off (so the effect is never empty), stepping the same way: +5% at mastery 5, +10% at
+  mastery 10 (user 2026-11-07), swing
   endurance -15%, knockback +15% (new for this category, same per-swing push-back hook), long blunt wear undone 20%.
+  Signature **push back** (user 2026-11-06: every swing also pushes back the nearby zombies it did not hit, at an
+  endurance cost; design under "TODO: signature abilities").
   - Extra target (42.21): `CombatManager.calculateHitInfoList` caps a melee hit list at the weapon's
     `getMaxHitCount()` (script `MaxHitcount`, long blunts 2-3), forced to 1 when sandbox MultiHitZombies is off;
     the list that deals damage is built in `attackCollisionCheck` (~701) after `OnWeaponSwingHitPoint`, so a
@@ -116,20 +139,37 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     (`damage / (split x 0.5)`, split counting from 1). Anti-cheat: melee allows 3 x maxHits hits per 1.2 s, maxHits =
     max(3, the server copy's count) with MultiHitZombies on; a long blunt (2-3 targets + 1) stays inside it as long as
     no more than two swings land in 1.2 s (swing length not measured; check in game).
-- **Swordsmanship** (**approved** with the sandbox option, user 2026-11-06): damage +10%, attack speed +5%, crit reroll 5%, reach +10% and swing endurance -15%
+- **Swordsmanship** (**approved**, user 2026-11-06; the sandbox option was later dropped, below): damage +10%, attack speed +5%, crit reroll 5%, reach +10% and swing endurance -15%
   (both new for Long Blade, same hooks), long blade wear undone 20%, and a Nimble effect that works in single player
   too (user, 2026-11-06: v1's strafe speed +15% is multiplayer only). Candidate: **Deflect**, 10% chance that a
   zombie's attack on you is broken off with a stagger while you hold a long blade.
-  The user wants a sandbox option to choose between the two (2026-11-06), proposed: enum `SwordsmanshipFootwork`,
-  1 = Deflect 10% (default, works everywhere), 2 = strafe speed +15% (multiplayer only; nothing in single player).
-  This brings sandbox options back (v1 has none, CLAUDE.md: `M.option` reads `M.SETTINGS`;
-  `scripts/make_options.py` regenerates sandbox-options.txt and Sandbox.json). Only effect in the reviewed set
-  that is multiplayer only; Firearms, Axemanship and Bludgeoning have none.
-  - Why not strafe: `calculateWalkSpeed` rewrites `StrafeSpeed` in SP right before the animator, no Lua event in
+  The user first wanted a sandbox option to choose between the two (2026-11-06: enum `SwordsmanshipFootwork`,
+  Deflect or strafe speed +15%) because strafe was multiplayer only. **Superseded** (user, 2026-11-06): strafe now
+  works in single player too, as a position nudge (below), so by the "sandbox choices only for mode gaps" rule
+  there is no option. Then **Deflect dropped** (user, 2026-11-06: it only matters once a zombie is already
+  attacking you, which good play avoids), and riposte with it: the Nimble passive is **strafe speed +15%**. No
+  sandbox option in the reviewed set. Signature **hamstring** (user 2026-11-06): while the master is sneaking
+  and in attack stance (aiming) with a long blade, attacks go for the legs, and a zombie hit there loses the use
+  of its legs and becomes a crawler.
+  - Hamstring (42.21 `IsoZombie`: `setCanWalk`, `setBecomeCrawler`, `toggleCrawling`, `isCrawling`, `isCanWalk`;
+    the debug menu's crawler toggles use `toggleCrawling` / `setCanWalk`, DebugContextMenu ~648): on
+    `OnWeaponHitCharacter` from a master who `isSneaking()` and `isAiming()` with a long blade, on the zombie's
+    owner (directly or relayed through the server, as the shove damage): `setCanWalk(false)` +
+    `setBecomeCrawler(true)` so it drops and gets back up crawling (exact sequence to trace: vanilla's own path is
+    a knocked-down zombie with the crawler flag). **Every** leg hit cripples (user, 2026-11-06), damage unchanged. To trace:
+    whether the crawler state reaches other clients (ZombiePacket / `NetworkZombieVariables`) or each client must
+    be told.
+  - Strafe speed, position nudge (SP and MP, owner's client): while the master aims and moves, each update adds
+    15% of last update's displacement with `setX` / `setY`, only when the step stays on the same or an unblocked
+    neighbouring square (`isBlockedTo`), the same approach as Stealth's sneak speed. Feet slide 15%; the animation
+    is not sped up. Chosen over overriding vanilla's strafe anim nodes with a variable of our own (looks better,
+    but replaces vanilla's strafe XML, which gun mods such as Gunworks may also touch, and remote players would see
+    the vanilla speed). v1's MP-only `setVariable("StrafeSpeed")` route is dropped.
+  - Why the variable route fails in SP: `calculateWalkSpeed` rewrites `StrafeSpeed` in SP right before the animator, no Lua event in
     between; Nimble's input there caps at level 6 (min(0.9 + N / 10, 1.5)). Nimble's other uses (42.21
     `IsoGameCharacter`): fall damage ~2331-2409, fence trip ~13451, crawler lunge fall ~13689, climbing fail
     ~16081, footstep volume ~5442, firearm moving penalty (`CombatManager` ~2529): all Java.
-  - Deflect, to trace: the zombie's `getAttackOutcome()` turns "success" at the end of its start anim, before the
+  - Deflect (**dropped**, reference only), to trace: the zombie's `getAttackOutcome()` turns "success" at the end of its start anim, before the
     `AttackCollisionCheck` event that rolls the wound (ZomboidFixesB42 `*_ClothingWear.lua` watches the same
     moment); the zombie attack actiongroup has `to_staggerback` / `to_staggerback-knockeddown` transitions, so
     setting the stagger there should end the attack before it lands. Runs on the zombie's owner (SP: always the
@@ -138,7 +178,8 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
 - **Spearcraft** (**approved**, user 2026-11-06): damage +10%, attack speed +5%, crit reroll 5%, reach +10%, swing
   endurance -15%, spear wear undone 30% (condition, head condition and sharpness: v1's hook already restores all
   three; above the other weapons' 20% because spears are the ones that break), every crafted spear +2 condition
-  (up to its max).
+  (up to its max). Signature **throw spears** (user 2026-11-06; the axe throw's machinery, under "TODO: signature
+  abilities").
   - Spear crafting (42.21 `recipes_spears.txt`): CarveSpear (`RecipeCodeOnCreate.carveSpear`, random default +
     Carving), FireHardenSpear (`fireHardenSpear`), BindSpear / DuctTapeSpear / WireSpear (knife, glass, bone, stone
     heads by `SpearMapper`; stick `InheritCondition`, Bind and Wire then `slightlyMoreDurable`), AssembleSpear
@@ -150,7 +191,8 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
 - **Street Fighting** (**approved**, user 2026-11-06): damage +10%, attack speed +5%, crit reroll 10%, swing
   endurance -15% (new for this category, same hook), short blunt wear undone 20%; with anything in hand: stomp
   damage +20% (new) and shoves deal 0.25 damage to each zombie shoved (new, user's idea; a normal zombie has
-  1.8-2.1 health).
+  1.8-2.1 health). Signature **bowl them over** (user 2026-11-06, under "TODO: signature abilities"; shares the
+  bump hook with Freerunning's phase through).
   - Stomp (42.21 `CombatManager` ~1043): damage = rand(0.7, 1.0) + Strength x 0.2, x the worn shoes'
     `getStompPower()` (x0.5 barefoot), after `OnWeaponSwingHitPoint`. Hook: raise the shoes' stomp power for the
     swing (`Clothing.setStompPower` exists) and put it back next tick, as v1 does with weapon fields.
@@ -164,7 +206,9 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
   sneak-running -15% (new; sneaking costs nothing while walking, it only makes running cost x1.5,
   `IsoPlayer.updateEndurance`), jaw-stab window +50% MinRange with a lunge, Executioner (10% a level), Ambush
   (+25% damage to a zombie not targeting you). Far over the 5-10% combat band by the user's choice: knives are
-  weak per hit, speed is their identity.
+  weak per hit, speed is their identity. Signature (user 2026-11-07: "the current we have now is fine"): the
+  **lunge**, i.e. the jaw-stab window +50% with the lunge, in full from the pick; Executioner and Ambush stay
+  passives.
   - Attack speed: the stab `Bob_AttackKnife01_Hit` is 1.0 s at `CombatSpeed` (~1.5 at Short Blade and Fitness
     10: 0.67 s), then the node's `SetMeleeDelay` 8 at End (~0.27 s; `IsoPlayer` attacks only at melee delay 0,
     drained 0.625 x multiplier per update). A bonus on `CombatSpeed` alone falls short (+50% gave ~+30%
@@ -209,7 +253,8 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
   every state (new: the server give-back also adds to gains; +25% was too strong because vanilla also recovers
   while walking, at a quarter of the standing rate, `IsoPlayer.updateEndurance` ~3340), Heavy Load penalties
   taken **one moodle level lower** where Lua can reach them (new; user 2026-11-06, replacing "halved"), muscle
-  strain -25% (new, user 2026-11-06).
+  strain -25% (new, user 2026-11-06). Signature (user 2026-11-07): **Heavy Load one level lower**, promoted from
+  the passives, in full from the pick (so it leaves the per-level question in "Open decisions").
   - One level lower, per reachable penalty: combat speed gets 0.07 back; running drain uses the next lower factor
     (none / 1.5 / 1.9 / 2.3 / 2.8: give back 1 - lower / current); the walking drain from L 3 likewise (L 3 then
     has none); recovery, blocked from L 2, is added back at L 2 only; vault trip -13 and wall climbing +8 points
@@ -229,13 +274,41 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     Melee crit -5 L (`calculateCritChance` ~3862): reachable only as part of a reroll, left out. Not reachable:
     zombie grab defense -2 L (`testDefense` ~13155), crawler lunge fall +5 L (~13687), rope climbing speed
     (~16173), vehicle discomfort.
-- **Freerunning** (**approved**, user 2026-11-06): running endurance -15%; no damage from falls of up to 2 levels,
-  exhaustion no longer adds to the vault trip chance, nor to tall-wall climbing failure (all three new, user
-  2026-11-06; traced below under "Freerunning movement effects"); **sure-footed**: 5% a level (50% at mastery 10)
-  that a trip from running into a zombie, animal or player becomes a stagger, sprinting included (new, user
-  2026-11-06; **needs trace**: dropped if Lua has no window before `BumpedState.enter`, see below). Sprint speed
+- **Freerunning** (**approved**, user 2026-11-06): running endurance -15%; no damage from falls of up to 2 levels (stepped, user 2026-11-07: a 1-level drop,
+  from the 2nd floor, at mastery 5; a 2-level drop, from the 3rd floor, at mastery 10; none below 5),
+  exhaustion no longer adds to the vault trip chance, nor to tall-wall climbing failure (per level, user
+  2026-11-07: each mastery level removes 10% of what exhaustion adds, all of it at mastery 10) (all three new,
+  user 2026-11-06; traced below under "Freerunning movement effects"); ~~sure-footed~~ (**dropped**, user 2026-11-06:
+  evasion's phase through prevents every bump trip; it was 5% a level that a trip from running into a zombie,
+  animal or player becomes a stagger). Sprint speed
   dropped: movement is root motion and Sprinting's speed only feeds the run / sprint blend (v1 notes), out of
-  Lua's reach.
+  Lua's reach. Signature **evasion** (user 2026-11-06): a chance to dodge attacks (they do not land), and the master
+  phases through anything they run into without the trip animation.
+  - Dodge (**15%** an attack, flat as a signature, user 2026-11-06; to trace): the zombie's `getAttackOutcome()` turns
+    "success" at the end of its start anim, before the `AttackCollisionCheck` event that resolves the hit, on the
+    zombie's owner (the Deflect trace below; ZomboidFixesB42 `*_ClothingWear.lua` watches the same moment).
+    `IsoZombie:setAttackOutcome` is public, so on a roll the owner sets it to a miss there; also public:
+    `IsoGameCharacter:setAvoidDamage` (what it skips not traced). In MP the roll is made where the attack
+    resolves (the zombie's owner, usually the victim's client; a zombie another client owns needs the server
+    relay to that owner), and the server re-rolls a hit that gets through (`Bite.process`, ZomboidFixesB42 "Zombie
+    attacks on players"), so a dodge must also stop the `ZombieHitPlayerPacket`, i.e. happen before the client's
+    roll. **Animals included** (user, 2026-11-06).
+  - Dodging animals (42.21 `zombie/ai/states/animals/AnimalAttackState`, Java): on the animal's `AttackConnect`
+    anim event, when the target is a player (not in a vehicle, within `adef.attackDist + 0.5`, not invisible or in
+    ghost mode, line of sight clear), the server / SP computes `animal.calcDamage()` and calls
+    `chr:hitConsequences(nil, animal, false, damage, false)`, then sends `AnimalHitPlayer` to nearby clients.
+    No Lua event before it, and `atkTarget` is a field. So the dodge is an undo (server / SP, the crash safety
+    pattern): each tick, while an animal near a master `isAnimalAttacking()`, note the master's body part health
+    and wound flags; when they drop and that animal is the attacker (`getAttackedBy` / a hit inside its attack),
+    on a 15% roll put everything back (health, new scratches / cuts / bites / fractures). The hit reaction may
+    still play; only the damage is dodged.
+  - Phase through (to trace): bumping into a zombie, animal or player while running sets `BumpFall` in
+    `IsoMovingObject.separate` (see "Freerunning movement effects"); public `setBumpFall` / `setBumpType` /
+    `setCollidable` exist on the player. Plan: while the master runs or sprints, clear the bump (no trip, no
+    stagger) and let them pass through (`setCollidable(false)` while running past characters, if it does not also
+    drop wall collision; to check). Supersedes **sure-footed** (a trip becoming a stagger), dropped (user,
+    2026-11-06). With Street Fighting's bowl them over too: the zombie is knocked down and the
+    master passes through.
 - Freerunning movement effects (asked for under Knifework, moved to Freerunning by the user 2026-11-06), traced
   42.21:
   - **No damage from falls of up to 2 levels.** `IsoGameCharacter.updateFalling` (~9171) accumulates the fall
@@ -272,10 +345,26 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     before `ClimbOverWallState.enter` and is stored with public `setClimbOverWallSuccess / Struggle`; the state then
     sets `ClimbFenceOutcome` "success" / "fail". Same flip approach and the same MP caveat.
 - **Stealth** (**approved**, user 2026-11-06): **lose them** (sneaking and still, unseen for 3 s: chasing zombies give up),
-  **silent kills** (a kill made while sneaking does not draw zombies: those within 16 tiles that start responding
-  to a player sound in the next ~1 s are calmed; the Silent Ambush idea from Knifework), **sneak speed +15%**
+  **quiet hands** (user 2026-11-07, replaces silent kills and widens it: any noise the master makes while
+  sneaking, a kill, a door, a window, climbing over a fence or through a window, breaking glass, does not draw
+  zombies: those within 16 tiles that start responding to a player sound in the next ~1 s are calmed; the Silent
+  Ambush idea from Knifework; per level by seconds, user 2026-11-07: they are calmed after 10 s - 1 s a level of
+  heading for the sound, at once at mastery 10; lose them likewise needs 13 s - 1 s a level unseen, 3 s at 10), **sneak speed +15%**
   (position nudge, needs an in-game feel test). Vanilla Sneaking / Lightfooted effects stay vanilla: out of reach
   (below).
+  Signature (user 2026-11-07): **distraction throw**: while sneaking, throw a small item (a can, a bottle) and
+  where it lands it makes a sound that draws zombies there. The flight is the axe throw's (`*_Throwables.lua`
+  copy, item taken out by ID and dropped where it lands); the server adds the world sound at the landing square
+  (`addSound`, radius and volume to tune). Items (user 2026-11-07): anything light, by its encumbrance
+  (`getActualWeight`, contents included); proposed limit 1.0 (empty cans 0.2, empty bottles 0.1, a stone 1.0; a
+  Molotov is 1.5). How to throw (2026-11-07, the axe's gesture): sneaking, the light item in the primary hand,
+  aim at the spot and attack (aiming works with a non-weapon in hand, user). A non-weapon attacks as the bare-hands
+  shove, which goes through the same `SwipeStatePlayer.enter`, so `getAttackTargetSquare()` is the spot under the
+  mouse in `OnWeaponSwing`; farther than ~2 tiles, `Hook.WeaponSwing` cancels the shove and the throw plays
+  instead. Glass shatters (user 2026-11-07): an item tagged `base:glass` (45 vanilla items: bottles, jars,
+  glasses) is destroyed where it lands instead of dropping, with a louder world sound and a glass smash sound,
+  and leaves broken glass on the square (`IsoGridSquare` has `addBrokenGlass` / `transmitBrokenGlass`, server;
+  which one sends it to clients is to trace).
   - Being spotted (42.21 `IsoZombie` ~2040-2290, the zombie owner's update): chance from light, distance, facing,
     movement, `getSneakSpotMod()` (Sneaking 10: 0.48), traits, cover; a hit sets `bonusSpotTime = 720` (x5 for the
     next rolls, no setter). Footsteps (`IsoGameCharacter.DoFootstepSound` ~5411, from anim events): volume x
@@ -289,7 +378,7 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     unreliable). So the bonus is a nudge: each update, 15% of last update's sneak displacement added with `setX` /
     `setY`, only while the step stays on the same or an unblocked neighbouring square (`isBlockedTo`). Feet slide
     15%; MP: the client owns its position, sneak pace is far under the Speed anti-cheat.
-  - Silent kills: the hit noise (see the Knifework notes above) cannot be stopped. A zombie that hears it runs
+  - Quiet hands (was silent kills; the other noises use the same calming): the hit noise (see the Knifework notes above) cannot be stopped. A zombie that hears it runs
     `RespondToSound` (owner only: `pathToSound` + `setLastHeardSound`, `timeSinceRespondToSound = 0`;
     `isRespondingToPlayerSound()` is public). Calming = `setLastHeardSound(-1, -1, -1)` and ending its path to the
     sound (how, from Lua, still to trace) on the owner, relayed like the shove damage. Zombies already chasing
@@ -314,7 +403,8 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
   "forged edges", which the user did not want), **ore yield +15%** (new: iron from ore and blooms only), **torch
   fuel** (new: 20% of the blowtorch uses a recipe burns are given back). No weapon wear on the smith's own use
   (user, 2026-11-06): each weapon mastery undoes wear on its own category (v1's server-side held weapon wear undo,
-  20%, limited to the category; Firearms for guns).
+  20%, limited to the category; Firearms for guns). Signature (user 2026-11-07): **masterwork**, promoted from the
+  passives, in full from the pick (so it leaves the per-level question in "Open decisions").
   - Masterwork: every item with a condition that a Smithing master makes in a smithing recipe
     (`craftRecipe:isSmithing()`: weapons, armor, tools, anything in the Blacksmithing category) is marked in its
     modData (saved and sent with the item; set after `performRecipe` and sent with `syncItemFields`, the v1
@@ -344,9 +434,10 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     builds (Java `BuildAction`) and burnt-car scrapping are not covered (to trace).
 - **Construction** (**approved**, user 2026-11-06, with spare materials at 15%): built structure HP +20% (Carpentry and Masonry builds: the hook checks
   `involvesSkill(Perks.Woodwork)`, add Masonry), unbarricade time -15%, window pick-up break -5 pts, crafting time
-  -25% (matching Smithing; v1 had 15%), dismantle return +10 pts, **quiet work** (new: building noise -50%),
-  **more planks** (new, user 2026-11-06: sawing a log gives a 4th plank on a 50% roll, +17%), **more stones** (new,
-  user 2026-11-06: breaking a large stone gives 12 stones instead of 10, +20%).
+  -25% (matching Smithing; v1 had 15%), dismantle return +10 pts, **quiet work** (new: building noise -50%).
+  Signature, two parts (user 2026-11-07, promoted from the passives, in full from the pick, no scaling):
+  **more planks** (new, user 2026-11-06: sawing a log gives a 4th plank on a 50% roll, +17%) and **more stones**
+  (new, user 2026-11-06: breaking a large stone gives 12 stones instead of 10, +20%).
   - Planks and stones (42.21 recipes): `SawLogs` (recipes_carpentry.txt: 1 Base.Log -> 3 Base.Plank, saw kept) and
     `Make_Stones_from_Large_Stone` (recipes_stonemasonry_i.txt: 1 Base.LargeStone -> 10 Base.Stone2, hammer /
     sledge / maul / pickaxe kept). The v1 crafting hook (`performRecipe`, server / single player) adds the extra
@@ -491,9 +582,11 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
 - **Handicraft** (**approved**, user 2026-11-06): crafting time -25% on Carving / Knapping / Glassmaking / Pottery recipes
   (66 / 11 / 8 / 21 recipes award their XP), tool wear undone 20% on them (new here, Smithing's hook),
   **craftsman's mark** (new: what a master makes there with a condition ignores 15% of its wear, whoever uses it;
-  Smithing's masterwork for wood, stone and clay), **extra output** (new: 15% chance of one more of the recipe's
-  output, on a vetted list of recipes that nothing turns back into their inputs), **deft hands** (new: every timed
-  action in the game -10%, below). v1's dismantle bonus dropped:
+  Smithing's masterwork for wood, stone and clay; per level, user 2026-11-07: 1.5% per maker's mastery level,
+  stored on the item when it is made and never changed), **extra output** (new: 15% chance of one more of the recipe's
+  output, on a vetted list of recipes that nothing turns back into their inputs). Signature (user 2026-11-07):
+  **deft hands** (new: every timed action in the game -10%, below), in full from the pick, no scaling. v1's
+  dismantle bonus dropped:
   only Carpentry, Electrical, Masonry and Welding have scrap definitions, so it did nothing for these skills.
   - **Deft hands** (user 2026-11-06: kept on Handicraft at 10%, chosen over a per-pick bonus or a mastery of its
     own; item transfers left out for now, parked in TODO): every
@@ -768,24 +861,53 @@ reviewed. Proposed rule: every mastery gets one signature ability, with fewer pa
 the passives are trimmed. **Decided** (user, 2026-11-06): a signature ability is an unlock, in full at the pick
 (mastery 0), and does not grow with mastery level; only the passives follow the tenth-per-level rule.
 
-- **Axemanship: throw one-handed axes** (user's idea; axe category, not two-handed). Feasible. Reuse
+- **Axemanship: throw one-handed axes** (user's idea; axe category, not two-handed; **chosen** as the signature,
+  2026-11-06). Feasible. Reuse
   ZomboidFixesB42's `*_Throwables.lua` flight (fixed 60 Hz steps, same path on client and server, item taken out by
   ID, 3D model in flight; each mod keeps its own copy). New: a "Throw axe" timed action with a custom
   `AnimSets/player/actions` node playing `Bob_AttackThrowMolotov` (vanilla's `Throw` node only runs for weapon type
   "throwing"; write the node out in full, `x_extends` breaks on Linux); zombie collision along the path; damage on
   the zombie's owner client (as `*_SpikedArmor.lua`; the server relays it to `getOwnerPlayer` when the thrower does
   not own it), kills sync, a stagger shows only on the owner; the server drops the axe where it hits or lands
-  (`AddWorldInventoryItem`) with a condition roll. About 300-500 new lines plus the copied flight code. Trigger
-  undecided (key bind, radial / context option while aiming, attack modifier).
-- **Spearcraft: throw spears** (user, 2026-11-06): same machinery as the axe throw. Not discussed further yet.
-- **Street Fighting: bowl zombies over while sprinting** (user, 2026-11-06): while sprinting with no endurance
-  moodle, running into zombies knocks them down instead of the player falling, at an endurance cost per zombie.
-  To trace: vanilla's sprint collision with zombies (the player's bump / fall).
-- **Bludgeoning: push nearby zombies** (user, 2026-11-06): an active effect that pushes back the zombies close
-  around the player. Specifics not discussed yet.
+  (`AddWorldInventoryItem`) with a condition roll. About 300-500 new lines plus the copied flight code.
+  **Trigger** (user 2026-11-07): an ordinary swing while the reticle is on a far zombie. Traced (42.21
+  `SwipeStatePlayer.enter` ~159-201): `doAttack` first sets `attackTargetSquare` from `UIManager.getPicked()`
+  (the picked zombie's square, or the picked square; player 0 on mouse only, a joypad gets its own square), then
+  fires `OnWeaponSwing(player, weapon)`, then `Hook.WeaponSwing` (`LuaHookManager.TriggerHook`; returning true
+  reverts the attack state, i.e. cancels the swing). So in `OnWeaponSwing` (attacker's client): a one-handed axe
+  in the primary hand, a zombie on `getAttackTargetSquare()` farther than the weapon's max range and within the
+  throw range (to tune) = a throw: either let the swing play and launch at `OnWeaponSwingHitPoint` (the swing is
+  the throw motion, nothing in reach to hit) or cancel it with the hook and play the throw node (the plan
+  above). A zombie within reach is a normal swing. Joypad players cannot aim at a far zombie this way (no picked
+  object), so no throw for them.
+- **Spearcraft: throw spears** (user, 2026-11-06; **chosen** as the signature): same machinery as the axe throw,
+  same trigger (a swing with a spear while the reticle is on a zombie beyond its reach). Not discussed further yet.
+- **Street Fighting: bowl zombies over while sprinting** (user, 2026-11-06; **chosen** as the signature): while
+  sprinting with no endurance moodle, running into zombies knocks them down instead of the player falling, at an
+  endurance cost per zombie. To trace: vanilla's sprint collision with zombies (the player's bump / fall,
+  `IsoMovingObject.separate`, "Freerunning movement effects"); the knockdown on the zombie's owner (relayed as the
+  shove damage), the endurance taken by the server.
+- **Bludgeoning: push back** (user, 2026-11-06; **chosen** as the signature): every swing a master makes with a
+  long blunt weapon also pushes back the zombies close around them that the swing did not hit (user: "goes with
+  the attack for as long as they're not targeted"); no key, no cooldown, **an endurance cost** (user 2026-11-06).
+  Area: **a cone in front of the player** (user 2026-11-06), proposed 1.5 tiles deep and 120 degrees wide
+  (the player's facing, `getForwardDirection`, against the direction to each zombie). Proposed: on every swing
+  (hit or miss), as a stagger back (not a knockdown);
+  endurance 0.01 **per zombie** pushed (per zombie decided, user 2026-11-07; stat 0..1, tune the amount in game), taken by the server (stats are server
+  authoritative: the attacker's client reports the count with the push; SP takes it directly), and no push while
+  endurance is below the cost. Hook (attacker's client): in
+  `OnWeaponSwingHitPoint` note the zombies in range; `OnWeaponHitCharacter` fires for each zombie the swing hits
+  (after the hit point, same frame), so next tick push the noted ones that were not hit: on the zombie's owner
+  (directly, or relayed through the server to `getOwnerPlayer`, as the shove damage), `setPlayerAttackPosition`
+  from the player's side + `setHitForce` + `setStaggerBack(true)` (the zombie actiongroup's staggerback node, see
+  ZomboidFixesB42 "Zombie stagger transitions"; to trace that a Lua-set flag is picked up outside a hit). MP:
+  the stagger is not in ZombiePacket, so only the owner sees it animate (other clients see the zombie move back).
+  Skips `isReanimatedForGrappleOnly()` and zombies on the floor.
 - **Engineering: engine overhaul** (user, 2026-11-06): Engine Parts raise a car's engine quality; traced and
   written up under Engineering.
-- **Firearms candidates**: Steady Aim (hold a key while aiming: instant aim-in and faster recoil settling for a few
+- **Swordsmanship: hamstring** chosen (2026-11-06, written up under Swordsmanship; Deflect / riposte, momentum,
+  clean cut, cleave, iaido, whirlwind, hit and run, fighting on the move, finisher were the other ideas).
+- **Firearms: quickdraw** chosen (2026-11-06, written up under Firearms). Earlier candidates: Steady Aim (hold a key while aiming: instant aim-in and faster recoil settling for a few
   seconds, endurance cost, cooldown; recommended), Quickdraw (near-instant handgun draw from a holster / hotbar
   slot, `ISEquipWeaponAction` time), Field strip (mastery-only recipe restoring gun condition; inputs to check).
 - **Deft hands for item transfers** (user wants faster actions, 2026-11-06; parked): single player is a small
@@ -794,14 +916,16 @@ the passives are trimmed. **Decided** (user, 2026-11-06): a signature ability is
 
 ## Open decisions
 
-1. Effects: the list above, especially whether one weapon category per mastery is too narrow, the thin ones
-   (Stealth, Field Medicine, Provisioning, Handicraft, Fieldcraft) and Salvaging as its own mastery.
-2. Proposed, not confirmed: one effect per mastery; per-mastery point storage; nothing counts before a pick; no
-   masteries for other mods' skills.
-3. Passives that are on / off (Bludgeoning +1 target, Conditioning's Heavy Load one level lower, Freerunning's safe
-   falls and vault / wall rolls, Stealth's lose them and silent kills, masterwork / craftsman's mark): how they
-   behave below mastery 10. Proposed per-level forms were offered 2026-11-06 (extra target 10% a level, a tenth of
-   the way per level, safe height 0.2 levels a level, unseen time 13 s - 1 s a level, calm 10% a level, mark 1.5%
-   per maker's level fixed at creation); the user will review them later.
-4. Removing a pick: does the mastery's progress go too (proposed: yes, a removed pick starts from 0 if picked again)?
-5. v2 replaces v1, not a second mode next to it.
+1. Effects: **decided** (user 2026-11-07): one weapon category per mastery is not too narrow, and Salvaging stays
+   its own mastery; the thin ones got signatures.
+2. **Vanilla skills only** (user 2026-11-07): no masteries for other mods' skills. Also **confirmed** (user 2026-11-07):
+   each effect belongs to one mastery only; each mastery stores its own points; nothing counts before a pick.
+3. Passives that are on / off: how they behave below mastery 10. All decided 2026-11-07: Handicraft's
+   craftsman's mark ignores 1.5% of wear per maker's mastery level, fixed when the item is made; Stealth by seconds,
+   no chances (user): lose them needs 13 s - 1 s a level unseen (3 s at mastery 10), quiet hands calms the
+   zombies drawn by the noise after 10 s - 1 s a level (at once at mastery 10); Bludgeoning's extra target +1 at mastery 5,
+   +2 at 10 (reach +5% / +10% with MultiHitZombies off); Freerunning's safe falls 1 level at mastery 5, 2 at 10,
+   and its vault / wall rolls lose 10% of exhaustion's addition a level.
+4. Removing a pick: **decided** (user 2026-11-07): the mastery's progress goes too, so a removed pick starts from 0
+   if picked again. Only admins can remove a pick.
+5. **Decided** (user 2026-11-07): v2 replaces v1, not a second mode next to it.
