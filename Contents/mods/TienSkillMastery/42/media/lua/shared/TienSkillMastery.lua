@@ -508,8 +508,8 @@ def("Salvaging", "SigScrapAnyCar", 1, "sig")        -- scrap any car, and vehicl
 def("FieldMedicine", "SigTriage", 1, "sig")         -- "Tend wounds": vanilla treatments queued for every part
 def("Homesteading", "SigFields", 1, "sig")          -- tend / sow a picked area of the field
 def("StreetFighting", "SigBowlOver", 1, "sig")      -- sprinting into zombies knocks them down
-def("Axemanship", "SigThrowAxe", 1, "sig")          -- swing at a zombie out of reach: throw the one-handed axe
-def("Spearcraft", "SigThrowSpear", 1, "sig")        -- swing at a zombie out of reach: throw the spear
+def("Axemanship", "SigThrowAxe", 1, "sig")          -- the throw key throws a one-handed axe (spares first)
+def("Spearcraft", "SigThrowSpear", 1, "sig")        -- the throw key throws a spear (spares first)
 -- Phase 3c passives.
 def("Construction", "SpareMaterials", 15, "pts")    -- each build material comes back on a roll
 def("Engineering", "TunedEngine", 15, "pct")        -- top speed and engine power while a master drives

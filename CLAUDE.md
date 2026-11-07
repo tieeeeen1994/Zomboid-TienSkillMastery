@@ -7,7 +7,8 @@ Standalone mod, started 2026-11-05; **built 2026-11-05, not yet played in game o
 **v2 replaces v1** (picked masteries over groups of skills, with effects of their own; design and every decision in
 `docs/v2-draft.md`). **All of v2 built 2026-11-07** (v0.3.0, not yet played) except what is parked with Stealth and Freerunning: see "v2 build" below.
 **Played in game (2026-11-07, user):** Firearms' signatures (Quickdraw, reloading while running) and Axemanship's
-(the throw key: held and carried axes, reticle, swing / hit sounds, damage on arrival). Everything else is still
+(the throw key: held and carried axes, swing / hit sounds, damage on arrival; the reticle since replaced by an
+outline, animal and PvP targets added after that test). Everything else is still
 unplayed, including Spearcraft's throw and every passive. The v1 sections that
 follow still describe the hooks and the parking, which v2 keeps; their per-skill ids and values are superseded.
 
@@ -118,28 +119,78 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   rules, borrowing, giving back).
 - Phase 3b, throws: `shared/*_Throw.lua`. Only the throw key throws (below). The first trigger, a swing at a zombie
   beyond reach (`OnWeaponSwing` + `getAttackTargetSquare()`, `OnWeaponSwingHitPoint` sending `throwWeapon`), was
-  dropped 2026-11-07: the user kept throwing the axe with the attack button. Targeting still uses what it taught: the
-  zombie whose on-screen body (feet to 0.75 levels up, `isoToScreenX/Y`) holds the mouse, since the iso floor square
-  under the mouse lies a tile or two behind a zombie aimed at chest-high. Range 12 (axe, one-handed only) / 10
-  (spear) tiles. The server re-checks hand
+  dropped 2026-11-07: the user kept throwing the axe with the attack button. Targeting (2026-11-08) is vanilla's melee way: while
+  aiming, `IsoPlayer.setAngleFromAim` turns the player every update toward the pointer's tip projected at chest
+  height (`calculateAimVector`: `AimingReticle` = mouse x zoom, `XToIso` / `YToIso` at `getAimOriginPosZ` = z +
+  `getChestHeight()` 0.495), so the facing runs through a body the pointer is on, and melee takes targets in a cone
+  around that facing (`CombatManager.getNearestMeleeTargetPosAndDot`, dot vs `MinAngle`). `aimTarget` takes the first
+  target along `getForwardDirection()` within `Th.AIM_RADIUS` (0.6 tiles) of the line, 0.5 .. range tiles out; a
+  throw at empty ground goes to `Th.aimPoint` (`screenToIsoX/Y(num, mouse, z + chest height)`, the same projection).
+  Earlier tries: the floor square under the mouse (lies a tile or two behind a zombie aimed at chest-high) and an
+  on-screen body box (`isoToScreenX/Y`), which followed the pointer's tip, at the top of the iso cursor. Range 12 tiles (axes one-handed only;
+  spears 10 until 2026-11-08, now the same as axes in every number: user, same distance and harder). The server re-checks hand
   item ID, category and signature, resolves the flight at once: aimed in a straight line from hand height (0.55
-  levels) at the target's head (0.65) with gravity (the game's 5.0010414 levels/s^2) pulling it down, axe 22 / spear
-  20 tiles a second (user, 2026-11-07: aim for the head, gravity arcs it down); 0.2-tile steps, `isBlockedTo` walls,
+  levels) at the target's head (0.65) with gravity (the game's 5.0010414 levels/s^2) pulling it down, 22 tiles a
+  second (spears 20 until 2026-11-08) (user, 2026-11-07: aim for the head, gravity arcs it down); 0.2-tile steps, `isBlockedTo` walls,
   the floor (lands short), first standing zombie within 0.45 while below 0.8; the height there picks head (>= 0.55,
-  x3) / body / legs (< 0.2, x0.05), vanilla's `CombatConfigKey` head / leg factors. With these numbers an axe hits the
-  head to ~4.4 tiles and the floor at ~11, a spear to ~4 and ~10. Thrown axes deal x1.5 (`Th.THROW_DAMAGE`; user,
-  2026-11-07: farther and harder). All are `Th.*` constants. Then it takes the weapon
+  x3) / body / legs (< 0.2, x0.05), vanilla's `CombatConfigKey` head / leg factors. With these numbers a straight throw hits the
+  head to ~4.4 tiles and the floor at ~11; since 2026-11-08 (user: outlined targets were not reached) a throw at a
+  target aims above it by part of the drop (`Th.launchAim`: it arrives no lower than `Th.ARRIVE_MIN`, the body at
+  0.35 for people, the full correction for animals), so anything outlined within 12 tiles is reached (head to ~4.4,
+  body beyond), and `aimTarget` drops a target with a wall or closed door in between (`Th.pathClear`, the flight's
+  own steps). The raised arc can pass over a zombie in between (above `ZOMBIE_TOP`). `tests11.lua`.
+  Postures (user, 2026-11-08: sitting and lying zombies could not be targeted; the first version skipped any
+  `isOnFloor()` zombie): `Th.postureOf` = "down" (`isOnFloor`: knocked down, crawling, fake dead), "sit"
+  (`isSitOnGround` / `isSittingOnFurniture` / a zombie's `isSitAgainstWall`) or "stand", tops 0.15 / 0.4 / 0.8; low
+  targets are aimed at their own height (sitting 0.85 of the top, lying 0.6) with the full drop correction, a sitting
+  one can take a head hit (from 0.75 of its top), a lying one body hits only, and neither is staggered. Players
+  (PvP) the same.
+  Low fences (user, 2026-11-08: no throwing over a fence): `isBlockedTo` (`IsoGridSquare` ~932) = `isWallTo` or a
+  blocked window / door / stair side, and a low fence's edge is a wall to it. `isHoppableTo` marks low fences
+  (`IsoObject.getHoppableDirection`: sprite flags HoppableN / HoppableW) and empty window frames; tall fences have
+  TallHoppableN / W instead. So the flight's `blocked(a, b, h)` lets a hoppable edge through while the throw is above
+  `Th.FENCE_TOP` (0.4 levels, ~1 m), and the outline's `Th.pathClear` follows the same arc (`launchAim` at the
+  target) so it never shows a target the fence would stop. A low target right behind a fence stays out of reach: at
+  22 tiles a second the arc cannot clear 0.4 and come down to a lying zombie within half a tile. Thrown axes and spears deal x1.5 (`Th.THROW_DAMAGE`; user, 2026-11-07:
+  farther and harder; spears x1 until 2026-11-08). All are `Th.*` constants. Then it takes the weapon
   out, deals its damage roll x the mastery's damage x the part factor through the relay (owner;
   else local with `Kill(thrower)` at 0) plus a stagger (`R.queueAct`, no endurance); every throw, hit or miss (user, 2026-11-07), rolls vanilla's melee
   wear (1 in ConditionLowerChance + Maintenance + skill / 2, one point; WearUndo and the mark can cancel it, since
   Physical's per-tick undo only sees held items); drops it at
-  the end, broadcasts `throwFly` (clients draw it with `Render3DItem`). Sixth harness file `tests6.lua` (4 flight
+  the end, broadcasts `throwFly` (clients draw it with `Render3DItem`, whose last argument is the world item's yaw in
+  degrees and is **ignored when negative**: `ItemModelRenderer` then uses the item's resting rotation, so an
+  `atan2` angle must be brought into 0..360 (it drew spears side on for half the directions, 2026-11-08). Axes turn as
+  they fly; spears keep yaw = atan2(dy, dx), which points a vanilla weapon mesh's tip along the flight: the mesh tip
+  is model +Y, `init`'s weapon fix rotateXYZ(0, pi, pi/2) lays it to +X, and the world frame (`WorldModelCamera`
+  Ry(-pi), `DoPushIsoStuff` scale(-1.5) + Ry(pi), frame X = world -x, Z = world -y) puts it at (cos, sin) of the yaw;
+  `Th.SPEAR_YAW` stays for a mod spear modelled otherwise).
+  Axe tumble (user, 2026-11-08: end over end, not flat): `Render3DItem` is the only Lua call that draws an item model
+  in the world, and its live model path takes only the yaw (with a rotation >= 0 `ItemModelRenderer` zeroes angle.x
+  and angle.z); no 3D renderer is exposed (only `SpriteRenderer`). With rotation -1 it uses the item's own
+  `worldXRotation` / `worldZRotation` (yaw) / `worldYRotation` (angle.x / y / z) through the world item atlas
+  (`DebugOptions` WorldItemAtlas Enable, debug-only and true by default; vanilla's Extended Placement tilts use it):
+  one baked picture per model + angles (`WorldItemAtlas.getItemKey`, shared across items, baked a frame after first
+  asked). `isDoingExtendedPlacement` skips the atlas but queues an `ExtendedPlacementDrawer` that dereferences the
+  item's world object (none on a flying copy). So `Th.AXE_FLIGHT` "tumble" rounds yaw and tumble to 22.5 degrees
+  (16 x 16 pictures per axe model) and sets worldYRotation = -(t x TUMBLE_RATE): the laid-down tip (+X) turned by
+  Rz(z) is (cos z forward, sin z up) in the world, so a falling angle carries the head over the top. "still" and
+  "flat" are the live model. `tests12.lua`.
+  Blade first (user, 2026-11-08): the edge must lead the tumble. Survey of every vanilla one-handed axe mesh (the
+  `.X` files): handle along mesh +Y, blade edge toward mesh -Z (the 0-thickness end of the head), but the model
+  scripts' `world` attachments differ (HandAxe, HandAxe_Old, IceAxe, cleaver, scythes 180 0 180; the forged ones 0 0
+  0; bone / scrap ones small Y tilts), and `ItemModelRenderer.init` multiplies that attachment in inverted after the
+  weapon fix, so the same edge lands on opposite sides. `Th.bladeBody(model)` reads the attachment
+  (`getModelScript(item:getWeaponSprite()):getAttachmentById("world"):getRotate()`, `v:x()`), carries handle and edge
+  into the laid frame (inverse rotateXYZ, then (x, y, z) -> (y, x, -z)) and builds B (handle +X, edge -Y);
+  `Th.tumbleAngles` decomposes Ry(yaw) Rz(tumble) B into the renderer's Rx Ry Rz (world X / Z / Y rotations).
+  Mod axes modelled with the edge elsewhere would fly edge-sideways (not checked). Sixth harness file `tests6.lua` (4 flight
   checks against a mock grid).
   Throw key (user, 2026-11-07): a vanilla key binding `TsmThrowAxe` (section `[TienSkillMastery]`, default Space,
   appended to `keyBinding`, tested with `getCore():isKey` in `OnKeyStartPressed`), only in combat stance
-  (`isAiming()`), throws `Th.throwable`: the primary hand item when throwable (sent as held), else a carried
-  one-handed axe without equipping it: loose in the main inventory first, then one on the hotbar, never from bags
-  (`Th.findCarriedAxe`, sent `carried`). Aim: the zombie whose on-screen body holds the mouse, else the floor
+  (`isAiming()`), throws `Th.throwable`: a carried one-handed axe or spear (spears added 2026-11-08) of a signature
+  the player has, without equipping it: loose in the main inventory first, then one on the hotbar, never from bags
+  (`Th.findCarried`, sent `carried`); only with none of those the primary hand item (sent as held; user, 2026-11-08:
+  spares before the held weapon). Aim: the zombie whose on-screen body holds the mouse, else the floor
   under the cursor (`ISCoordConversion.ToWorld`), clamped to 12 tiles. Space is vanilla's Melee key: `IsoPlayer`
   (~2508, on foot) starts a shove on **every update the key is down** unless `bannedAttacking`; a `WeaponSwing` hook
   returning true only reverts `SwipeStatePlayer`, the shove animation still plays (seen in game 2026-11-07, twice
@@ -151,18 +202,50 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   released at 0.35 of 30 units, before the arm got there, reported 2026-11-07) with the axe as the
   hand model; the release sends `throwWeapon { carried = true }`, and the server takes the axe only from the main
   inventory itself (`getItemById`, container check), detaches it from the hotbar (`removeAttachedItem` + slot fields)
-  and resolves it like a held throw. Reticle: `IsoReticle` is not exposed, so while a throw is ready (held throwable
-  beyond reach, or the key's carried axe, with a zombie under the cursor in range) `OnPreUIDraw` draws the player's
-  aim circle and crosshair textures (`media/ui/Reticle/aimCircleNN.png`, `crosshairXY.png`, texture / 16, / zoom with
-  the camera-zoom option) at the mouse. `tests9.lua` (axe order, combat stance only, attack ban held and restored).
+  and resolves it like a held throw. Marker: first a drawn copy of vanilla's aim reticle (`IsoReticle` is not
+  exposed; `media/ui/Reticle/aimCircleNN.png` + `crosshairXY.png`, texture / 16), dropped 2026-11-08 as ugly; now the
+  target under the cursor gets an amber outline (`Th.OUTLINE_COLOR`) set from `OnPreUIDraw` every frame:
+  `IsoMovingObject.renderlast` clears outlines each frame unless set during that frame's UI update / render
+  (`FBORenderObjectOutline` UI times), which is how vanilla's melee outline (`CombatManager.highlightMeleeTargets`)
+  stays on. `tests9.lua` (order, combat stance only, attack ban held and restored).
+  Targets (user, 2026-11-08): zombies, loose animals (`square:getAnimals()` near the point; `IsoCell.getAnimals()`
+  builds a new list per call) and players under vanilla's PvP rules, written out in `Th.pvpAllowed` because the
+  Java `CombatManager.checkPVP` does its checks only on a client (on a server it returns the co-op flag): PVP
+  option, god mode, both safeties on (SafetySystem), non-PvP zones, same faction unless either has faction PvP;
+  invisible players are skipped. Animals have no height in their definitions (`collisionSize` is a width), so
+  `Th.ANIMAL_TOP` guesses one per type; throws aim at 0.6 of it and fly over an animal while above its top.
+  Hits: animals through `IsoAnimal.hitConsequences(weapon, thrower, false, damage, false)` (server / SP: health x
+  `getHealthLoss(0.025)`, wild flee, hit reaction, `killed(player)`, stress, attack back; AnimalPacket syncs);
+  players through `BodyDamage.DamageFromWeapon(weapon, part)` on the server (vanilla's PvP wound: clothing defense,
+  wound type, weapon damage x15, head / neck x4, upper torso x2, PVPMeleeDamageModifier; no thrower condition, as
+  vanilla's PvP; a null "using player" is safe), logged with `print`. `tests10.lua` has a hen.
   Arrival (user, 2026-11-07: damage came before the axe got there): `Th.resolve` still works out the path at the
   throw, takes the weapon out and rolls wear, but the hit and the landing go into `Th.inFlight` and an OnTick (server
   / SP; 100 ms server ticks) applies them at throw + distance flown / speed, the time clients draw the flight over.
   The zombie must still be alive and within `Th.TRACK_RADIUS` (1 tile) of where it was headed, else a miss.
-  `tests10.lua`. Sounds (user, 2026-11-07): the key throw's release plays the weapon's `getSwingSound()` with
+  `tests10.lua`. Condition (user, 2026-11-08): `Th.conditionDamage` puts vanilla's melee factors on the roll
+  (`CombatManager` ~957-1090: `getDamageMod` skill, `getHittingMod` Strength, arm pain Hand_L..UpperArm_R > 10 divides
+  by pain / 10, `getTraitDamageDealtReductionModifier`, Panic / Stress > 1 minus 0.05 a level = vanilla's 0.1 on its
+  damageSplit, which is the roll x2 for a first hit, Endurance and Tired x0.5 / 0.2 / 0.1 / 0.05); the reach factor
+  and multi-hit split are a swing's and left out. Hands: `resolve` clears only a hand holding the thrown weapon (it
+  cleared the primary on every throw, so a carried axe unequipped the held weapon; reported 2026-11-08). Sounds (user, 2026-11-07): the key throw's release plays the weapon's `getSwingSound()` with
   `character:playSound` (an MP client relays it itself; the held throw is a real swing and has vanilla's); a hit on
   arrival sends `throwHit` to every client (`Th.playHit`: `getZombieHitSound()`, the script's `HitSound`, through
-  `playSoundImpl` on the zombie's emitter, as vanilla's melee hit, else `getWorld():getFreeEmitter(x, y, z)`).
+  `playSoundImpl` on `getWorld():getFreeEmitter(x, y, z)` at the target, played before the damage). Not on the
+  target's own emitter (tried 2026-11-08, by `findZombie` / `getAnimal(onlineID)` / `getPlayerByOnlineID`): a
+  character's sound waits in `toStart` until that character's next update, and a target the hit kills is a corpse
+  by then, so a killing hit was silent (only the death sound was heard); `IsoWorld` ticks its `currentEmitters` and
+  returns them to the pool once their sounds end.
+  Emitter calls differ by kind (both failed in game 2026-11-08): a world emitter (`BaseSoundEmitter`, e.g.
+  `getFreeEmitter`) has `(String, IsoGridSquare)` and `(String, IsoObject)`, and Kahlua sent a two-argument nil to the
+  square one (NPE on `square.x`), so call `playSoundImpl(name, false, nil)`; a character's emitter
+  (`BaseCharacterSoundEmitter`) has only `playSoundImpl(String, IsoObject)` and refuses three arguments ("expected 2
+  arguments, got 3"), so call `playSoundImpl(name, nil)`.
+  Hit surface (2026-11-08, spear hits unheard while axe hits were): vanilla sets the attacker's `MeleeHitSurface`
+  (`ParameterMeleeHitSurface`, Body = 1, Default = 0) before playing `HitSound` from the attacker; a target's emitter
+  has no such parameter, so the throw sets it on the played sound (`setParameterValueByName(handle, "MeleeHitSurface",
+  1)`; a just-played sound waits in `toStart`, where the value is queued). Whether the spear events really go silent
+  at Default is a guess from that difference, not traced in the FMOD banks.
 - Phase 3c: spare materials (`ISBuildingObject:updateModData` wrap in `server/*_CraftingBuild.lua`: rolls per new
   `need:` unit, drops the spared items and lowers the count, so dismantling never pays back the saving); tuned engine
   (`client/*_TunedEngine.lua`, driver's client, power / max speed x f, vanilla values per vehicle, re-boosted when the

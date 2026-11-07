@@ -100,12 +100,15 @@ levels).
 - **Swordsmanship:** hamstring: sneaking and aiming with a long blade, every hit leaves the zombie crawling.
 - **Street Fighting:** bowl them over: sprinting into a zombie knocks it down instead of tripping you, for a little
   endurance each (no endurance moodle).
-- **Axemanship:** in combat stance, the throw key (Space, rebindable) throws a one-handed axe at the zombie under
-  the cursor's head, for half again its damage: the one in your hand, else one loose in your main inventory, then one
-  on your hotbar, never from bags. Gravity pulls it down on the way: head hits (triple damage, as vanilla's) out to
-  about 4 tiles, then the body, and past about 11 tiles it drops short. It lands where it stops. The aim reticle
-  shows whenever a throw is possible.
-- **Spearcraft:** the same key throws the spear in your hand: head hits out to about 4 tiles, reach about 10.
+- **Axemanship:** in combat stance, the throw key (Space, rebindable) throws a one-handed axe at the target under
+  the cursor (a zombie, an animal, or a player where PvP allows it), aimed at the head, for half again its damage:
+  spares first (one loose in your main inventory, then one on your hotbar, never from bags), and only then the one
+  in your hand. Your skill, strength and condition count as for a swing (tired, out of breath, panicked, stressed or
+  with sore arms, it hits softer). It is thrown in an arc that
+  reaches the target: head hits (triple damage, as vanilla's) out to about 4 tiles, body hits beyond that. A target
+  the throw can reach (in range, no wall in between) is outlined in amber. It lands where it stops.
+- **Spearcraft:** the same throw with a spear, just as far and as hard: spares first (main inventory, then hotbar,
+  then the one in your hand), and it flies point first.
 - **Knifework:** the lunge: jaw stabs reach half again as far, and you close the gap as you stab.
 - **Conditioning:** Heavy Load penalties count one level lower (combat speed, endurance used, recovery).
 - **Smithing:** masterwork: weapons and clothing you forge ignore 15% of their wear, whoever uses them.
