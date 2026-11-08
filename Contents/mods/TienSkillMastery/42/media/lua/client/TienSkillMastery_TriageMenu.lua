@@ -14,7 +14,7 @@ items the server moved from the patients are in this client's inventory (or afte
 each item used once), moves it out of bags and queues vanilla's action for that body part. Whenever the patient changes
 the doctor walks next to the new one (`walkToPatient`, `luautils.walkAdj`'s test from where the queue will have left the
 doctor); a patient who cannot be reached is skipped.
-Patients may move (user, 2026-11-08): vanilla's four treatments stop as soon as the patient has moved at all since they
+Patients may move (user, 2026-11-08): vanilla's treatments stop as soon as the patient has moved at all since they
 were queued (`isValid` -> `ISHealthPanel.DidPatientMove`, from `bandagedPlayerX/Y` set in `new`), and `stop` resets the
 whole queue. Java reads `isValid` off the table (`LuaTimedActionNew.valid`, `rawget`), only while the action runs and
 only on the client (`NetTimedAction` never calls it), so an instance field reaches these actions and nothing else
@@ -198,36 +198,60 @@ local function queueSteps(doctor, steps, moved)
         if reachable then queued = queued + 1 end
         return reachable
     end
+    -- Is one of these still free for this patient, the doctor's own or what they lent?
+    local function available(patient, pred)
+        for _, it in ipairs(items) do
+            if not used[it] and pred(it) then
+                local lender = lentFor[it:getID()]
+                if lender == nil or lender == patient then return true end
+            end
+        end
+        return false
+    end
     for _, s in ipairs(steps) do
         local patient = s.patient
         local part = partOf(patient, s.part)
-        if s.act == "glass" then
-            if ready(patient) then
-                if glassTool then ISInventoryPaneContextMenu.transferIfNeeded(doctor, glassTool) end
-                addTreatment(ISRemoveGlass:new(doctor, patient, part, glassTool == nil), doctor, patient)
-            end
-        elseif s.act == "bullet" then
-            if tweezers and ready(patient) then
-                ISInventoryPaneContextMenu.transferIfNeeded(doctor, tweezers)
-                addTreatment(ISRemoveBullet:new(doctor, patient, part), doctor, patient)
-            end
-        elseif s.act == "splint" then
-            local splint, plank, sheet = splintFor(patient)
-            if splint then
+        local has = { tweezers = tweezers ~= nil, suture = available(patient, T.isSuture),
+            bandage = available(patient, T.isBandage) }
+        for _, act in ipairs(T.actions(s.w, has)) do
+            if act == "unbandage" then
                 if ready(patient) then
-                    ISInventoryPaneContextMenu.transferIfNeeded(doctor, splint)
-                    addTreatment(ISSplint:new(doctor, patient, nil, splint, part, true), doctor, patient)
+                    addTreatment(ISApplyBandage:new(doctor, patient, nil, part, false), doctor, patient)
                 end
-            elseif plank and sheet and ready(patient) then
-                ISInventoryPaneContextMenu.transferIfNeeded(doctor, sheet)
-                ISInventoryPaneContextMenu.transferIfNeeded(doctor, plank)
-                addTreatment(ISSplint:new(doctor, patient, sheet, plank, part, true), doctor, patient)
-            end
-        elseif s.act == "bandage" then
-            local bandage = pickOwn(T.isBandage, bandageRank) or pickLent(patient, T.isBandage, bandageRank)
-            if bandage and ready(patient) then
-                ISInventoryPaneContextMenu.transferIfNeeded(doctor, bandage)
-                addTreatment(ISApplyBandage:new(doctor, patient, bandage, part, true), doctor, patient)
+            elseif act == "glass" then
+                if ready(patient) then
+                    if glassTool then ISInventoryPaneContextMenu.transferIfNeeded(doctor, glassTool) end
+                    addTreatment(ISRemoveGlass:new(doctor, patient, part, glassTool == nil), doctor, patient)
+                end
+            elseif act == "bullet" then
+                if tweezers and ready(patient) then
+                    ISInventoryPaneContextMenu.transferIfNeeded(doctor, tweezers)
+                    addTreatment(ISRemoveBullet:new(doctor, patient, part), doctor, patient)
+                end
+            elseif act == "stitch" then
+                local needle = pickOwn(T.isSuture) or pickLent(patient, T.isSuture)
+                if needle and ready(patient) then
+                    ISInventoryPaneContextMenu.transferIfNeeded(doctor, needle)
+                    addTreatment(ISStitch:new(doctor, patient, needle, part, true), doctor, patient)
+                end
+            elseif act == "splint" then
+                local splint, plank, sheet = splintFor(patient)
+                if splint then
+                    if ready(patient) then
+                        ISInventoryPaneContextMenu.transferIfNeeded(doctor, splint)
+                        addTreatment(ISSplint:new(doctor, patient, nil, splint, part, true), doctor, patient)
+                    end
+                elseif plank and sheet and ready(patient) then
+                    ISInventoryPaneContextMenu.transferIfNeeded(doctor, sheet)
+                    ISInventoryPaneContextMenu.transferIfNeeded(doctor, plank)
+                    addTreatment(ISSplint:new(doctor, patient, sheet, plank, part, true), doctor, patient)
+                end
+            elseif act == "bandage" then
+                local bandage = pickOwn(T.isBandage, bandageRank) or pickLent(patient, T.isBandage, bandageRank)
+                if bandage and ready(patient) then
+                    ISInventoryPaneContextMenu.transferIfNeeded(doctor, bandage)
+                    addTreatment(ISApplyBandage:new(doctor, patient, bandage, part, true), doctor, patient)
+                end
             end
         end
     end
@@ -280,7 +304,7 @@ Events.OnServerCommand.Add(function(module, command, args)
     while type(args.steps) == "table" and args.steps[i] ~= nil do
         local s = args.steps[i]
         local patient = getPlayerByOnlineID(tonumber(s.who))
-        if patient then steps[#steps + 1] = { patient = patient, part = tonumber(s.part), act = s.act } end
+        if patient then steps[#steps + 1] = { patient = patient, part = tonumber(s.part), w = s.w } end
         i = i + 1
     end
     pending.steps, pending.moved, pending.untilMs = steps, moved, getTimestampMs() + 3000

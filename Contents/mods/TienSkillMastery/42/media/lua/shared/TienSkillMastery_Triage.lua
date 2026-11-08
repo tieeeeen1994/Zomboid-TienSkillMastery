@@ -1,14 +1,30 @@
 --[[
 Tien's Skill Mastery: Field Medicine's signature, field triage (user's design, 2026-11-06), 42.21.
 
-"Tend wounds" on yourself or a player next to you walks there and queues vanilla's own treatments for every body part
-that needs them, in this order: remove glass (`ISRemoveGlass`, by hand with pain when there are no tweezers / suture
-needle holder, as vanilla allows), remove bullets (`ISRemoveBullet`, needs tweezers or a suture needle holder:
-skipped without), splint fractures (`ISSplint`: a splint, or a plank / stick with ripped sheets; not head or torso),
-then bandage every bleeding, open or infected wound (`ISApplyBandage`: scratches, cuts, deep wounds, bites, infected
-wounds (user, 2026-11-08; skipped whole before) and the holes the glass and bullets leave). Nothing else: no stitching,
-disinfecting, burns, poultices or pills. A part already bandaged is skipped whole (vanilla treats a part only while it
-is not bandaged, `BaseHandler:isInjured`). The best bandage carried goes first
+"Tend wounds" on yourself or a player next to you walks there and queues vanilla's own treatments. The goal (user,
+2026-11-09): the **fewest actions that stop health loss**, with what is carried right now. What a part gets depends on
+its wounds (`T.woundsOf`, plain flags, sent over the network) and the supplies (`T.actions`, which `T.borrow` and the
+client's queue both call, so they agree). What each treatment does in `BodyPart.DamageUpdate` (42.21 ~144):
+- Scratch, cut, bite, burn, bleeding: a bandage stops the damage (`ISApplyBandage`), infected or not (user, 2026-11-08:
+  those were skipped whole before). Infection itself asks for nothing (user, 2026-11-09: it can wait, the point is
+  to stop health loss now): `DamageUpdate` takes no health for it and clears it once every wound timer is 0 (~482), so
+  an infected part always has a wound, and one with no open wound is a stitch or a fracture, which a bandage does not help.
+- Deep wound: a bandage only halves it until it closes; `ISStitch` with a `SutureNeedle` (user, 2026-11-09, not plain
+  needle and thread) ends it, bleeding included (`setStitched`), so a stitched part needs no bandage for that wound.
+- Glass: no damage of its own, but a deep wound with glass in never closes (held at 3, ~405) and vanilla will not stitch
+  it, so it comes out of a deep wound first (`ISRemoveGlass`, by hand with pain without tweezers / suture needle
+  holder). Glass with no deep wound only gets the bandage.
+- Bullet: halved under a bandage and never ends. `ISRemoveBullet` (tweezers or suture needle holder) leaves a bleeding
+  deep wound that an open part never closes (held at 3), so it comes out only with a stitch or a bandage to follow.
+- Fracture: only `ISSplint` stops it (a splint, or a plank / stick with ripped sheets; not head or torso); a bandage only
+  eases the pain (`/ 1.5`), so a fracture alone gets no bandage.
+Missing a tool: bandage for now where that helps, and every later triage looks again (user, 2026-11-09), so a part
+already bandaged still gets what it could not have then. Stitch, splint and glass need nothing done to the bandage:
+their actions do not ask, though vanilla's menu does for the stitch (`BaseHandler:isInjured`), and `setStitched` leaves
+it on. A bullet needs it off first: `setHaveBullet(false)` -> `setDeepWounded(true)` clears `bandaged`, losing the old
+one, and `ISRemoveBullet`'s sync does not carry that flag. If other wounds were under it, a spare bandage must be there
+to cover them again: the old one only exists once it is off, too late for the queue to pick it.
+No disinfecting, burn cleaning, poultices or pills. The best bandage carried goes first
 (highest `getBandagePower`, alcoholic before plain). Those actions already treat another player and get Field
 Medicine's treatment time and strength like any other treatment.
 
@@ -17,9 +33,10 @@ body parts, each part's treatments together in the order above. Anyone under `T.
 first, whatever their wounds; inside each of those two groups the part costing the most overall health goes first
 (`T.drain`). So a stranger's bleeding neck comes before the doctor's scratch, and the doctor's scratch before the
 stranger's bleeding neck if only the doctor is dying. The plan is made once, when the treatment starts.
-`T.drain` follows `BodyPart.DamageUpdate` (42.21 ~142): per update, for an unbandaged part, each wound takes its own
-amount (burn 3.75, deep wound / bullet / unsplinted fracture 3.125, bite 2.1875, cut 1.875, scratch 0.9375) from that
-part, times `getDamageScaler()` (neck x 5), and bleeding takes 0.2857 x bleeding time / 10 x the scaler through
+`T.drain` follows `BodyPart.DamageUpdate` (42.21 ~142): per update, each wound takes its own amount (burn 3.75, deep
+wound / bullet / unsplinted fracture 3.125, bite 2.1875, cut 1.875, scratch 0.9375) from that part, times
+`getDamageScaler()` (neck x 5). A bandage stops all of those but deep wounds and bullets (half) and fractures (full).
+Unbandaged, bleeding takes 0.2857 x bleeding time / 10 x the scaler through
 `ReduceGeneralHealth`. `BodyDamage.calculateOverallHealth` (~2437) adds up each part's missing health times
 `BodyPartType.getDamageModifyer` (hand 0.1 ... neck 0.7) while `ReduceGeneralHealth` divides by that modifier and by the
 17 parts, so bleeding counts in full and a part's own damage counts times its modifier. All wounds of the part count,
@@ -64,42 +81,67 @@ end
 
 --- What this part costs its owner's overall health per update, on one scale for every part and person (see the header).
 function T.drain(part)
+    local bandaged = part:bandaged()
     local wounds = 0
     if part:getHealth() > 0 then
-        if part:getDeepWoundTime() > 0 and not part:stitched() then wounds = wounds + 3.125 end
-        if part:getScratchTime() > 0 then wounds = wounds + 0.9375 end
-        if part:getCutTime() > 0 then wounds = wounds + 1.875 end
-        if part:getBiteTime() > 0 then wounds = wounds + 2.1875 end
-        if part:haveBullet() then wounds = wounds + 3.125 end
-        if part:getBurnTime() > 0 then wounds = wounds + 3.75 end
+        local deep = bandaged and 1.5625 or 3.125
+        if part:getDeepWoundTime() > 0 and not part:stitched() then wounds = wounds + deep end
+        if part:haveBullet() then wounds = wounds + deep end
         if part:getFractureTime() > 0 and not part:isSplint() then wounds = wounds + 3.125 end
+        if not bandaged then
+            if part:getScratchTime() > 0 then wounds = wounds + 0.9375 end
+            if part:getCutTime() > 0 then wounds = wounds + 1.875 end
+            if part:getBiteTime() > 0 then wounds = wounds + 2.1875 end
+            if part:getBurnTime() > 0 then wounds = wounds + 3.75 end
+        end
     end
     local scaler = part:getDamageScaler()
     local drain = wounds * scaler * BodyPartType.getDamageModifyer(part:getIndex())
-    if part:getBleedingTime() > 0 then drain = drain + 0.2857143 * part:getBleedingTime() / 10 * scaler end
+    if part:getBleedingTime() > 0 and not bandaged then drain = drain + 0.2857143 * part:getBleedingTime() / 10 * scaler end
     return drain
 end
 
---- One part's treatments, in treatment order.
-local function partSteps(part, patient)
-    local steps = {}
-    if part:bandaged() then return steps end
-    local idx = part:getIndex()
-    local function add(act) steps[#steps + 1] = { patient = patient, part = idx, act = act } end
-    if part:haveGlass() then add("glass") end
-    if part:haveBullet() then add("bullet") end
-    if part:getFractureTime() > 0 and part:getSplintFactor() <= 0 and not NO_SPLINT[tostring(part:getType())] then
-        add("splint")
-    end
-    if part:scratched() or part:isCut() or part:isDeepWounded() or part:bitten() or part:haveGlass()
-        or part:haveBullet() or part:isInfectedWound() then
-        add("bandage")
-    end
-    return steps
+--- A part's wounds as plain flags: they travel in the `triagePlan` command.
+function T.woundsOf(part)
+    local w = {}
+    local function flag(name, on) if on then w[name] = true end end
+    flag("bandaged", part:bandaged())
+    flag("glass", part:haveGlass())
+    flag("bullet", part:haveBullet())
+    flag("deep", (part:isDeepWounded() or part:getDeepWoundTime() > 0) and not part:stitched())
+    flag("splint", part:getFractureTime() > 0 and part:getSplintFactor() <= 0
+        and not NO_SPLINT[tostring(part:getType())])
+    -- What only a bandage helps. Bleeding of a deep wound or bullet goes with them.
+    flag("other", part:scratched() or part:getScratchTime() > 0 or part:isCut() or part:getCutTime() > 0
+        or part:bitten() or part:getBiteTime() > 0 or part:getBurnTime() > 0
+        or (part:getBleedingTime() > 0 and not w.deep and not w.bullet) or (w.glass and not w.deep))
+    return w
 end
 
---- Steps for a list of people: { { patient = character, part = index, act = "glass" | "bullet" | "splint" | "bandage" } },
---- most urgent first (see the header).
+--- The fewest treatments for these wounds with these supplies (`has.tweezers`, `has.suture`, `has.bandage`), in order:
+--- "unbandage", "glass", "bullet", "stitch", "bandage", "splint". See the header.
+function T.actions(w, has)
+    local acts = {}
+    local function add(act) acts[#acts + 1] = act end
+    local bulletOut = w.bullet and has.tweezers and (has.suture or has.bandage)
+    -- Taking the bullet out uncovers what the old bandage covered.
+    if bulletOut and w.bandaged and w.other and not has.bandage then bulletOut = false end
+    local stitch = has.suture and (bulletOut or (w.deep and not w.bullet))
+    if bulletOut and w.bandaged then add("unbandage") end
+    if w.glass and w.deep then add("glass") end
+    if bulletOut then add("bullet") end
+    if stitch then add("stitch") end
+    if not w.bandaged or bulletOut then
+        if w.other or ((w.deep or w.bullet) and not stitch) then add("bandage") end
+    end
+    if w.splint then add("splint") end
+    return acts
+end
+
+local EVERYTHING = { tweezers = true, suture = true, bandage = true }
+
+--- Steps for a list of people: { { patient = character, part = index, w = T.woundsOf(part) } }, one per part that has
+--- anything left to do, most urgent first (see the header).
 function T.plan(people)
     local groups = {}
     for _, person in ipairs(people) do
@@ -108,9 +150,10 @@ function T.plan(people)
         local parts = body:getBodyParts()
         for i = 0, parts:size() - 1 do
             local part = parts:get(i)
-            local steps = partSteps(part, person)
-            if #steps > 0 then
-                groups[#groups + 1] = { steps = steps, critical = critical, drain = T.drain(part), seq = #groups }
+            local w = T.woundsOf(part)
+            if #T.actions(w, EVERYTHING) > 0 then
+                local step = { patient = person, part = part:getIndex(), w = w }
+                groups[#groups + 1] = { step = step, critical = critical, drain = T.drain(part), seq = #groups }
             end
         end
     end
@@ -120,9 +163,7 @@ function T.plan(people)
         return a.seq < b.seq
     end)
     local steps = {}
-    for _, group in ipairs(groups) do
-        for _, s in ipairs(group.steps) do steps[#steps + 1] = s end
-    end
+    for _, group in ipairs(groups) do steps[#steps + 1] = group.step end
     return steps
 end
 
@@ -140,6 +181,7 @@ function T.isGlassTool(item)
     return item:hasTag(ItemTag.REMOVE_GLASS) or item:getType() == "Tweezers" or item:getType() == "SutureNeedleHolder"
 end
 function T.isBandage(item) return item:getBandagePower() > 0 end
+function T.isSuture(item) return item:getType() == "SutureNeedle" end
 function T.isSplint(item) return item:getType() == "Splint" end
 function T.isPlank(item) return PLANKS[item:getType()] == true end
 function T.isSheet(item) return item:getType() == "RippedSheets" end
@@ -170,8 +212,8 @@ end
 --- Returns { { patient = character, ids = { item ID, ... } }, ... }.
 function T.borrow(doctor, steps)
     local mine = T.items(doctor:getInventory())
-    local own = { bandage = count(mine, T.isBandage), tweezers = count(mine, T.isTweezers) > 0,
-        splint = count(mine, T.isSplint), plank = count(mine, T.isPlank), sheet = count(mine, T.isSheet) }
+    local own = { bandage = count(mine, T.isBandage), suture = count(mine, T.isSuture),
+        tweezers = count(mine, T.isTweezers) > 0, splint = count(mine, T.isSplint), plank = count(mine, T.isPlank), sheet = count(mine, T.isSheet) }
     local theirs, take = {}, {}
     local function spare(patient, pred)
         if patient == doctor then return nil end
@@ -186,22 +228,32 @@ function T.borrow(doctor, steps)
         if it then take[it] = patient end
         return it ~= nil
     end
+    local function useOne(kind, patient, pred)
+        if own[kind] > 0 then own[kind] = own[kind] - 1 else takeFrom(patient, pred) end
+    end
     for _, s in ipairs(steps) do
-        if s.act == "bandage" then
-            if own.bandage > 0 then own.bandage = own.bandage - 1 else takeFrom(s.patient, T.isBandage) end
-        elseif s.act == "bullet" then
-            if not own.tweezers then own.tweezers = takeFrom(s.patient, T.isTweezers) end
-        elseif s.act == "splint" then
-            if own.splint > 0 then
-                own.splint = own.splint - 1
-            elseif own.plank > 0 and own.sheet > 0 then
-                own.plank, own.sheet = own.plank - 1, own.sheet - 1
-            elseif not takeFrom(s.patient, T.isSplint) then
-                local plank = own.plank > 0 or spare(s.patient, T.isPlank)
-                local sheet = own.sheet > 0 or spare(s.patient, T.isSheet)
-                if plank and sheet then
-                    if own.plank > 0 then own.plank = own.plank - 1 else take[plank] = s.patient end
-                    if own.sheet > 0 then own.sheet = own.sheet - 1 else take[sheet] = s.patient end
+        local has = { tweezers = own.tweezers or spare(s.patient, T.isTweezers) ~= nil,
+            suture = own.suture > 0 or spare(s.patient, T.isSuture) ~= nil,
+            bandage = own.bandage > 0 or spare(s.patient, T.isBandage) ~= nil }
+        for _, act in ipairs(T.actions(s.w, has)) do
+            if act == "bandage" then
+                useOne("bandage", s.patient, T.isBandage)
+            elseif act == "stitch" then
+                useOne("suture", s.patient, T.isSuture)
+            elseif act == "bullet" then
+                if not own.tweezers then own.tweezers = takeFrom(s.patient, T.isTweezers) end
+            elseif act == "splint" then
+                if own.splint > 0 then
+                    own.splint = own.splint - 1
+                elseif own.plank > 0 and own.sheet > 0 then
+                    own.plank, own.sheet = own.plank - 1, own.sheet - 1
+                elseif not takeFrom(s.patient, T.isSplint) then
+                    local plank = own.plank > 0 or spare(s.patient, T.isPlank)
+                    local sheet = own.sheet > 0 or spare(s.patient, T.isSheet)
+                    if plank and sheet then
+                        if own.plank > 0 then own.plank = own.plank - 1 else take[plank] = s.patient end
+                        if own.sheet > 0 then own.sheet = own.sheet - 1 else take[sheet] = s.patient end
+                    end
                 end
             end
         end
@@ -271,7 +323,7 @@ if isServer() then
                 table.insert(wire.moved, { who = entry.patient:getOnlineID(), ids = entry.ids })
             end
             for _, s in ipairs(steps) do
-                table.insert(wire.steps, { who = s.patient:getOnlineID(), part = s.part, act = s.act })
+                table.insert(wire.steps, { who = s.patient:getOnlineID(), part = s.part, w = s.w })
             end
         end
         sendServerCommand(player, M.MODULE, "triagePlan", wire)

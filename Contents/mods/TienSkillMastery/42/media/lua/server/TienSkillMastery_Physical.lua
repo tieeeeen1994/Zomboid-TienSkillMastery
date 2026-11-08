@@ -13,7 +13,7 @@ Carry weight (Conditioning.CarryWeight, flat): `BodyDamage.Update` (~2066, serve
 int(int(maxWeightBase x getWeightMod() - reducers) x maxWeightDelta) every update, and `maxWeightDelta` (trait
 Strong 1.5 / Weak 0.75 / Feeble 0.9 / Stout 1.25, else 1) is only set when the player object is built, never saved,
 never touched by vanilla Lua. The bonus is added to the delta as kg / (maxWeightBase x weightMod), whole kg only
-(floor), and what this file added is remembered per player object so it is taken back before a new amount goes on.
+(floor), and the original delta is remembered per player object, so each new amount goes on top of it, not on a rounded float.
 The owner gets `maxWeight` with PlayerDamage (every 2 s). Conditioning's signature goes on the same delta: the max
 weight is raised just enough that Heavy Load reads one level lower (shared/TienSkillMastery_HeavyLoad.lua).
 
@@ -109,15 +109,24 @@ end
 -- Carry weight
 -- ---------------------------------------------------------------------------------------------------------------
 
-local addedDelta = {}   -- [player object] = delta this file added
+local addedDelta = {}     -- [player object] = delta this file added
+local originalDelta = {}  -- [player object] = delta before anything was added
+local writtenDelta = {}   -- [player object] = delta as Java stored our last write
 
 --- Conditioning.CarryWeight, plus Conditioning's signature: the max weight raised just enough that Heavy Load is one
 --- level lower (shared/TienSkillMastery_HeavyLoad.lua). Both go on `maxWeightDelta`; the shifted max is reached as
 --- int(base x delta) with delta = (max + 0.5) / base.
+--- The delta is a Java float, so "current - added" is not the original: float(1.275) - 0.275 = 0.99999998, and
+--- int(20 x that) = 19 (found 2026-11-09). The original is kept instead, and worked out again only when something
+--- else changed the delta.
 local function updateMaxWeight(player)
     local HL = M.HeavyLoad
     local had = addedDelta[player] or 0
-    local vanillaDelta = player:getMaxWeightDelta() - had
+    local current = player:getMaxWeightDelta()
+    if originalDelta[player] == nil or current ~= writtenDelta[player] then
+        originalDelta[player] = current - had
+    end
+    local vanillaDelta = originalDelta[player]
     local carry, real, target, base = HL.compute(player, vanillaDelta)
     HL.realMax[player] = real
     local want = carry
@@ -127,6 +136,7 @@ local function updateMaxWeight(player)
     if math.abs(want - had) < 0.00001 then return end
     player:setMaxWeightDelta(vanillaDelta + want)
     addedDelta[player] = want
+    writtenDelta[player] = player:getMaxWeightDelta()
 end
 
 -- ---------------------------------------------------------------------------------------------------------------
@@ -393,7 +403,7 @@ Events.OnTick.Add(onTick)
 local function cleanUp()
     local alive = {}
     M.eachPlayer(function(p) alive[p] = true end)
-    for _, t in ipairs({ lastEndurance, addedDelta, lastItems, lastStiffness, crashNotes }) do
+    for _, t in ipairs({ lastEndurance, addedDelta, originalDelta, writtenDelta, lastItems, lastStiffness, crashNotes }) do
         for k in pairs(t) do
             if not alive[k] then t[k] = nil end
         end

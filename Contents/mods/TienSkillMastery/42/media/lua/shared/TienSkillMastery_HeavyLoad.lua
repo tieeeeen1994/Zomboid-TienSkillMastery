@@ -60,7 +60,7 @@ end
 
 --- Conditioning.CarryWeight as a share of maxWeightDelta (whole kg).
 function HL.carryDelta(player)
-    local kg = math.floor(M.val(player, "Conditioning.CarryWeight") + 0.0001)
+    local kg = math.floor(round(M.val(player, "Conditioning.CarryWeight"), 3))
     local base = player:getMaxWeightBase() * player:getWeightMod()
     if kg > 0 and base > 0 then return (kg + 0.05) / base end
     return 0
@@ -112,7 +112,10 @@ function HL.compute(player, vanillaDelta)
     if not M.sig(player, "Conditioning.SigHeavyLoad") then return carry end
     local base = HL.strengthBase(player)
     if base <= 0 then return carry end
-    local real = math.floor(base * (vanillaDelta + carry))
+    -- Java multiplies in float (20 x 0.9f = 18.0), Lua in double (17.9999995), then Java's (int) cuts the decimals. So
+    -- round the float noise away (vanilla's `round`, shared/env.lua), then floor: rounding to a whole number would
+    -- be wrong (19 x 1.25 = 23.75 is 23 in Java).
+    local real = math.floor(round(base * (vanillaDelta + carry), 3))
     local weight = player:getInventory():getCapacityWeight()
     return carry, real, HL.shiftedMax(weight, real), base
 end

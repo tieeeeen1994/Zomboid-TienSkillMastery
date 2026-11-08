@@ -122,11 +122,13 @@ moment it is picked (it does not grow with mastery levels).
 - **Mending:** *Restoration*: right-click a repaired item to bring it back to full condition and clear its repair count,
   for three times the price of a repair (zip ties, tape, glue, epoxy: whatever repairs it and you are carrying).
 - **Field Medicine:** *Field Triage*: the wound key (comma, rebindable) tends you and everyone next to you; the world menu
-  also offers yourself, one person or everyone nearby. It queues every needed treatment at once: glass and bullets out,
-  fractures splinted, wounds bandaged with the best bandage you carry (theirs too, used only on them). Everyone shares one
+  also offers yourself, one person or everyone nearby. It queues the fewest treatments that stop health loss: glass and bullets out,
+  deep wounds stitched if a suture needle is at hand, fractures splinted, every other wound (burns included) bandaged with the best bandage you carry (theirs too, used only on them). Everyone shares one
   list, you included: anyone under 25% overall health goes first, then the body part costing the most health, whoever's
   it is. Patients can move around within 2 tiles of you; anyone who goes farther, dies or leaves is skipped and you carry on
-  with the rest. Infected wounds get bandaged like any other, but nothing here disinfects them. *Needlework*: sew a bandage
+  with the rest. Infected wounds get bandaged like any other, but nothing here disinfects them. What you lack the tool for
+  is bandaged for now, and every later triage looks again: a bullet once you carry tweezers or a suture needle holder, a
+  deep wound once you carry a suture needle, a fracture once you have a splint. *Needlework*: sew a bandage
   from 2 ripped sheets with a needle (kept) and thread, and make a suture needle from any sewing needle (used up) and thread.
   Anything that counts as thread will do: thread, sinew, dental floss, fishing line.
 - **Provisioning:** *Choice Cuts*: meat you butcher is 10% more filling and 30% more nutritious. *Savory Meals*: food you cook

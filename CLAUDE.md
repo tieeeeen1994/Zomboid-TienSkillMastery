@@ -99,7 +99,7 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   "Signature:" prefix since 2026-11-08), unlocked / unlocks when picked. Built: Heavy Load one level lower (since 2026-11-08 for every effect: the
   max weight is raised so the moodle itself reads one level lower, `shared/*_HeavyLoad.lua`, server through
   `maxWeightDelta` with CarryWeight, client `setMaxWeight` per update, Lua `IsoPlayer:getMaxWeight` and the main inventory's
-  `ItemContainer:getMaxWeight` wrapped on every side to return the real max (weight label, pickup timers); replaced the per-effect give-backs: +0.07 combat speed, drop factors, regen at 2); masterwork (smithing recipes mark every output at
+  `ItemContainer:getMaxWeight` wrapped on every side to return the real max (weight label, pickup timers); the server keeps each player's original delta, since subtracting from the stored float drifted its max 1 kg below the client's (2026-11-09); replaced the per-effect give-backs: +0.07 combat speed, drop factors, regen at 2); masterwork (smithing recipes mark every output at
   15%, `TSM_MarkKind`; since 2026-11-08 `carryMasterwork` passes it through later recipes for a master crafter only,
   from a single-piece input, head-only `TSM_MarkPart` on weapons with head condition, `M.markChance`; the same day Handicraft's
   `CraftsmansMark` bonus became the signature `SigCraftsmanship` and passes on the same way, a handle mark in its own
@@ -153,7 +153,7 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   (any car through vanilla's ISRemoveBurntVehicle with a server re-check of the signature and guards; part items by
   type pattern, `M.SCRAP_PARTS` yield table). Fourth harness file `tests4.lua` (17 checks: part table, guards, the
   wrapped complete, push back's endurance).
-- Phase 3b, second part: `shared/*_Triage.lua` + `client/*_TriageMenu.lua` (plan rules in `M.Triage.plan`; another
+- Phase 3b, second part: `shared/*_Triage.lua` + `client/*_TriageMenu.lua` (plan rules in `M.Triage.plan`: since 2026-11-09 the goal is the fewest actions that stop health loss, chosen by `T.actions` from the wounds and supplies: stitch with a suture needle, else bandage for now, and every later triage looks again, on bandaged parts too; a fracture alone only a splint; a stitch gets no bandage (user: infection can wait, the point is to stop health loss now and avoid death); another
   player's plan from the server, which also borrows the doctor's missing supplies from the patient and gives the
   unused ones back after the queue: `triage` / `triagePlan` / `triageReturn`; the client queues once the borrowed
   item IDs are in its inventory or after 3 s). Since 2026-11-08 (user; played): key binding `TsmTendWounds` (default
