@@ -113,9 +113,20 @@ def main():
         f.write("\n".join(forum).strip() + "\n")
 
     desc = render(sections, summary=True) + ["", POINTER]
-    out = ["version=1", "title=" + TITLE] + ["description=" + l for l in desc]
-    out += ["tags=Build 42;Misc;Multiplayer", "visibility=public"]
-    with open(os.path.join(REPO, "workshop.txt"), "w", encoding="utf-8", newline="\n") as f:
+    # The game writes id= into workshop.txt on the first upload; losing it makes the next upload a new Workshop item.
+    # Visibility is also the file's own, so regenerating never changes who can see the mod.
+    workshop = os.path.join(REPO, "workshop.txt")
+    kept = {}
+    if os.path.exists(workshop):
+        with open(workshop, encoding="utf-8") as f:
+            for l in f:
+                key, sep, value = l.rstrip("\r\n").partition("=")
+                if sep and key in ("id", "visibility"):
+                    kept[key] = value
+    head = ["version=1"] + (["id=" + kept["id"]] if "id" in kept else [])
+    out = head + ["title=" + TITLE] + ["description=" + l for l in desc]
+    out += ["tags=Build 42;Misc;Multiplayer", "visibility=" + kept.get("visibility", "unlisted")]
+    with open(workshop, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(out) + "\n")
     chars = sum(len(l) + 1 for l in desc)
     print("forum.txt written,", sum(len(l) + 1 for l in forum), "characters")

@@ -1,4 +1,5 @@
 version=1
+id=3836051294
 title=Tien's Skill Mastery
 description=Skills stay vanilla, levels 0 to 10. On top of them come [b]masteries[/b]: named groups of skills, such as [b]Firearms[/b] (Aiming and Reloading) or [b]Construction[/b] (Carpentry and Masonry), each with effects of its own. Once every skill in a mastery is at level 10 you can pick it. A character holds at most [b]three[/b] masteries, so choose what your survivor is known for.
 description=[list]
@@ -67,4 +68,4 @@ description=[/list]
 description=
 description=Every mastery's effects and every signature ability in full: see the pinned thread in the Discussions tab, or click a mastery in the in-game Mastery tab.
 tags=Build 42;Misc;Multiplayer
-visibility=public
+visibility=unlisted
