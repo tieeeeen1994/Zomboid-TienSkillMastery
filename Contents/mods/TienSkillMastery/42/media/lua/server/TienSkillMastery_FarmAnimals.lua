@@ -166,7 +166,7 @@ ButcheringUtil.addAnimalPart = function(part, player, carcass, ...)
 end
 
 -- Provisioning.LastingFood (phase 2) and the choice cuts signature (phase 3a): meat a master butchers stays fresh
--- longer and is more filling and nutritious (hunger, base hunger, calories, lipids, proteins, carbs x 1.15; vanilla's
+-- longer and is more filling and nutritious (hunger, base hunger, calories, lipids, proteins, carbs x 1.4; vanilla's
 -- own `modifyMeat` scales the same fields by animal size and cut). `giveMeatModified(meatDef, nb,
 -- player, ...)` (~363) makes each meat item, runs `modifyMeat(item, size, meatRatio, hungerBoost, rotten, deathAge)`
 -- (~426: nutrition, age), then `AddItem` + `sendAddItemToContainer`. `modifyMeat` has no player, so the butcher is
@@ -188,7 +188,7 @@ if vanillaModifyMeat then
         local text = vanillaModifyMeat(item, ...)
         if butcher and item then
             M.stretchFood(item, M.more(butcher, "Provisioning.LastingFood"))
-            -- Provisioning's signature, choice cuts: the meat is 15% more filling and nutritious (flat, from the pick).
+            -- Provisioning's signature, choice cuts: the meat is 40% more filling and nutritious (flat, from the pick).
             local cuts = M.val(butcher, "Provisioning.SigChoiceCuts")
             if cuts > 0 and instanceof(item, "Food") then
                 local f = 1 + cuts / 100
