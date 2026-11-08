@@ -402,6 +402,19 @@ local function bodyPartIndex(part)
     return BodyPartType.ToIndex(BodyPartType[pick[ZombRand(#pick) + 1]])
 end
 
+-- The kill counter (reported 2026-11-08: thrown kills never counted): vanilla adds a zombie kill only in a hit's own
+-- code (`IsoGameCharacter.hitConsequences` ~6219, on the attacker's client and again on the server), each side keeping
+-- its own copy (the server's is saved, the client's is what the windows show). A throw skips that code, so both are
+-- added here. In MP the owner's client takes the health and the server only learns of the death from a later
+-- ZombiePacket, so the server judges a kill from its own copy of the health: two throws landing on one zombie before
+-- that packet can both count.
+local function creditKill(player)
+    player:setZombieKills(player:getZombieKills() + 1)
+    if isServer() then
+        sendServerCommand(player, M.MODULE, "throwKill", { id = player:getOnlineID() })
+    end
+end
+
 local function applyHit(player, target, kind, amount, part, weapon)
     if kind == "animal" then
         -- Vanilla's animal hit (`IsoAnimal.hitConsequences`, server / SP): health loss (damage x the animal's
@@ -420,18 +433,26 @@ local function applyHit(player, target, kind, amount, part, weapon)
     local standing = Th.postureOf(target, "zombie") == "stand"
     local owner = isServer() and target:getOwnerPlayer() or nil
     if owner then
+        -- The killer on the corpse: the server's `die()` kills with `getAttackedBy()`, as after a vanilla hit.
+        target:setAttackedBy(player)
+        local lethal = target:getHealth() <= math.min(amount, M.Relay.MAX_DAMAGE)
+        if lethal then creditKill(player) end
         sendServerCommand(owner, M.MODULE, "zombieDamage", { id = target:getOnlineID(), amount = amount })
         if standing then
             sendServerCommand(owner, M.MODULE, "zombieActApply", { id = target:getOnlineID(), kind = "pushback",
                 x = player:getX(), y = player:getY() })
+            -- Everyone else sees the stagger too (see the relay), unless it is about to fall dead instead.
+            if not lethal then M.Relay.show("pushback", { target:getOnlineID() }, player:getX(), player:getY()) end
         end
         return
     end
     target:setHealth(math.max(0, target:getHealth() - amount))
     if target:getHealth() <= 0 then
+        creditKill(player)
         pcall(function() target:Kill(player) end)
     elseif standing then
         M.Relay.queueAct(target, "pushback", { x = player:getX(), y = player:getY() })
+        if isServer() then M.Relay.show("pushback", { target:getOnlineID() }, player:getX(), player:getY()) end
     end
 end
 
@@ -761,6 +782,11 @@ Events.OnServerCommand.Add(function(module, command, args)
         Th.playHit(args)
         return
     end
+    if module == M.MODULE and command == "throwKill" and type(args) == "table" then
+        local thrower = getPlayerByOnlineID(tonumber(args.id))
+        if thrower and thrower:isLocalPlayer() then thrower:setZombieKills(thrower:getZombieKills() + 1) end
+        return
+    end
     if module == M.MODULE and command == "throwFly" and type(args) == "table" then
         Th.showFlight({ type = args.type, fx = tonumber(args.fx), fy = tonumber(args.fy), z = tonumber(args.z),
             tx = tonumber(args.tx), ty = tonumber(args.ty), aim = args.aim, speed = args.speed, spin = args.spin,
@@ -961,8 +987,11 @@ function TA:waitToStart()
 end
 
 function TA:start()
-    self:setActionAnim("TsmThrowAxe")
+    -- The hand model first: `setActionAnim` enters PlayerActionsState on an MP client, and its `enter` captures the
+    -- action's override and model name right there for the other clients (`PlayerActionsState.setParams`), so set after
+    -- it they would see the thrower's real hand items instead of the carried weapon.
     if self.carried then self:setOverrideHandModels(self.item, nil) end
+    self:setActionAnim("TsmThrowAxe")
 end
 
 function TA:release()

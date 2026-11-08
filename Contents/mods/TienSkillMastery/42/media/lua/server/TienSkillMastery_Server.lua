@@ -301,11 +301,12 @@ Events.OnCharacterDeath.Add(onCharacterDeath)
 local MAX_POINTS = 1e7
 
 --- Picking a mastery (the Mastery tab's Pick button). Checked here, whoever asks: the mastery exists, is not picked,
---- a slot is free and every member skill is at 10. Returns true when picked.
+--- is not coming soon, a slot is free and every member skill is at 10. Returns true when picked.
 function M.pick(player, masteryId)
     if not player or type(masteryId) ~= "string" or not M.masteryById[masteryId] then return false end
     local e = M.entry(player, true)
-    if M.isPicked(player, masteryId) or #e.picks >= M.MAX_PICKS or not M.membersAt10(player, masteryId) then
+    if M.COMING_SOON[masteryId] or M.isPicked(player, masteryId) or #e.picks >= M.MAX_PICKS
+        or not M.membersAt10(player, masteryId) then
         print("[TienSkillMastery] refused pick of " .. masteryId .. " by " .. tostring(player:getUsername()))
         return false
     end

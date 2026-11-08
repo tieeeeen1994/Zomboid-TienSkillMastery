@@ -10,8 +10,8 @@ does). The window's layout save only records vanilla's tabs, so a torn-off Maste
 v2 (docs/v2-draft.md): the 22 masteries by group, styled like the vanilla Skills tab (collapsible groups with the
 tree arrow and SkillBarSeparator). Each row: the mastery's name, then its state: ten SkillUnit boxes in vanilla's
 gold for a picked one (the level in progress filled by its progress, prestige past 10 as +n in a deeper gold,
-grey while inactive), a Pick button when every member is at 10 and a slot is free, else "Locked" / "Closed"; then
-the member skills, each in green once at 10. A slot counter heads the tab. Click a row to list its effects now and
+grey while inactive), a Pick button when every member is at 10 and a slot is free, a grey Coming Soon one that does
+nothing for M.COMING_SOON, else "Locked" / "Closed"; then the member skills, each in green once at 10. A slot counter heads the tab. Click a row to list its effects now and
 at mastery 10, signatures first. Picking asks for confirmation (permanent) and is checked again on the server.
 ]]
 
@@ -114,14 +114,16 @@ function TienSkillMasteryPanel:createChildren()
         self.effectOrder[m.id] = order
     end
     self.groups = groups
-    -- The state column: wide enough for the boxes, the Pick button and the state words.
+    -- The state column: wide enough for the boxes, the Pick and Coming Soon buttons and the state words.
     self.pickText = getText("IGUI_TienSkillMastery_Pick")
     self.pickWidth = tm:MeasureStringX(UIFont.Small, self.pickText) + PAD * 2
+    self.soonText = getText("IGUI_TienSkillMastery_ComingSoon")
+    self.soonWidth = tm:MeasureStringX(UIFont.Small, self.soonText) + PAD * 2
     self.stateWords = {
         locked = getText("IGUI_TienSkillMastery_StateLocked"),
         closed = getText("IGUI_TienSkillMastery_StateClosed"),
     }
-    self.stateLen = self.pickWidth
+    self.stateLen = math.max(self.pickWidth, self.soonWidth)
     for _, w in pairs(self.stateWords) do self.stateLen = math.max(self.stateLen, tm:MeasureStringX(UIFont.Small, w)) end
     -- One collapse button per group, made like vanilla's (ISCharacterInfo:createChildren): an ISButton with the
     -- tree texture, so it has the same box around the arrow. Moved to its row's y in render.
@@ -208,8 +210,17 @@ function TienSkillMasteryPanel:render()
     local left = PAD * 2 + ROW_HGT + 1            -- vanilla's `left`, right of the collapse arrow
     local nameX = left + PAD * 2
     local stateX = left + PAD * 3 + self.nameLen  -- where vanilla puts the skill bar
-    local stateW = math.max(self:boxesWidth() + tm:MeasureStringX(UIFont.Small, "+00") + 4, self.stateLen)
-    local membersX = stateX + stateW + PAD * 2
+    -- Room for the prestige "+n" only once a pick has one, so the skills sit right after the boxes until then.
+    local prestigeW = 0
+    for _, id in ipairs(M.picks(player)) do
+        local level = M.levelInfo(M.getPoints(player, id))
+        if level > M.BONUS_LEVELS then
+            local p = "+" .. string.format("%d", level - M.BONUS_LEVELS)
+            prestigeW = math.max(prestigeW, tm:MeasureStringX(UIFont.Small, p) + 4)
+        end
+    end
+    local stateW = math.max(self:boxesWidth() + prestigeW, self.stateLen)
+    local membersX = stateX + stateW + PAD
     local fontOffset = (ROW_HGT - FONT_HGT_SMALL) / 2
     local mouseY, mouseX = self:getMouseY(), self:getMouseX()
     local mouseIn = self:isMouseOver()
@@ -278,6 +289,16 @@ function TienSkillMasteryPanel:render()
                     self:drawTextCentre(self.pickText, bx + bw / 2, y + fontOffset, 1, 1, 1, 1, UIFont.Small)
                     table.insert(self.pickButtons, { x = bx, y = by, w = bw, h = bh, id = m.id })
                     if over then tipText = getText("IGUI_TienSkillMastery_PickTip") end
+                elseif state == "soon" then
+                    -- Looks like the Pick button in grey, with no hover change; not in pickButtons, so a click on it
+                    -- just opens the effects like the rest of the row.
+                    local bx, by, bw, bh = stateX, y + 1, self.soonWidth, ROW_HGT - 2
+                    self:drawRect(bx, by, bw, bh, 0.35, 0.25, 0.25, 0.25)
+                    self:drawRectBorder(bx, by, bw, bh, 0.9, 0.45, 0.45, 0.45)
+                    self:drawTextCentre(self.soonText, bx + bw / 2, y + fontOffset, GREY[1], GREY[2], GREY[3], 1, UIFont.Small)
+                    if hovered and mouseX >= bx and mouseX < bx + bw then
+                        tipText = getText("IGUI_TienSkillMastery_ComingSoonTip")
+                    end
                 else
                     self:drawText(self.stateWords[state] or "", stateX, y + fontOffset, GREY[1], GREY[2], GREY[3], 1, UIFont.Small)
                 end

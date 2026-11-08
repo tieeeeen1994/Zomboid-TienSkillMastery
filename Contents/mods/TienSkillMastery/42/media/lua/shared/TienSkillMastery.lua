@@ -114,9 +114,18 @@ M.GROUPS = { "Combat", "Body", "Crafting", "Field" }
 -- Parked masteries (user, 2026-11-07: Stealth and Freerunning, until their missing effects can be built): defined
 -- with their effects and hooks, but not listed, not pickable, earning nothing, effects off. Remove an id here to
 -- bring it back. A pick of one made before it was parked is dropped from the character's picks (its points stay).
--- Salvaging (user, 2026-11-08): hidden for now, too narrow as it stands.
-M.PARKED = { Freerunning = true, Salvaging = true, Stealth = true }
+-- Salvaging (user, 2026-11-08): hidden for now, too narrow as it stands. All three unhidden the same day (user), now
+-- Coming Soon below; none is parked at the moment.
+M.PARKED = {}
 M.parked = {}         -- [id] = mastery, for parked ones
+
+-- Coming soon (user, 2026-11-08): listed with their effects, but not pickable, the Pick button a grey Coming Soon.
+-- Unlike a parked mastery, a pick made before it was listed here stays and keeps working. Remove an id once it is
+-- ready: Angling, Homesteading and Hunting have signatures not played in game yet; Freerunning and Stealth lack most
+-- of their effects; Salvaging is too narrow as it stands.
+M.COMING_SOON = {
+    Angling = true, Freerunning = true, Homesteading = true, Hunting = true, Salvaging = true, Stealth = true,
+}
 
 M.masteries = {}      -- display order
 M.masteryById = {}
@@ -138,8 +147,7 @@ function M.mastery(id, group, members)
     return m
 end
 
--- Every vanilla 42.21 skill, 35 skills in 22 masteries (approved 2026-11-06), 19 shown while three are parked
--- (Sprinting and Lightfooted then belong to none). Perk ids, not display names.
+-- Every vanilla 42.21 skill, 35 skills in 22 masteries (approved 2026-11-06). Perk ids, not display names.
 M.mastery("Firearms", "Combat", { "Aiming", "Reloading" })
 M.mastery("Axemanship", "Combat", { "Axe", "Strength" })
 M.mastery("Bludgeoning", "Combat", { "Blunt", "Strength" })
@@ -303,12 +311,14 @@ function M.membersAt10(player, masteryId)
 end
 
 --- "picked" (earning, effects on), "inactive" (picked, a member below 10), "available" (all members at 10, a slot
---- free), "closed" (every slot taken) or "locked" (a member below 10, a slot free).
+--- free), "closed" (every slot taken), "soon" (M.COMING_SOON, a slot free, whatever its members' levels) or "locked"
+--- (a member below 10, a slot free).
 function M.state(player, masteryId)
     if M.isPicked(player, masteryId) then
         return M.membersAt10(player, masteryId) and "picked" or "inactive"
     end
     if #M.picks(player) >= M.MAX_PICKS then return "closed" end
+    if M.COMING_SOON[masteryId] then return "soon" end
     return M.membersAt10(player, masteryId) and "available" or "locked"
 end
 
@@ -492,7 +502,7 @@ def("Construction", "SigPlanks", 100, "sig")        -- chance (%) of a 4th plank
 def("Construction", "SigStones", 2, "sig")          -- extra stones per broken large stone
 def("Handicraft", "SigDeftHands", 10, "sig")        -- every timed action (%) faster
 def("Handicraft", "SigCraftsmanship", 15, "sig")    -- wear ignored (%) by what the master makes (a "pts" bonus until 2026-11-08)
-def("Provisioning", "SigChoiceCuts", 40, "sig")     -- butchered meat (%) more filling and nutritious (15 until 2026-11-08)
+def("Provisioning", "SigChoiceCuts", 1, "sig")      -- butchered meat 10% more filling, 30% more nutritious (FarmAnimals.lua)
 def("Provisioning", "SigSavoryMeals", 80, "sig")    -- food the master finishes with heat causes (%) less unhappiness
 def("Hunting", "SigSturdyTraps", 1, "sig")          -- traps keep their bait and are never destroyed
 def("Hunting", "SigLiveCatch", 4, "sig")            -- live catches last x times longer in the trap

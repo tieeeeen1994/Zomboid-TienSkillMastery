@@ -166,7 +166,8 @@ ButcheringUtil.addAnimalPart = function(part, player, carcass, ...)
 end
 
 -- Provisioning.LastingFood (phase 2) and the choice cuts signature (phase 3a): meat a master butchers stays fresh
--- longer and is more filling and nutritious (hunger, base hunger, calories, lipids, proteins, carbs x 1.4; vanilla's
+-- longer and is more filling (hunger, base hunger x 1.1, so 10% heavier too: Food weight follows hunger) and more
+-- nutritious (calories, lipids, proteins, carbs x 1.3) (user, 2026-11-08; one x 1.15 for all of them before; vanilla's
 -- own `modifyMeat` scales the same fields by animal size and cut). `giveMeatModified(meatDef, nb,
 -- player, ...)` (~363) makes each meat item, runs `modifyMeat(item, size, meatRatio, hungerBoost, rotten, deathAge)`
 -- (~426: nutrition, age), then `AddItem` + `sendAddItemToContainer`. `modifyMeat` has no player, so the butcher is
@@ -188,16 +189,16 @@ if vanillaModifyMeat then
         local text = vanillaModifyMeat(item, ...)
         if butcher and item then
             M.stretchFood(item, M.more(butcher, "Provisioning.LastingFood"))
-            -- Provisioning's signature, choice cuts: the meat is 40% more filling and nutritious (flat, from the pick).
-            local cuts = M.val(butcher, "Provisioning.SigChoiceCuts")
-            if cuts > 0 and instanceof(item, "Food") then
-                local f = 1 + cuts / 100
-                item:setHungChange(item:getHungChange() * f)
-                item:setBaseHunger(item:getBaseHunger() * f)
-                item:setCalories(item:getCalories() * f)
-                item:setLipids(item:getLipids() * f)
-                item:setProteins(item:getProteins() * f)
-                item:setCarbohydrates(item:getCarbohydrates() * f)
+            -- Provisioning's signature, choice cuts: the meat is 10% more filling and 30% more nutritious (flat, from
+            -- the pick).
+            if M.sig(butcher, "Provisioning.SigChoiceCuts") and instanceof(item, "Food") then
+                local filling, nutrition = 1.1, 1.3
+                item:setHungChange(item:getHungChange() * filling)
+                item:setBaseHunger(item:getBaseHunger() * filling)
+                item:setCalories(item:getCalories() * nutrition)
+                item:setLipids(item:getLipids() * nutrition)
+                item:setProteins(item:getProteins() * nutrition)
+                item:setCarbohydrates(item:getCarbohydrates() * nutrition)
             end
         end
         return text

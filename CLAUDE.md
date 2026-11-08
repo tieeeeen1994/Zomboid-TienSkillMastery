@@ -5,14 +5,16 @@ the bonus), then endless prestige with no more bonuses. Mastery is earned only b
 by reading. Skill Journal (lait, workshop 3776641628) should one day record and restore it (low priority).
 Standalone mod, started 2026-11-05; **built 2026-11-05, not yet played in game or on a server**.
 **v2 replaces v1** (picked masteries over groups of skills, with effects of their own; design and every decision in
-`docs/v2-draft.md`). **All of v2 built 2026-11-07** (v0.3.0, not yet played) except what is parked with Stealth and Freerunning: see "v2 build" below.
+`docs/v2-draft.md`). **All of v2 built 2026-11-07** (v0.3.0, not yet played) except most of Stealth's and Freerunning's effects: see "v2 build" below.
 **Played in game (2026-11-07, user):** Firearms' signatures (Quickdraw, reloading while running) and Axemanship's
 (the throw key: held and carried axes, swing / hit sounds, damage on arrival; the reticle since replaced by an
-outline, animal and PvP targets added after that test); 2026-11-08: Smithing's Masterwork and Handicraft's
+outline, animal and PvP targets added after that test, those played 2026-11-08); 2026-11-08: Smithing's Masterwork and Handicraft's
 Craftsmanship (marks, passing on, tooltip), Construction's Clean Cuts and Clean Breaks (with the flat stone recipe), Conditioning's Pack Mule (moodle one level lower
 via max weight), Knifework's Lunge (1.5-tile reach, vanilla's TargetDist target), Engineering's Engine Overhaul, Street Fighting's
 Battering Ram, Handicraft's Deft Hands (transfers and grabs included), Fieldcraft's Steady Eyes and Sixth Sense, Field
-Medicine's Field Triage (sort, low-health priority, key, shared list), Needlework and the stitching pain passive.
+Medicine's Field Triage (sort, low-health priority, key, shared list), Needlework and the stitching pain passive,
+Provisioning's Choice Cuts and Savory Meals, Mending's Restoration, Bludgeoning's Wild Swing, Swordsmanship's Hamstring,
+Spearcraft's Javelin.
 
 Deft Hands and item transfers (2026-11-08): MP transfers are Java item transactions Lua cannot time, so a master's
 client sends each batch to the server instead (`*_DeftTransfer*.lua`, ported from Zomboid Fixes B42's fast-forward
@@ -21,7 +23,7 @@ vanilla's length cut by the signature and moves the items; SP cuts each later ba
 Zomboid Fixes B42's cheat / fast forward transfers. Right-click Grab (`ISGrabItemAction`) has its own path there too
 (ported from Zomboid Fixes B42's quick grab: no transaction, waits for arrival, `isValid` skipped once started).
 Played and working (2026-11-08, at a temporary 90%: transfers and grabs). Everything else is still
-unplayed, including Spearcraft's throw and every other passive. The v1 sections that
+unplayed: Hunting's, Homesteading's and Angling's signatures and every other passive. The v1 sections that
 follow still describe the hooks and the parking, which v2 keeps; their per-skill ids and values are superseded.
 
 Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLAUDE.md) and vanilla 42.21 Lua.
@@ -53,17 +55,25 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
 - Tests: lupa harness (session scratchpad `tsm/harness.lua` + `tests.lua`, not kept) loads the real core and server
   files: 92 checks (costs, picks, slots, gains before a pick lost, shared skills, inactive, decay, admin, steps).
   The mock's lose-level loop must only fire on a downward crossing, as Java's does, or every park looks like a drop.
-- **Parked: Stealth and Freerunning** (user, 2026-11-07: hidden from production until their missing effects are
-  built). `M.PARKED` in the core: a parked mastery keeps its definition, effects and hooks, but is left out of
-  `M.masteries` / `M.masteryById` / `M.masteriesOf` (not listed, not pickable, earns nothing), its effects read 0
-  (`M.enabled`), and a pick of it in saved data is dropped on read (points kept). Sprinting and Lightfooted belong to
-  no shown mastery meanwhile. README / workshop.txt do not list them. Remove an id from `M.PARKED` to bring it back.
-- **Parked: Salvaging** (user, 2026-11-08: hidden for now, too narrow; every bonus sits on scrapping a car or taking
-  engine parts, and a burnt car already drops ~135 items at Welding 10). Same parking as above: its effects, Scrapper and
-  hooks are all still there, off. Splitting them across Smithing and Engineering was tried and reverted the same day.
+- **Parking (none parked now)**: `M.PARKED` in the core: a parked mastery keeps its definition, effects and hooks, but
+  is left out of `M.masteries` / `M.masteryById` / `M.masteriesOf` (not listed, not pickable, earns nothing), its
+  effects read 0 (`M.enabled`), and a pick of it in saved data is dropped on read (points kept). Stealth and Freerunning
+  (user, 2026-11-07, until their missing effects are built) and Salvaging were parked this way until 2026-11-08, when
+  the user unhid them as Coming Soon (below). Picks dropped while parked do not come back.
+- **Salvaging's problem** (user, 2026-11-08: too narrow; every bonus sits on scrapping a car or taking
+  engine parts, and a burnt car already drops ~135 items at Welding 10). Its effects, Scrapper and
+  hooks are all there. Splitting them across Smithing and Engineering was tried and reverted the same day.
   Ideas offered, none chosen: Strip Down (one click uninstalls every part through vanilla's actions), Reclaimed Parts
   (installed parts sometimes survive scrapping), part scrapping getting the time and torch passives, Scrap Eye (forage
   Junk), Cut Through (torch opens locked doors, not traced).
+- **Coming soon: Hunting, Angling, Homesteading** (user, 2026-11-08: the masteries whose signatures have not been
+  played) **and Stealth, Freerunning, Salvaging** (the same day: unhidden, see Parking; Stealth shows only Sneak Speed,
+  Freerunning only running endurance and safe falls, and neither has a signature).
+  `M.COMING_SOON` in the core: listed with their effects, but `M.state` gives "soon" (after picked / inactive and
+  closed, whatever the members' levels, so nobody levels up to a Locked that never opens), the panel draws a grey
+  Coming Soon button that does nothing, and `M.pick` refuses them on the server. Unlike parking, an existing pick
+  stays and works. Remove an id once it has been played, and drop its "(coming soon)" from README, forum.txt and
+  workshop.txt.
 - Phase 2 (same day): the passives that fit existing hooks. Files: `shared/*_Relay.lua` (extra damage on a zombie's
   owner: own zombie inside `OnWeaponHitCharacter`, before `hitConsequences`; remote one via `zombieHit` -> server
   amount from its own copy of the mastery, 4-tile check -> `zombieDamage` to `getOwnerPlayer()`), `shared/*_Falls.lua`
@@ -97,8 +107,8 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   `client/*_MarkTooltip.lua`, TienBagUpgrades' after-the-chain pattern); every signature has a 1-2 word name
   (`IGUI_TienSkillMastery_SigName_<def name>`, shown as "Name: description" in the panel and the README, user's picks); planks / stones (`Actions.addOrDropItem`; planks always since 2026-11-08; Clean Breaks also gets the mod's
   first script recipe, `media/scripts/TienSkillMastery_recipes.txt` TSM_BreakFlatStone, FlatStone -> 3 Stone2, gated by
-  `TienSkillMastery_FlatStoneMenu` (OnAddToMenu, a plain global: `callLuaBool` cannot follow dots) and `.FlatStoneTest` (OnTest, also on the server)); choice cuts (`modifyMeat` wrap x1.4, x1.15 until 2026-11-08, so meat is
-  also 40% heavier: Food weight follows hunger); `server/*_HuntingTraps.lua` (trap modData `tsmTrap` / `tsmDouble`
+  `TienSkillMastery_FlatStoneMenu` (OnAddToMenu, a plain global: `callLuaBool` cannot follow dots) and `.FlatStoneTest` (OnTest, also on the server)); choice cuts (`modifyMeat` wrap; since 2026-11-08 hunger x1.1, so meat is
+  also 10% heavier: Food weight follows hunger, and nutrients x1.3; x1.15 for all before); `server/*_HuntingTraps.lua` (trap modData `tsmTrap` / `tsmDouble`
   through `fromModData` / `toModData`; no `checkDestroy`; `animalAliveHour` / 4; second hand-over in
   `removeAnimal`); Fieldcraft (`checkShouldDisable` without the zombie / running tests; red dots in `OnPreUIDraw`);
   `shared/*_Signatures.lua` (run-and-gun `stopOnRun = false` and quickdraw maxTime / 4 + animSpeed x4 in
@@ -303,14 +313,28 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   has no such parameter, so the throw sets it on the played sound (`setParameterValueByName(handle, "MeleeHitSurface",
   1)`; a just-played sound waits in `toStart`, where the value is queued). Whether the spear events really go silent
   at Default is a guess from that difference, not traced in the FMOD banks.
+- Throw sync fixes (2026-11-08, from reading the code; not yet played on a server). Carried throw: the hand model is set
+  before `setActionAnim`, because `PlayerActionsState.enter` captures the override and model for other clients at that
+  moment (`HandWeapon.getStaticModel` falls back to the weapon sprite, so the name is good). Kills: `creditKill` adds to
+  the server's copy and tells the thrower (`throwKill`), since vanilla only counts inside a hit's own code
+  (`hitConsequences` ~6219); in MP a kill is judged from the server's copy of the health against
+  `min(amount, R.MAX_DAMAGE)`, and `setAttackedBy` gives the corpse its killer. Stagger: `R.show` broadcasts
+  `zombieActShow` (kind "pushback": thrown hits and Wild Swing), and each client sets the flag on its remote copy, as
+  vanilla's hit packet does (`fields/hit/Zombie.process`); the owner's ZombieStagger still moves it. Not done: "bowl"
+  (knockdown; remote floor state not traced). Still open: the server's `isOnFloor` is not fed by ZombiePacket
+  (`NetworkZombieVariables`: reanimated players only), so it may treat lying zombies as standing in `Th.postureOf`;
+  `zombie:getRealState()` and `isCrawling()` do reach it, if a test shows this is real. Animal and player targets show
+  no flinch on clients (animal blood is server only too). Checks: `throwsync.lua` (server + client mocks, 21 checks, session scratchpad, not kept).
+  Old harness files `tests.lua`, `tests3-5.lua` already fail on checks these fixes do not touch (same failures with
+  the committed Throw and Relay).
 - Two repair systems raise an item's repair count (traced 2026-11-08, reported on an axe repaired with zip ties):
   `Fixing` scripts (`fixing.txt` / `vehiclesfixing.txt`: firearms and vehicle parts only) and craft recipes
   (`recipes_fixing.txt`, `genericFixer`: tools and melee weapons, the count rising on failures too). Restoration and
   careful repairs read only the first until then. Now restoration offers each usable repair recipe, charging its
   consumed inputs (`M.repairRecipes`, `M.restoreOptions`), and careful repairs also run after repair recipes
   (`M.afterRepair`). Restoration clears the count and fills the condition for 3 repairs' worth (`M.RESTORE_COST`, user,
-  2026-11-08; head condition and sharpness left alone). Not yet played.
-- Savory Meals (user, 2026-11-08, Provisioning's second signature, not yet played): food a master finishes with heat
+  2026-11-08; head condition and sharpness left alone). Restoration played; careful repairs after repair recipes not yet.
+- Savory Meals (user, 2026-11-08, Provisioning's second signature, played): food a master finishes with heat
   causes 80% less unhappiness, flat, boredom untouched; not butchering, not putting dishes together, not recipes (user
   dropped those the same day). Through `OnCooked`, set on every food script by `DoParam` at `OnLoadMapZones` with the old
   value chained; the cook is vanilla's `chef`, which `*_DeftTransfer` now sets too (before, a Deft Hands master's food
@@ -323,8 +347,8 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   vetted `EXTRA_OUTPUT` recipe names); bait digger (`forageSystem.getCategoryBonus` + points for "FishBait" /
   "Insects", vanilla's specialisation lever); big haul (`server/*_FishingNets.lua`: a second run of
   `fishingNet.checkTrap` for the bonus share of the hours, at most 5, so no break roll and no extra bait).
-- **Not built**: only what is parked with its mastery (Stealth: lose them, quiet hands, sneak speed, distraction
-  throw; Freerunning: vault / wall rolls, safe falls, evasion). Spear condition still covers carved / fire-hardened
+- **Not built**: only what waits with its Coming Soon mastery (Stealth: lose them, quiet hands, distraction
+  throw; Freerunning: vault / wall rolls, evasion). Spear condition still covers carved / fire-hardened
   spears only. No tooltip line for marked items yet.
 - MP checks owed (from reading only): whether the server runs `updateFalling` for players, whether stomp's
   `ItemBodyLocation.SHOES` lookup works from Lua, `OnWeaponHitCharacter` on the attacker for a remote zombie, the

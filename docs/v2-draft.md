@@ -2,7 +2,8 @@
 
 All of it built 2026-11-07 (v0.3.0), except what is parked with Stealth and Freerunning (core, picks, points, tab, v1 hooks moved to masteries; then the passives that fit
 existing hooks). CLAUDE.md "v2 build" lists what is not built yet.
-Stealth and Freerunning are parked (hidden, not pickable; user, 2026-11-07) until their remaining effects are built. v1 (one mastery per skill, bonuses that copy the skill's vanilla effects) is described in CLAUDE.md.
+Stealth and Freerunning were parked (hidden; user, 2026-11-07) until their remaining effects are built, Salvaging too (2026-11-08).
+Those three, and Hunting, Angling and Homesteading until their signatures have been played, are now listed but marked Coming Soon, not pickable (user, 2026-11-08). v1 (one mastery per skill, bonuses that copy the skill's vanilla effects) is described in CLAUDE.md.
 v2 keeps v1's XP capture and changes what the XP is spent on. **Approved** (user, 2026-11-06): the rules under "The
 idea" and the masteries with their members and names (23 approved, Livestock later dropped: 22). **Not yet approved**: the effects, and everything marked
 "proposed" below.
@@ -702,7 +703,7 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
   (v1 had 15%; the other crafting masteries' value), **lasting food** (new: food a master cooks or butchers stays
   fresh 25% longer), butchering time -15% (v1's, moved here from Hunting, which keeps the part count and part
   chance: Hunting = how much a carcass gives, Provisioning = how good the meat is and how fast it is cut), and the
-  signature **choice cuts** (user 2026-11-06: meat a master butchers is 15%, 40% since 2026-11-08, more filling and nutritious, in full
+  signature **choice cuts** (user 2026-11-06: meat a master butchers is 15% more filling and nutritious; since 2026-11-08 10% more filling and 30% more nutritious, in full
   from the pick). Comfort food, briefly the signature, was replaced by choice cuts (note kept below).
   - Choice cuts (signature, flat x1.15 from the pick) (42.21 `shared/Definitions/animal/ButcheringUtil.lua`, server / SP): `giveMeatModified` (~363)
     makes each meat item, runs `modifyMeat(item, size, meatRatio, hungerBoost, rotten, deathAge)` (~426: hunger,

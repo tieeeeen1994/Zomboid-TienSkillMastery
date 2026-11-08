@@ -21,7 +21,7 @@ is known for.
   Prestige past 10) and plays vanilla's level-up sound.
 - **Mastery belongs to the character.** It is gone when the character dies.
 - **Mastery tab** next to Skills in the character window, laid out like the Skills tab: the masteries by group, each
-  with its skills (green once at 10), a Pick button when it is ready, ten boxes once picked (hover for the points).
+  with its skills (green once at 10), a Pick button when it is ready (a grey Coming Soon on those not open yet), ten boxes once picked (hover for the points).
   Click a mastery to see its effects now and at mastery 10. Long lines here and in the Skills tab's effect lists wrap;
   set the length in Options > Mods.
 - **What your skills do.** Click a skill's name in the vanilla Skills tab to see what its current level gives in
@@ -55,6 +55,8 @@ effects apply with a weapon of its kind.
   level that a close one-on-one knife stab is a jaw stab (vanilla only jaw-stabs on a critical hit).
 - **Conditioning** (Strength, Fitness): endurance used -10%, endurance recovery +10%, carry weight +5, Strength and
   Fitness decay -25%, muscle strain from everything (fighting, climbing, carrying, farming, exercise) -25%.
+- **Freerunning (coming soon)** (Sprinting, Lightfooted): endurance used running -15%, drop one floor without harm from mastery 5, two at 10.
+- **Stealth (coming soon)** (Sneaking, Lightfooted): sneaking speed +15%.
 - **Smithing** (Metalworking, Welding, Maintenance): crafting time -25% and dismantling return +10 on metalworking
   and welding, 20% chance to undo tool wear on smithing recipes, 20% chance to get back each burnt charcoal and
   each blowtorch use, iron from ore and blooms +15%.
@@ -64,6 +66,7 @@ effects apply with a weapon of its kind.
 - **Engineering** (Mechanics, Electrical): crafting time -25% and dismantling return +10 on electrical, part install
   and uninstall time -15%, engine repair +1 condition per part, hotwire success +10, hotwiring time -15%, 25% chance
   of an extra electronics scrap when dismantling electronics, top speed and engine power +15% while you drive.
+- **Salvaging (coming soon)** (Welding, Mechanics): burnt car salvage time -15%, +1 burnt car salvage roll, engine parts salvaged +20%, 20% chance to get each blowtorch use back when scrapping cars.
 - **Handicraft** (Carving, Knapping, Glassmaking, Pottery): crafting time -25% on their recipes, 20% chance to undo
   tool wear on them; 15% chance of one more item from simple knapping, carving and clay press recipes.
 - **Mending** (Tailoring, Maintenance): tailoring crafting time -25%, patching time -15%, fabric recovery chance
@@ -74,13 +77,13 @@ effects apply with a weapon of its kind.
   everyone in your car.
 - **Provisioning** (Cooking, Butchering): cooking crafting time -25%, nutrition from added ingredients +15%, time to
   add ingredients -15%, butchering time -15%, food you cook or butcher stays fresh 25% longer.
-- **Hunting** (Tracking, Trapping, Butchering): track finding +20%, track inspection time -15%, trap catch chance +5
+- **Hunting (coming soon)** (Tracking, Trapping, Butchering): track finding +20%, track inspection time -15%, trap catch chance +5
   on traps you place, butchering parts +10%, part chance +15%.
-- **Angling** (Fishing, Foraging): line tension limit +15%, natural bait kept +10, big fish +10, junk catches -20%,
+- **Angling (coming soon)** (Fishing, Foraging): line tension limit +15%, natural bait kept +10, big fish +10, junk catches -20%,
   trophy fish +2, worms and insects found more often when foraging, fishing nets catch 25% more.
 - **Fieldcraft** (Foraging, Tracking): search radius +15%, spotting time -20%, found item size +10%, search mode's
   darkness, weather and moving penalties fade (gone at mastery 10).
-- **Homesteading** (Farming, Animal Care): harvest +15%, cure strength +15%, planting health +3, best month bonus
+- **Homesteading (coming soon)** (Farming, Animal Care): harvest +15%, cure strength +15%, planting health +3, best month bonus
   yield chance +10, risk month curse chance -10, fertilizing effect chance +10, back strain -15%, acceptance gained
   by petting and hand feeding +15%, calming +15%, shearing time -15%, animals near you gain 15% less stress.
 
@@ -89,7 +92,7 @@ Whole-number bonuses (carry weight, condition, extra items) build up as a chance
 
 ## Signature abilities
 
-Each mastery also unlocks a signature ability (a few have two or three), each with its own name, in full from the
+Each mastery also unlocks a signature ability (a few have two or three; Freerunning and Stealth have none yet), each with its own name, in full from the
 moment it is picked (it does not grow with mastery levels).
 
 - **Firearms:** *Quickdraw*: one-handed guns drawn and holstered 4 times faster. *Running Reload*: reloading does
@@ -115,6 +118,7 @@ moment it is picked (it does not grow with mastery levels).
   ignores 15% of its wear, whoever uses it; your handles and heads keep it when a Handicraft master assembles them.
 - **Engineering:** *Engine Overhaul*: Engine Parts raise a car's engine quality, one point each up to 100 (easier
   starts, less fuel, full power).
+- **Salvaging (coming soon):** *Scrapper*: scrap any car, and scrap vehicle parts into metal.
 - **Mending:** *Restoration*: right-click a repaired item to bring it back to full condition and clear its repair count,
   for three times the price of a repair (zip ties, tape, glue, epoxy: whatever repairs it and you are carrying).
 - **Field Medicine:** *Field Triage*: the wound key (comma, rebindable) tends you and everyone next to you; the world menu
@@ -125,13 +129,13 @@ moment it is picked (it does not grow with mastery levels).
   with the rest. Infected wounds get bandaged like any other, but nothing here disinfects them. *Needlework*: sew a bandage
   from 2 ripped sheets with a needle (kept) and thread, and make a suture needle from any sewing needle (used up) and thread.
   Anything that counts as thread will do: thread, sinew, dental floss, fishing line.
-- **Provisioning:** *Choice Cuts*: meat you butcher is 40% more filling and nutritious. *Savory Meals*: food you cook
+- **Provisioning:** *Choice Cuts*: meat you butcher is 10% more filling and 30% more nutritious. *Savory Meals*: food you cook
   in an oven, on a stove or over a fire causes 80% less unhappiness when eaten (a rat you roast costs 6, not 30). Stale,
   rotten and burnt food adds its usual penalty on top of that lower number.
-- **Hunting:** *Sturdy Traps*: your traps keep their bait and are never destroyed. *Live Catch*: animals caught alive
+- **Hunting (coming soon):** *Sturdy Traps*: your traps keep their bait and are never destroyed. *Live Catch*: animals caught alive
   last 4 times longer. *Double Catch*: a quarter of catches come in twos.
-- **Homesteading:** *Harvest Moon*: tend the field (water, cure and fertilize every plant in a patch you pick) and sow the field
+- **Homesteading (coming soon):** *Harvest Moon*: tend the field (water, cure and fertilize every plant in a patch you pick) and sow the field
   (plant every plowed square in it with the seed you choose).
-- **Angling:** *Fish Finder*: aiming a rod at water shows how many fish are there and how much trash.
+- **Angling (coming soon):** *Fish Finder*: aiming a rod at water shows how many fish are there and how much trash.
 - **Fieldcraft:** *Steady Eyes*: search mode is not switched off by zombies or running. *Sixth Sense*: what is inside the search circle
   shows as if in plain sight, even behind walls: zombies, animals, survivors, items and corpses.

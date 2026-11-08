@@ -28,6 +28,7 @@ M.Relay = M.Relay or {}
 local R = M.Relay
 
 local MAX_DIST = 4
+R.MAX_DAMAGE = 5   -- the most one `zombieDamage` takes off, on the owner's client
 
 --- Extra damage of a kind for this attacker, from the local copy of its mastery (server: the real one).
 function R.amount(attacker, kind, damage)
@@ -91,7 +92,7 @@ if isClient() then
         if module ~= M.MODULE or command ~= "zombieDamage" or type(args) ~= "table" then return end
         local zombie = R.findZombie(tonumber(args.id))
         if zombie and not zombie:isRemoteZombie() then
-            lower(zombie, math.max(0, math.min(5, tonumber(args.amount) or 0)))
+            lower(zombie, math.max(0, math.min(R.MAX_DAMAGE, tonumber(args.amount) or 0)))
         end
     end)
 end
@@ -105,8 +106,13 @@ end
 -- - "pushback" (Bludgeoning's signature): a stagger back, not a knockdown: `setPlayerAttackPosition` ("FRONT" when the
 --   attacker is in front of the zombie, else "BEHIND"), `setHitForce`, `getHitDir()` pointed away from the attacker,
 --   `setStaggerBack(true)`, `reportEvent("wasHit")` (the zombie actiongroup's staggerback node; ZomboidFixesB42
---   "Zombie stagger transitions"). In MP ZombiePacket carries no stagger, so only the owner sees it animate; other
---   clients see the zombie move back.
+--   "Zombie stagger transitions"). ZombiePacket carries no stagger, and vanilla's only own message, ZombieStagger (sent
+--   by the owner from `StaggerBackState.enter`), carries just where the zombie ends up, so alone it slides other
+--   clients' copies there (`HitReactionNetworkAI.process`). Vanilla's flag comes with the hit packet, which sets it on
+--   every client (`fields/hit/Zombie.process`); here the server sends `zombieActShow` to everyone and each client sets
+--   it on its remote copy (`R.show`; the owner has `zombieActApply`). A remote copy's `StaggerBackState` plays the
+--   animation with its own root motion off while ZombieStagger moves it, and clears the flag on exit. Not done for
+--   "bowl" (a knockdown): other clients still see that zombie only move.
 -- Server checks: the signature, the 4-tile distance (5 for push back's cone), and for push back the endurance cost
 -- (0.01 a zombie, server-owned stat) before anything is forwarded.
 -- ---------------------------------------------------------------------------------------------------------------
@@ -153,6 +159,11 @@ local function queueAct(zombie, kind, args)
 end
 --- Queues an action on a zombie this side owns (no checks, no cost): the throw's stagger uses it.
 R.queueAct = queueAct
+
+--- Server: every client plays this act on its remote copies of these zombies (online IDs), attacker at (x, y).
+function R.show(kind, ids, x, y)
+    sendServerCommand(M.MODULE, "zombieActShow", { kind = kind, ids = ids, x = x, y = y })
+end
 
 Events.OnTick.Add(function()
     if #pendingActs == 0 then return end
@@ -216,6 +227,7 @@ if isServer() then
             for j = #zombies, n + 1, -1 do table.remove(zombies, j) end
             if n > 0 then stats:set(CharacterStat.ENDURANCE, stats:get(CharacterStat.ENDURANCE) - n * cost) end
         end
+        local shown = {}
         for _, z in ipairs(zombies) do
             local data = { id = z:getOnlineID(), kind = kind, x = player:getX(), y = player:getY() }
             local owner = z:getOwnerPlayer()
@@ -224,7 +236,9 @@ if isServer() then
             else
                 queueAct(z, kind, data)
             end
+            shown[#shown + 1] = data.id
         end
+        if kind == "pushback" and #shown > 0 then R.show(kind, shown, player:getX(), player:getY()) end
     end)
 end
 
@@ -233,5 +247,17 @@ if isClient() then
         if module ~= M.MODULE or command ~= "zombieActApply" or type(args) ~= "table" then return end
         local zombie = R.findZombie(tonumber(args.id))
         if zombie and not zombie:isRemoteZombie() then queueAct(zombie, args.kind, args) end
+    end)
+
+    -- What everyone else sees of it. Only "pushback" is sent (see the header); checked anyway, it comes off the wire.
+    Events.OnServerCommand.Add(function(module, command, args)
+        if module ~= M.MODULE or command ~= "zombieActShow" or type(args) ~= "table" then return end
+        if args.kind ~= "pushback" or type(args.ids) ~= "table" then return end
+        local i = 1
+        while args.ids[i] ~= nil do
+            local zombie = R.findZombie(tonumber(args.ids[i]))
+            if zombie and zombie:isRemoteZombie() then queueAct(zombie, args.kind, args) end
+            i = i + 1
+        end
     end)
 end
