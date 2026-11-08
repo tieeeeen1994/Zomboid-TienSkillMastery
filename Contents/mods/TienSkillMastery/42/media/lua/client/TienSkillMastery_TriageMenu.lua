@@ -1,12 +1,10 @@
 --[[
-Tien's Skill Mastery: the "Tend wounds" options of Field Medicine's triage (plan and supplies in
-shared/TienSkillMastery_Triage.lua).
+Tien's Skill Mastery: Field Medicine's triage, started by its key (plan and supplies in
+shared/TienSkillMastery_Triage.lua). No world menu (user, 2026-11-09: the key only).
 
-World context menu (`OnFillWorldObjectContextMenu`): "Tend wounds" for yourself, "Tend wounds: <name>" for each other
-player in reach (`T.RANGE` tiles on your level, not invisible; an MP client's `getOnlinePlayers()` holds the players it
-has loaded; single player: the other local players) and, with anyone in reach, "Tend wounds: everyone nearby". The key
-binding `T.KEY_NAME` (`OnKeyStartPressed`, player 0, as the throw key) does the same as that last option; alone, it tends
-you. Everyone chosen shares one plan, you included, in `T.plan`'s order.
+The key binding `T.KEY_NAME` (`OnKeyStartPressed`, player 0, as the throw key) tends you and every other player in reach
+(`T.RANGE` tiles on your level, not invisible; an MP client's `getOnlinePlayers()` holds the players it has loaded; single
+player: the other local players); alone, it tends you. Everyone shares one plan, you included, in `T.plan`'s order.
 
 When anyone else is tended in MP the plan comes from the server (`triage` -> `triagePlan`); the queue is built once the
 items the server moved from the patients are in this client's inventory (or after 3 s). Each step picks its item the way
@@ -371,19 +369,4 @@ Events.OnKeyStartPressed.Add(function(key)
     local doctor = getSpecificPlayer(0)
     if not doctor or doctor:isDead() or doctor:isAsleep() or not M.sig(doctor, "FieldMedicine.SigTriage") then return end
     startTriage(doctor, everyoneInReach(doctor))
-end)
-
-Events.OnFillWorldObjectContextMenu.Add(function(playerNum, context, worldobjects, test)
-    if test then return end
-    local doctor = getSpecificPlayer(playerNum)
-    if not doctor or not M.sig(doctor, "FieldMedicine.SigTriage") then return end
-    context:addOption(getText("IGUI_TienSkillMastery_Triage"), doctor, startTriage, { doctor })
-    local patients = nearbyPatients(doctor)
-    if #patients > 0 then
-        context:addOption(getText("IGUI_TienSkillMastery_TriageAll"), doctor, startTriage, everyoneInReach(doctor))
-    end
-    for _, patient in ipairs(patients) do
-        local name = patient:getDisplayName() or patient:getUsername()
-        context:addOption(getText("IGUI_TienSkillMastery_TriageOther", name), doctor, startTriage, { patient })
-    end
 end)

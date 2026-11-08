@@ -12,7 +12,7 @@ outline, animal and PvP targets added after that test, those played 2026-11-08);
 Craftsmanship (marks, passing on, tooltip), Construction's Clean Cuts and Clean Breaks (with the flat stone recipe), Conditioning's Pack Mule (moodle one level lower
 via max weight), Knifework's Lunge (1.5-tile reach, vanilla's TargetDist target), Engineering's Engine Overhaul, Street Fighting's
 Battering Ram, Handicraft's Deft Hands (transfers and grabs included), Fieldcraft's Steady Eyes and Sixth Sense, Field
-Medicine's Field Triage (sort, low-health priority, key, shared list), Needlework and the stitching pain passive,
+Medicine's Field Triage (sort, low-health priority, key, shared list; no menu since 2026-11-09; 2026-11-09: the fewest-actions rework, user reports it works), Needlework and the stitching pain passive,
 Provisioning's Choice Cuts and Savory Meals, Mending's Restoration, Bludgeoning's Wild Swing, Swordsmanship's Hamstring,
 Spearcraft's Javelin.
 
@@ -66,9 +66,10 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   Ideas offered, none chosen: Strip Down (one click uninstalls every part through vanilla's actions), Reclaimed Parts
   (installed parts sometimes survive scrapping), part scrapping getting the time and torch passives, Scrap Eye (forage
   Junk), Cut Through (torch opens locked doors, not traced).
-- **Coming soon: Hunting, Angling, Homesteading** (user, 2026-11-08: the masteries whose signatures have not been
+- **Coming soon: Hunting, Angling** (user, 2026-11-08: the masteries whose signatures have not been
   played) **and Stealth, Freerunning, Salvaging** (the same day: unhidden, see Parking; Stealth shows only Sneak Speed,
-  Freerunning only running endurance and safe falls, and neither has a signature).
+  Freerunning only running endurance and safe falls, and neither has a signature). Homesteading was on this list too
+  until the user opened it on 2026-11-09, its Harvest Moon not yet played as far as these notes know.
   `M.COMING_SOON` in the core: listed with their effects, but `M.state` gives "soon" (after picked / inactive and
   closed, whatever the members' levels, so nobody levels up to a Locked that never opens), the panel draws a grey
   Coming Soon button that does nothing, and `M.pick` refuses them on the server. Unlike parking, an existing pick
@@ -166,9 +167,17 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   Passive `StitchPain` (user, 2026-11-08, played): -75% at mastery 10, in `shared/*_WorkshopFirstAid.lua`.
   Second signature `SigNeedlework` (user, 2026-11-08, played; Field Medicine's Tailoring side): recipes TSM_MakeBandage
   (2 ripped sheets, one use of `base:thread`, a `base:sewingneedle` kept with MayDegradeLight) and TSM_MakeSutureNeedle (tags `base:sewingneedle` + `base:thread`, the needle is used up), gated
-  like the flat stone (`TienSkillMastery_NeedleworkMenu`, `.NeedleworkTest`). `client/*_Fields.lua` (two `ISSelectCursor` picks, at most 15 x 15;
-  tend = water / the four cures / first fertilizer, sow = one seed item per plowed square; a walk before every plant,
-  since vanilla's `walkToPlant` judges adjacency at queue time). Battering ram ("bowl them over" until 2026-11-08; `SigBowlOver`, relay kind "bowl") in
+  like the flat stone (`TienSkillMastery_NeedleworkMenu`, `.NeedleworkTest`). `client/*_Fields.lua` + `shared/*_FieldAction.lua` (two `ISSelectCursor` picks, at most 15 x 15,
+  the first corner tinted yellow; tend = water / the four cures / first fertilizer / harvested plots removed with a shovel, sow = one seed item per plowed square. User, 2026-11-09: one
+  timed action per kind of work per 3 x 3 block, as long as the slowest single plant, materials and back strain still
+  per plant; a shared action whose server `complete` re-checks each plant and runs vanilla's `complete` for it, so the passive wrappers and
+  Zomboid Fixes' water cut still apply. Walks to the middle of each block, crop or not (user, 2026-11-09). Players do not damage crops in 42.21 (only zombies and vehicles reach `destroyFarmingPlant`), so no
+  trampling passive is needed; `avoidFarmingPlants` on player paths is read only by the native pathfinder, untraced: **in-game check owed**, can a walk end on a crop (a refused path resets the queue).
+  Checked against mocks with vanilla's real action files, not played). Passive `MilkTime`
+  (user, 2026-11-09, -15%, `shared/*_FarmTimes.lua`, not played). Second signature `SigWhisperer`, Animal Whisperer (user, 2026-11-09, not played;
+  `server/*_FarmAnimals.lua`): flat -1 stress every 10 game minutes (`EveryTenMinutes`) to the master's pen, connected zones and hutches included, once however many masters.
+  Also in the block action (user, 2026-11-09, not played; digging tool required, the options hidden without one): "Remove plots" (dead / rotten / destroyed, picked area) and "Dig furrows" (`server/*_FurrowCursor.lua`, rake-style 3 x 3 cursor that stays until cancelled, one action of 110 per click; `ISPlowAction:complete` removes any plant it finds, so the server's `canFurrow` re-checks). Strain and worms stay per square.
+  World menus (user, 2026-11-09, not played): the field options sit in a "Homesteading" submenu, on a clicked crop or furrow, plus diggable ground with a tool (Dig furrows only there). Triage has no world menu any more, the key only (same day; a menu only for the wounded was built and dropped, needing the server to send each master who is wounded, since a client cannot read another player's body). Battering ram ("bowl them over" until 2026-11-08; `SigBowlOver`, relay kind "bowl") in
   `client/*_Movement.lua`: the
   nearest standing zombie within a tile, from any direction, is set as `setBumpedChr` (vanilla bumps, and so
   trips, only a character that is not the last bumped one, `IsoMovingObject.separate` ~1221, on contact from any

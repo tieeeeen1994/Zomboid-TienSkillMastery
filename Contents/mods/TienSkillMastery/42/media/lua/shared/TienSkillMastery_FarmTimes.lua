@@ -23,6 +23,12 @@ timePerLiter x 20 ms (one shearing step each), and single player's `update` step
 timer. So the per-litre time is what has to shrink: `new` is wrapped (keeping vanilla's parameter names, which
 `NetTimedAction.set` reads from the prototype's locvars to rebuild the action on the server, so the server's `new`
 shortens it the same way) and maxTime is taken again from the shortened time.
+
+Homesteading.MilkTime (user, 2026-11-09). `ISMilkAnimal:new(character, animal, bucket, right, all)` (~254) sets
+`timePerLiter` = 40, read by `serverStart` (~214: an "update" event every timePerLiter x 20 ms, one `milkAnimal` step
+each) and single player's `update` (~129); `getDuration` is -1 (it ends when the milk or the bucket runs out). So the
+same wrap as shearing, without the maxTime. On a server the emulator rounds a period up to the next 100 ms update, so
+800 ms at 15% off (680) really runs at 700.
 ]]
 
 require "TienSkillMastery"
@@ -73,6 +79,21 @@ if ISShearAnimal and ISShearAnimal.new and not ISShearAnimal.__tsmShearTime then
                 o.timePerLiter = o.timePerLiter * f
                 o.maxTime = o:getDuration()
             end
+        end
+        return o
+    end
+end
+
+require "TimedActions/Animals/ISMilkAnimal"
+if ISMilkAnimal and ISMilkAnimal.new and not ISMilkAnimal.__tsmMilkTime then
+    ISMilkAnimal.__tsmMilkTime = true
+    local originalNew = ISMilkAnimal.new
+    -- Parameter names must stay vanilla's: the server rebuilds the action from them.
+    function ISMilkAnimal:new(character, animal, bucket, right, all, ...)
+        local o = originalNew(self, character, animal, bucket, right, all, ...)
+        if o and character and type(o.timePerLiter) == "number" and o.timePerLiter > 0 then
+            local f = M.less(character, "Homesteading.MilkTime")
+            if f < 1 then o.timePerLiter = o.timePerLiter * f end
         end
         return o
     end

@@ -121,10 +121,10 @@ M.parked = {}         -- [id] = mastery, for parked ones
 
 -- Coming soon (user, 2026-11-08): listed with their effects, but not pickable, the Pick button a grey Coming Soon.
 -- Unlike a parked mastery, a pick made before it was listed here stays and keeps working. Remove an id once it is
--- ready: Angling, Homesteading and Hunting have signatures not played in game yet; Freerunning and Stealth lack most
--- of their effects; Salvaging is too narrow as it stands.
+-- ready: Angling and Hunting have signatures not played in game yet; Freerunning and Stealth lack most of their
+-- effects; Salvaging is too narrow as it stands. Homesteading opened 2026-11-09 (user).
 M.COMING_SOON = {
-    Angling = true, Freerunning = true, Homesteading = true, Hunting = true, Salvaging = true, Stealth = true,
+    Angling = true, Freerunning = true, Hunting = true, Salvaging = true, Stealth = true,
 }
 
 M.masteries = {}      -- display order
@@ -459,6 +459,7 @@ def("Homesteading", "BackStrain", 15, "less")
 def("Homesteading", "Acceptance", 15, "pct")
 def("Homesteading", "Calming", 15, "pct")
 def("Homesteading", "ShearTime", 15, "less")
+def("Homesteading", "MilkTime", 15, "less")
 
 -- Phase 2 (2026-11-07): new effects from the draft that reuse or extend v1's hooks.
 def("Firearms", "FireRate", 10, "pct")
@@ -522,6 +523,7 @@ def("Salvaging", "SigScrapAnyCar", 1, "sig")        -- scrap any car, and vehicl
 def("FieldMedicine", "SigTriage", 1, "sig")         -- "Tend wounds": vanilla treatments queued for every part
 def("FieldMedicine", "SigNeedlework", 1, "sig")     -- recipes: bandages from ripped sheets, suture needles from needle and thread
 def("Homesteading", "SigFields", 1, "sig")          -- tend / sow a picked area of the field
+def("Homesteading", "SigWhisperer", 1, "sig")       -- -1 stress every 10 game minutes to the animals of the master's pen
 def("StreetFighting", "SigBowlOver", 1, "sig")      -- sprinting into zombies knocks them down
 def("Axemanship", "SigThrowAxe", 1, "sig")          -- the throw key throws a one-handed axe (spares first)
 def("Spearcraft", "SigThrowSpear", 1, "sig")        -- the throw key throws a spear (spares first)

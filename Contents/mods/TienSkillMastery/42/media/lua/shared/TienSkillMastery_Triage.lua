@@ -1,7 +1,7 @@
 --[[
 Tien's Skill Mastery: Field Medicine's signature, field triage (user's design, 2026-11-06), 42.21.
 
-"Tend wounds" on yourself or a player next to you walks there and queues vanilla's own treatments. The goal (user,
+The wound key, on yourself and the players next to you, walks to each and queues vanilla's own treatments. The goal (user,
 2026-11-09): the **fewest actions that stop health loss**, with what is carried right now. What a part gets depends on
 its wounds (`T.woundsOf`, plain flags, sent over the network) and the supplies (`T.actions`, which `T.borrow` and the
 client's queue both call, so they agree). What each treatment does in `BodyPart.DamageUpdate` (42.21 ~144):

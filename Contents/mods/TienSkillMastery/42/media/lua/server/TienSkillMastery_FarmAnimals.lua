@@ -97,6 +97,51 @@ if ISFeedAnimalFromHand and ISFeedAnimalFromHand.complete and not ISFeedAnimalFr
 end
 
 -- ---------------------------------------------------------------------------------------------------------------
+-- Homesteading's signature, Animal Whisperer (user, 2026-11-09): every 10 in-game minutes, each animal in the pen a
+-- master stands in loses a flat 1 stress (0-100; `setDebugStress` has no clamp and skips the stress gene, so it is
+-- flat). `EveryTenMinutes` follows the game clock (`GameTime`), so fast forward speeds it up, as it does the stress
+-- the animal gains. The pen is what vanilla treats as one: `DesignationZoneAnimal.getZone` at the master's square, with
+-- its connected zones and the hutches in them (loose animals in loaded chunks only, `VirtualAnimal`s are out of Lua's
+-- reach). Two masters in one pen count once. Stress reaches clients in AnimalPacket, hutched animals too.
+-- ---------------------------------------------------------------------------------------------------------------
+
+local WHISPER_STRESS = 1
+
+local function whisper(animal, seen)
+    if not animal or seen[animal] then return end
+    seen[animal] = true
+    if animal:isDead() or animal:isOnHook() then return end
+    animal:setDebugStress(math.max(0, animal:getStress() - WHISPER_STRESS))
+end
+
+Events.EveryTenMinutes.Add(function()
+    local seen = {}
+    M.eachPlayer(function(player)
+        if not M.sig(player, "Homesteading.SigWhisperer") then return end
+        local zone = DesignationZoneAnimal.getZone(math.floor(player:getX()), math.floor(player:getY()),
+            math.floor(player:getZ()))
+        if not zone then return end
+        local animals = zone:getAnimalsConnected()
+        for i = 0, animals:size() - 1 do
+            whisper(animals:get(i), seen)
+        end
+        local hutches = zone:getHutchsConnected()
+        for i = 0, hutches:size() - 1 do
+            local hutch = hutches:get(i):getHutch()
+            if hutch and not seen[hutch] then
+                seen[hutch] = true
+                for n = 0, hutch:getMaxAnimals() - 1 do
+                    whisper(hutch:getAnimal(n), seen)
+                end
+                for n = 0, hutch:getMaxNestBox() do
+                    whisper(hutch:getAnimalInNestBox(n), seen)
+                end
+            end
+        end
+    end)
+end)
+
+-- ---------------------------------------------------------------------------------------------------------------
 -- Butchering: part count and part chance
 -- ---------------------------------------------------------------------------------------------------------------
 

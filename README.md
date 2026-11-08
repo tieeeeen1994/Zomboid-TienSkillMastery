@@ -83,9 +83,9 @@ effects apply with a weapon of its kind.
   trophy fish +2, worms and insects found more often when foraging, fishing nets catch 25% more.
 - **Fieldcraft** (Foraging, Tracking): search radius +15%, spotting time -20%, found item size +10%, search mode's
   darkness, weather and moving penalties fade (gone at mastery 10).
-- **Homesteading (coming soon)** (Farming, Animal Care): harvest +15%, cure strength +15%, planting health +3, best month bonus
+- **Homesteading** (Farming, Animal Care): harvest +15%, cure strength +15%, planting health +3, best month bonus
   yield chance +10, risk month curse chance -10, fertilizing effect chance +10, back strain -15%, acceptance gained
-  by petting and hand feeding +15%, calming +15%, shearing time -15%, animals near you gain 15% less stress.
+  by petting and hand feeding +15%, calming +15%, shearing time -15%, milking time -15%, animals near you gain 15% less stress.
 
 Whole-number bonuses (carry weight, condition, extra items) build up as a chance: +1 condition at mastery 10 is a
 10% chance per mastery level until then.
@@ -121,8 +121,7 @@ moment it is picked (it does not grow with mastery levels).
 - **Salvaging (coming soon):** *Scrapper*: scrap any car, and scrap vehicle parts into metal.
 - **Mending:** *Restoration*: right-click a repaired item to bring it back to full condition and clear its repair count,
   for three times the price of a repair (zip ties, tape, glue, epoxy: whatever repairs it and you are carrying).
-- **Field Medicine:** *Field Triage*: the wound key (comma, rebindable) tends you and everyone next to you; the world menu
-  also offers yourself, one person or everyone nearby. It queues the fewest treatments that stop health loss: glass and bullets out,
+- **Field Medicine:** *Field Triage*: the wound key (comma, rebindable) tends you and everyone next to you. It queues the fewest treatments that stop health loss: glass and bullets out,
   deep wounds stitched if a suture needle is at hand, fractures splinted, every other wound (burns included) bandaged with the best bandage you carry (theirs too, used only on them). Everyone shares one
   list, you included: anyone under 25% overall health goes first, then the body part costing the most health, whoever's
   it is. Patients can move around within 2 tiles of you; anyone who goes farther, dies or leaves is skipped and you carry on
@@ -136,8 +135,11 @@ moment it is picked (it does not grow with mastery levels).
   rotten and burnt food adds its usual penalty on top of that lower number.
 - **Hunting (coming soon):** *Sturdy Traps*: your traps keep their bait and are never destroyed. *Live Catch*: animals caught alive
   last 4 times longer. *Double Catch*: a quarter of catches come in twos.
-- **Homesteading (coming soon):** *Harvest Moon*: tend the field (water, cure and fertilize every plant in a patch you pick) and sow the field
-  (plant every plowed square in it with the seed you choose).
+- **Homesteading:** *Harvest Moon*: right-click a crop or furrow to tend the field (water, cure and fertilize every plant in a patch you pick and, with a shovel, remove its harvested plots) and sow the field
+  (plant every plowed square in it with the seed you choose). One action covers 3 x 3 squares in the time a single plant takes;
+  water, sprays, fertilizer and seeds are still used per plant. With a shovel or trowel you can also remove dead, rotten or destroyed
+  plots over a patch, and dig furrows: a 3 x 3 square follows the mouse, like the rake, and each click digs it in one action until you cancel. *Animal Whisperer*: while you are in an animal zone, its
+  animals (hutched ones and joined zones included) lose 1 stress every 10 in-game minutes.
 - **Angling (coming soon):** *Fish Finder*: aiming a rod at water shows how many fish are there and how much trash.
 - **Fieldcraft:** *Steady Eyes*: search mode is not switched off by zombies or running. *Sixth Sense*: what is inside the search circle
   shows as if in plain sight, even behind walls: zombies, animals, survivors, items and corpses.

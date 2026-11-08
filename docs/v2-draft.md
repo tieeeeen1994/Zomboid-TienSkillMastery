@@ -3,7 +3,7 @@
 All of it built 2026-11-07 (v0.3.0), except what is parked with Stealth and Freerunning (core, picks, points, tab, v1 hooks moved to masteries; then the passives that fit
 existing hooks). CLAUDE.md "v2 build" lists what is not built yet.
 Stealth and Freerunning were parked (hidden; user, 2026-11-07) until their remaining effects are built, Salvaging too (2026-11-08).
-Those three, and Hunting, Angling and Homesteading until their signatures have been played, are now listed but marked Coming Soon, not pickable (user, 2026-11-08). v1 (one mastery per skill, bonuses that copy the skill's vanilla effects) is described in CLAUDE.md.
+Those three, and Hunting and Angling until their signatures have been played, are now listed but marked Coming Soon, not pickable (user, 2026-11-08; Homesteading was too, until the user opened it on 2026-11-09). v1 (one mastery per skill, bonuses that copy the skill's vanilla effects) is described in CLAUDE.md.
 v2 keeps v1's XP capture and changes what the XP is spent on. **Approved** (user, 2026-11-06): the rules under "The
 idea" and the masteries with their members and names (23 approved, Livestock later dropped: 22). **Not yet approved**: the effects, and everything marked
 "proposed" below.
@@ -794,6 +794,9 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
   (user 2026-11-06, area actions that queue vanilla's own actions, client side): **tend the field** (water the
   thirsty, cure the sick with the cures carried, fertilize where fertilizer is carried, for every plant in a
   picked area) and **sow the field** (plant every free plowed square in a picked area with the seeds carried).
+  User, 2026-11-09: milking time -15% added, and one timed action now works a 3 x 3 block (own shared action, no longer
+  vanilla's per plant; see CLAUDE.md). Second signature the same day: Animal Whisperer, flat -1 stress every 10 in-game
+  minutes to the animals of the zone the master is in.
   Tend the herd (milk / shear a whole pen) was added, then **removed** by the user (2026-11-06: nothing special
   about it); its trace is kept below. **Approved** (user, 2026-11-06).
   - Areas: a two-click square picker (first corner, second corner; `ISSelectCursor` style with `skipWalk2`, see
