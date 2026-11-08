@@ -1,14 +1,17 @@
 --[[
 Tien's Skill Mastery: Mending's repairs and patches (42.21, server / single player: every hook is a `complete`).
 
-Repairs (Mending.CarefulRepairs "pct", Mending.LastingRepairs "pts"): items are repaired by `ISFixAction:complete`
+Repairs (Mending.CarefulRepairs "pct"): items are repaired by `ISFixAction:complete`
 and installed vehicle parts by `ISFixVehiclePartAction:complete`, both calling Java `FixingManager.fixItem` (~37).
 A success adds round(missing condition x repair %) (at least 1) and raises `haveBeenRepaired` by 1, the "Repaired x
 times" that makes every later repair weaker and likelier to fail; a failure takes 1 condition; both
 `syncItemFields`. The wrapper notes condition and repair count before: after a success the item gets 15% more of
-what it gained (at least 1, within its max) and, on a roll, the repair count back; after a failure the lost point
-back. The vehicle part then takes the item's condition again (`setCondition`, `doInventoryItemStats`,
+what it gained (at least 1, within its max); after a failure the lost point back. The repair count is left alone
+(a chance to give it back, LastingRepairs, was removed: user, 2026-11-08). The vehicle part then takes the item's condition again (`setCondition`, `doInventoryItemStats`,
 `transmitPartItem`, as vanilla's own complete does). Engineering touches no repair, so vehicle parts are Mending's.
+Tools and melee weapons are repaired by craft recipes instead (`recipes_fixing.txt`, `RecipeCodeOnCreate.genericFixer`
+~1155: the count goes up on a failure too); those get the same bonus through `M.afterRepair`, from
+TienSkillMastery_Crafting.lua's `after` (user, 2026-11-08: until then they got none of it).
 
 Stronger patches (Mending.StrongerPatches "pct"): `Clothing.addPatch` (~1059, from `ISRepairClothing:complete`)
 builds a `ClothingPatch(tailorLvl, fabric, hasHole)` whose scratch / bite defense = the fabric's max x level / 10
@@ -36,30 +39,25 @@ local function pack(...) return { n = select("#", ...), ... } end
 -- Repairs
 -- ---------------------------------------------------------------------------------------------------------------
 
---- Returns true when the item changed.
-local function afterFix(chr, item, cond, repaired)
+--- Careful repairs, given the item's condition and repair count from before the repair. Returns true when the item
+--- changed (the caller syncs it). The condition falling is checked first: a craft recipe's failure raises the count too.
+function M.afterRepair(chr, item, cond, repaired)
     if not item then return false end
+    local bonus = M.val(chr, "Mending.CarefulRepairs")
+    if bonus <= 0 then return false end
     local nowCond, nowRepaired = item:getCondition(), item:getHaveBeenRepaired()
-    if nowRepaired > repaired then
-        local changed = false
-        local gain = nowCond - cond
-        local bonus = M.val(chr, "Mending.CarefulRepairs")
-        if gain > 0 and bonus > 0 then
-            local extra = math.max(1, math.floor(gain * bonus / 100 + 0.5))
-            local target = math.min(item:getConditionMax(), nowCond + extra)
-            if target > nowCond then
-                item:setConditionNoSound(target)
-                changed = true
-            end
-        end
-        if M.roll(chr, "Mending.LastingRepairs") then
-            item:setHaveBeenRepaired(repaired)
-            changed = true
-        end
-        return changed
-    elseif nowCond < cond and M.val(chr, "Mending.CarefulRepairs") > 0 then
+    if nowCond < cond then
         item:setConditionNoSound(cond)
         return true
+    end
+    local gain = nowCond - cond
+    if nowRepaired > repaired and gain > 0 then
+        local extra = math.max(1, math.floor(gain * bonus / 100 + 0.5))
+        local target = math.min(item:getConditionMax(), nowCond + extra)
+        if target > nowCond then
+            item:setConditionNoSound(target)
+            return true
+        end
     end
     return false
 end
@@ -72,12 +70,12 @@ local function wrapFix(class, name, isVehicle)
     local vanilla = class.complete
     class.complete = function(self, ...)
         local chr, item = self.character, self.item
-        if not chr or not item or (M.val(chr, "Mending.CarefulRepairs") <= 0 and M.val(chr, "Mending.LastingRepairs") <= 0) then
+        if not chr or not item or M.val(chr, "Mending.CarefulRepairs") <= 0 then
             return vanilla(self, ...)
         end
         local cond, repaired = item:getCondition(), item:getHaveBeenRepaired()
         local results = pack(vanilla(self, ...))
-        local ok, changed = pcall(afterFix, chr, item, cond, repaired)
+        local ok, changed = pcall(M.afterRepair, chr, item, cond, repaired)
         if not ok then
             print("[TienSkillMastery] repair bonus failed: " .. tostring(changed))
         elseif changed then

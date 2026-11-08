@@ -100,41 +100,92 @@ local function isGunworksGun(weapon)
         and RateOfFire.IsWeaponRegistered(weapon) == true
 end
 
---- A standing zombie in front, nearer than the knife's min range (vanilla's close-kill distance).
-local function closeKillTarget(player, weapon)
+-- ---------------------------------------------------------------------------------------------------------------
+-- Knifework's signature, the lunge (phase 3a; reach raised 2026-11-08). A jaw stab (close kill,
+-- `CombatManager.calculateAttackVars` ~1400) happens when the best standing target is nearer than the knife's
+-- `getMinRange()` (stabbing knives 0.61), there is no window between, the swing is a KNIFE one and at most one zombie
+-- chases (`numChasingZombies`; with more, the same distance gives a shove). The target list itself only holds what
+-- the knife reaches: `calcValidTargets` (~1439) drops targets past `isMeleeAttackRange` = `getMaxRange()` x
+-- `getRangeMod()` (knives 0.8-1.0, mod 1), measured to the target's nearest bone. So the min range alone cannot go
+-- past ~0.9 (the 1.5x min range of the first version already covered every reachable target, and the lunge only moved
+-- the player for targets 0.61-0.9 away, which is why it felt random). While the conditions hold, min **and** max
+-- range are raised to the signature's reach (`Knifework.SigLunge`, tiles). `setMinRange` is per instance and not
+-- saved; `setMaxRange` is per instance but **saved** whenever it differs from 1.0 (`HandWeapon.save` ~1329), so both
+-- are put back as soon as the conditions end or the knife leaves the hand, and on `OnSave` (GameWindow, before a
+-- save; the next update raises them again). In MP only the client's copy changes; the server's `AntiCheatHitWeapon`
+-- allows its own max range + 5 tiles.
+-- The lunge follows vanilla's own target (2026-11-08; an own search of the zombie list disagreed with vanilla at the
+-- edges, nearest-bone distance, swing cone, furniture on the way, so some far jaw stabs had no lunge):
+-- `CombatManager.pressedAttack` (~3257) stores the centre distance to the first of its hit list in the player's
+-- `TargetDist` variable right before `OnWeaponSwing`, and the standing zombie at that distance is the one. With the
+-- signature on, min range = max range, so every standing target the knife can hit is a close kill.
+-- No new animation: when a stab starts at a target beyond ~0.6 tiles, the player is moved toward it (real time, up to
+-- LUNGE_SPEED tiles a second, slowing near the end, at most LUNGE_MS) until LUNGE_STOP away, over squares the step
+-- check allows (orthogonal or diagonal, no wall, window or blocked square; a blocked step slides along one axis).
+-- MP: the client owns its position; 5 tiles a second is far under the Speed anti-cheat's 20. The jaw stab itself
+-- (`KnifeCrit*` anim nodes, `ZombieHitReaction=KnifeDeath`) hits at the widened max range whether the lunge got there
+-- or not. (A purple outline on the target, 2026-11-08, was dropped the same day.)
+-- ---------------------------------------------------------------------------------------------------------------
+
+local knifeBase = {}    -- [player num] = { weapon, baseMin, baseMax, wideMin, wideMax }
+local lunges = {}       -- [player num] = { target, untilMs, lastMs }
+local LUNGE_STOP = 0.55
+local LUNGE_SPEED = 5.0 -- tiles a second
+local LUNGE_MS = 400
+
+--- One step between neighbouring squares on one level: orthogonal, or diagonal through either side square.
+local function canStep(from, to)
+    if not from or not to then return false end
+    if from == to then return true end
+    if to:getZ() ~= from:getZ() then return false end
+    local dx, dy = to:getX() - from:getX(), to:getY() - from:getY()
+    if math.abs(dx) > 1 or math.abs(dy) > 1 then return false end
+    if dx ~= 0 and dy ~= 0 then
+        local cell = getCell()
+        local z = from:getZ()
+        local sx = cell:getGridSquare(from:getX() + dx, from:getY(), z)
+        local sy = cell:getGridSquare(from:getX(), from:getY() + dy, z)
+        return (canStep(from, sx) and canStep(sx, to)) or (canStep(from, sy) and canStep(sy, to))
+    end
+    return not from:isBlockedTo(to) and not from:isWindowTo(to) and to:isFree(false)
+end
+
+--- The zombie this swing is aimed at, as vanilla chose it: the standing zombie on this level whose centre distance
+--- is the `TargetDist` that `pressedAttack` just stored (nearest match within 0.15, in front). Only while the swing has
+--- a hit list (`TargetDist` keeps the last swing's value otherwise).
+local function swingTarget(player)
+    if not hasTarget(player) then return nil end
+    local want = player:getVariableFloat("TargetDist", -1)
+    if not want or want <= 0 then return nil end
     local list = getCell() and getCell():getZombieList()
     if not list then return nil end
-    local range = weapon:getMinRange()
     local px, py = player:getX(), player:getY()
     local fx, fy = player:getForwardDirectionX(), player:getForwardDirectionY()
+    local best, bestDiff = nil, 0.15
     for i = 0, list:size() - 1 do
         local z = list:get(i)
         if z and not z:isDead() and not z:isOnFloor() and math.abs(z:getZ() - player:getZ()) < 0.5 then
             local dx, dy = z:getX() - px, z:getY() - py
-            local d2 = dx * dx + dy * dy
-            if d2 < range * range and d2 > 0.0001 then
-                local d = math.sqrt(d2)
-                if (dx * fx + dy * fy) / d > 0.5 then return z end
+            local d = math.sqrt(dx * dx + dy * dy)
+            local diff = math.abs(d - want)
+            if diff < bestDiff and dx * fx + dy * fy > 0 then
+                best, bestDiff = z, diff
             end
         end
     end
-    return nil
+    return best
 end
 
--- ---------------------------------------------------------------------------------------------------------------
--- Knifework's signature, the lunge (phase 3a). A jaw stab (close kill, `calculateAttackVars` ~1400) needs the target
--- nearer than the knife's `getMinRange()` (stabbing knives 0.61) with at most one chasing zombie; with more chasers
--- the same distance gives a shove, so the window only widens while `getNumChasingZombies() <= 1` (last frame's
--- count). `HandWeapon.setMinRange` works per instance and is not saved (`HandWeapon.save` does not write it); the
--- vanilla value is remembered per item ID and put back as soon as the conditions end or the knife leaves the hand.
--- No new animation: when a stab starts at a target beyond vanilla's distance, the player is eased toward it during
--- the next ~0.25 s until ~0.55 tiles away (at most ~0.35 tiles), only over squares `isBlockedTo` does not refuse.
--- MP: the client owns its position; this is walking pace for the Speed anti-cheat.
--- ---------------------------------------------------------------------------------------------------------------
-
-local knifeBase = {}    -- [player num] = { weapon, id, base }
-local lunges = {}       -- [player num] = { target, untilMs }
-local LUNGE_STOP = 0.55
+--- The zombie a knife stab jaw-stabs: vanilla's target when its centre is nearer than the knife's current min range
+--- (vanilla measures to the nearest bone, a little nearer, so this never claims a close kill vanilla does not make).
+local function closeKillTarget(player, weapon)
+    local z = swingTarget(player)
+    if not z then return nil end
+    local range = weapon:getMinRange()
+    local dx, dy = z:getX() - player:getX(), z:getY() - player:getY()
+    if dx * dx + dy * dy < range * range then return z end
+    return nil
+end
 
 local function isStabbingKnife(player, weapon)
     return weapon and M.weaponMastery(weapon) == "Knifework" and WeaponType.getWeaponType(player) == WeaponType.KNIFE
@@ -142,8 +193,9 @@ end
 
 local function restoreKnife(num)
     local k = knifeBase[num]
-    if k and k.weapon and math.abs(k.weapon:getMinRange() - k.widened) < 0.0001 then
-        k.weapon:setMinRange(k.base)
+    if k and k.weapon then
+        if math.abs(k.weapon:getMinRange() - k.wideMin) < 0.0001 then k.weapon:setMinRange(k.baseMin) end
+        if math.abs(k.weapon:getMaxRange() - k.wideMax) < 0.0001 then k.weapon:setMaxRange(k.baseMax) end
     end
     knifeBase[num] = nil
 end
@@ -152,36 +204,37 @@ local function updateKnifeWindow(player)
     local num = player:getPlayerNum()
     local weapon = player:getPrimaryHandItem()
     local k = knifeBase[num]
-    local want = weapon and instanceof(weapon, "HandWeapon") and isStabbingKnife(player, weapon)
+    local reach = weapon and instanceof(weapon, "HandWeapon") and isStabbingKnife(player, weapon)
         and player:getStats():getNumChasingZombies() <= 1 and M.val(player, "Knifework.SigLunge") or 0
-    if k and (want <= 0 or k.weapon ~= weapon) then
+    if k and (reach <= 0 or k.weapon ~= weapon) then
         restoreKnife(num)
         k = nil
     end
-    if want > 0 and not k then
-        local base = weapon:getMinRange()
-        local widened = base * (1 + want / 100)
-        weapon:setMinRange(widened)
-        knifeBase[num] = { weapon = weapon, base = base, widened = weapon:getMinRange() }
+    if reach > 0 and not k then
+        local baseMin, baseMax = weapon:getMinRange(), weapon:getMaxRange()
+        weapon:setMinRange(math.max(baseMin, reach))
+        weapon:setMaxRange(math.max(baseMax, reach))
+        knifeBase[num] = { weapon = weapon, baseMin = baseMin, baseMax = baseMax,
+            wideMin = weapon:getMinRange(), wideMax = weapon:getMaxRange() }
     end
 end
 
-local function canStep(from, to)
-    if not from or not to then return false end
-    if from == to then return true end
-    local dx, dy = to:getX() - from:getX(), to:getY() - from:getY()
-    if math.abs(dx) + math.abs(dy) ~= 1 or to:getZ() ~= from:getZ() then return false end
-    return not from:isBlockedTo(to) and to:isFree(false)
-end
+-- The widened max range is saved with the item: never let a save see it.
+Events.OnSave.Add(function()
+    local nums = {}
+    for num in pairs(knifeBase) do nums[#nums + 1] = num end
+    for _, num in ipairs(nums) do restoreKnife(num) end
+end)
 
 startLunge = function(player, weapon)
     local k = knifeBase[player:getPlayerNum()]
     if not k or player:isDoShove() then return end
-    local target = closeKillTarget(player, weapon)
+    local target = swingTarget(player)
     if not target then return end
     local dx, dy = target:getX() - player:getX(), target:getY() - player:getY()
-    if math.sqrt(dx * dx + dy * dy) <= k.base then return end
-    lunges[player:getPlayerNum()] = { target = target, untilMs = getTimestampMs() + 250 }
+    if math.sqrt(dx * dx + dy * dy) <= LUNGE_STOP + 0.05 then return end
+    local now = getTimestampMs()
+    lunges[player:getPlayerNum()] = { target = target, untilMs = now + LUNGE_MS, lastMs = now }
 end
 
 local function updateLunge(player)
@@ -189,25 +242,36 @@ local function updateLunge(player)
     local l = lunges[num]
     if not l then return end
     local target = l.target
-    if getTimestampMs() > l.untilMs or not target or target:isDead() then
+    local now = getTimestampMs()
+    if now > l.untilMs or not target or target:isDead() then
         lunges[num] = nil
         return
     end
+    local dt = math.min((now - l.lastMs) / 1000, 0.05)
+    l.lastMs = now
     local dx, dy = target:getX() - player:getX(), target:getY() - player:getY()
     local d = math.sqrt(dx * dx + dy * dy)
-    if d <= LUNGE_STOP then
+    local left = d - LUNGE_STOP
+    if left <= 0.005 then
         lunges[num] = nil
         return
     end
-    local step = math.min((d - LUNGE_STOP) * 0.4, 0.06)
-    local nx, ny = player:getX() + dx / d * step, player:getY() + dy / d * step
-    local to = getCell():getGridSquare(math.floor(nx), math.floor(ny), math.floor(player:getZ()))
-    if not canStep(player:getCurrentSquare(), to) then
+    local speed = LUNGE_SPEED * math.max(0.35, math.min(1, left / 0.3))
+    local step = math.min(left, speed * dt)
+    if step <= 0 then return end
+    local px, py = player:getX(), player:getY()
+    local nx, ny = px + dx / d * step, py + dy / d * step
+    local cell, z, cur = getCell(), math.floor(player:getZ()), player:getCurrentSquare()
+    if canStep(cur, cell:getGridSquare(math.floor(nx), math.floor(ny), z)) then
+        player:setX(nx)
+        player:setY(ny)
+    elseif canStep(cur, cell:getGridSquare(math.floor(nx), math.floor(py), z)) then
+        player:setX(nx)
+    elseif canStep(cur, cell:getGridSquare(math.floor(px), math.floor(ny), z)) then
+        player:setY(ny)
+    else
         lunges[num] = nil
-        return
     end
-    player:setX(nx)
-    player:setY(ny)
 end
 
 local function onFirearmSwing(player, weapon)
@@ -227,11 +291,8 @@ local function onWeaponSwing(player, weapon)
         onFirearmSwing(player, weapon)
         return
     end
-    -- Conditioning's signature: Heavy Load one moodle level lower. Vanilla takes 0.07 combat speed per level
-    -- (`calculateCombatSpeed` ~9399); one level of it is given back, any weapon or bare hands.
-    if M.sig(player, "Conditioning.SigHeavyLoad") and player:getMoodles():getMoodleLevel(MoodleType.HEAVY_LOAD) >= 1 then
-        player:setCombatSpeed(player:getCombatSpeed() + 0.07)
-    end
+    -- (Conditioning's signature, Heavy Load one level lower, lowers the moodle itself: shared/TienSkillMastery_HeavyLoad.lua.
+    -- Vanilla's -0.07 combat speed a level in `calculateCombatSpeed` then follows on its own.)
     local mastery = M.weaponMastery(weapon)
     if not mastery then return end
     local speed = M.val(player, mastery .. ".AttackSpeed")
@@ -422,6 +483,28 @@ Events.OnTick.Add(function()
     end
 end)
 
+-- Hamstring falls inside the hit (user, 2026-11-08: the zombie froze in its hit reaction, then fell). Applied a tick
+-- later through the relay, the knockdown waited for the flinch to end: the zombie actiongroup takes the knockdown
+-- transition only with no hit reaction playing. Vanilla's own knockdowns are decided in the hit itself, right after
+-- this event: `IsoZombie` (~4238) `setKnockedDown(wielder.isCriticalHit() || isOnFloor() || isAlwaysKnockedDown())`
+-- (only for a zombie this client owns, or in single player; the hit packet carries it to the others), then
+-- `shouldBecomeCrawler`, which keeps a `becomeCrawler` already set. So the zombie is made `alwaysKnockedDown` (with
+-- become crawler and cannot walk) for this hit, and the flag is put back on the next tick.
+local knockRestore = {}   -- [zombie] = its alwaysKnockedDown before the hit
+Events.OnTick.Add(function()
+    for z, was in pairs(knockRestore) do
+        pcall(function() z:setAlwaysKnockedDown(was) end)
+        knockRestore[z] = nil
+    end
+end)
+
+local function hamstringNow(zombie)
+    if knockRestore[zombie] == nil then knockRestore[zombie] = zombie:isAlwaysKnockedDown() end
+    zombie:setAlwaysKnockedDown(true)
+    zombie:setBecomeCrawler(true)
+    zombie:setCanWalk(false)
+end
+
 local function onWeaponHitCharacter(wielder, target, weapon, damage)
     if not wielder or not instanceof(wielder, "IsoPlayer") or not wielder:isLocalPlayer() then return end
     if not target or not instanceof(target, "IsoZombie") then return end
@@ -431,6 +514,7 @@ local function onWeaponHitCharacter(wielder, target, weapon, damage)
     -- legs and the zombie gets up crawling (applied on its owner through the relay).
     if not wielder:isDoShove() and weapon and M.weaponMastery(weapon) == "Swordsmanship" and wielder:isSneaking()
         and wielder:isAiming() and not target:isCrawling() and M.sig(wielder, "Swordsmanship.SigHamstring") then
+        pcall(hamstringNow, target)
         M.Relay.act(wielder, "hamstring", target)
     end
     if wielder:isDoShove() then

@@ -158,11 +158,21 @@ end
 -- off (after 15 checks in `doDisableCheck`) with any zombie very close, with 3+ visible and 3+ chasing zombies, and
 -- while running or sprinting. For a master those three tests are dropped; the debug override, the Java search mode
 -- override (`isOverrideSearchManager`, debug tools and scenarios) and the MP safehouse loot rule stay vanilla.
--- Zombie sense (Fieldcraft.SigZombieSense): while a master is in search mode, every zombie inside the search circle
--- (the manager's `radius`) gets a red dot over its head, wherever it is (behind walls, out of sight). Drawn in
--- `OnPreUIDraw` with `isoToScreenX/Y` (as forage icons are placed) and `getRenderer():renderPoly` (the B42 renderer
--- has no floor-draw event). An MP client knows the zombies near it, which covers the circle. Corpses being dragged
--- (`isReanimatedForGrappleOnly`) are skipped.
+-- Sixth sense (Fieldcraft.SigZombieSense; dots over heads until 2026-11-08, then, user: "not icons, you actually see
+-- them"): while a master is in search mode, what is inside the search circle (the manager's `radius`) is shown as if
+-- seen. Characters (42.21): `IsoPlayer.updateLOS` (~5721, the local player's update) sets every moving object's
+-- per-player target alpha to 0 when its square is not seen (1 when it is), each character's update moves its alpha
+-- towards that (`IsoObject.updateAlpha`), and `FBORenderCell.renderMovingObject` draws every moving object on screen
+-- with that alpha, LOS or not (the admin "See everyone" power, `isSeeEveryone`, skips the hiding the same way). So in
+-- OnTick (after the updates, before the render) zombies, animals and other players in the circle on the player's
+-- level get alpha and target alpha 1 for that player; they fade out the normal way once outside it. Corpses and floor
+-- items are drawn whenever their square is (`calculateObjectRenderInfo`: renderAlpha 1, no cutaway); a square never
+-- seen is drawn black (`CalcVisibility`, dark multiplier 0), so the circle's squares are marked seen
+-- (`setIsSeen` + `checkLightingLater_OnePlayer_AllLevels`, which hands the bit to the native lighting; every 500 ms).
+-- Not reachable: "can see now" is recomputed by the native lighting every frame, so out-of-sight squares keep their
+-- dimming, and another building's inside stays under its roof (`FBORenderCutaways`). Client only; an MP client knows
+-- the zombies, animals (AnimalPacket) and players near it. Skipped: corpses being dragged (`isReanimatedForGrappleOnly`),
+-- hutched animals (not in the world), invisible players.
 -- ---------------------------------------------------------------------------------------------------------------
 
 if ISSearchManager and ISSearchManager.checkShouldDisable and not ISSearchManager.__tsmFighting then
@@ -178,39 +188,111 @@ if ISSearchManager and ISSearchManager.checkShouldDisable and not ISSearchManage
     end
 end
 
-local senseTexture = nil
-local function drawZombieSense()
+local animalsCache, animalsAt = nil, 0
+
+local function cachedAnimals()
+    local now = getTimestampMs()
+    if not animalsCache or now - animalsAt >= 250 then
+        animalsAt = now
+        -- A LinkedList built from the whole object list per call: copied once into an array.
+        animalsCache = {}
+        local ok, list = pcall(function() return getCell():getAnimals() end)
+        if ok and list then
+            local it = list:iterator()
+            while it:hasNext() do animalsCache[#animalsCache + 1] = it:next() end
+        end
+    end
+    return animalsCache
+end
+
+--- Calls fn(character) for every zombie, animal and other player the sense can show.
+local function eachSensed(player, fn)
+    local zombies = getCell() and getCell():getZombieList()
+    if zombies then
+        for j = 0, zombies:size() - 1 do
+            local z = zombies:get(j)
+            if z and not z:isDead() and not z:isReanimatedForGrappleOnly() then fn(z) end
+        end
+    end
+    for _, a in ipairs(cachedAnimals()) do
+        if not a:isDead() and a:getCurrentSquare() then fn(a) end
+    end
+    local others = isClient() and getOnlinePlayers() or nil
+    if others then
+        for j = 0, others:size() - 1 do
+            local p = others:get(j)
+            if p and p ~= player and not p:isDead() and not p:isInvisible() then fn(p) end
+        end
+    else
+        for j = 0, getNumActivePlayers() - 1 do
+            local p = getSpecificPlayer(j)
+            if p and p ~= player and not p:isDead() then fn(p) end
+        end
+    end
+end
+
+local seenScanAt = {}   -- [player num] = getTimestampMs() of the last seen-square pass
+
+--- Marks the circle's squares on the player's level as seen, so never-seen squares stop being drawn black.
+local function markSeen(player, num, radius)
+    local now = getTimestampMs()
+    if seenScanAt[num] and now - seenScanAt[num] < 500 then return end
+    seenScanAt[num] = now
+    local cell = getCell()
+    local px, py = player:getX(), player:getY()
+    local z = math.floor(player:getZ())
+    local r = math.ceil(radius)
+    local r2 = radius * radius
+    local relight = {}
+    for x = math.floor(px) - r, math.floor(px) + r do
+        for y = math.floor(py) - r, math.floor(py) + r do
+            local dx, dy = x + 0.5 - px, y + 0.5 - py
+            if dx * dx + dy * dy <= r2 then
+                local sq = cell:getGridSquare(x, y, z)
+                if sq and not sq:isSeen(num) then
+                    sq:setIsSeen(num, true)
+                    local chunk = sq:getChunk()
+                    if chunk then relight[chunk] = true end
+                end
+            end
+        end
+    end
+    for chunk in pairs(relight) do chunk:checkLightingLater_OnePlayer_AllLevels(num) end
+end
+
+local function sixthSense()
     if not ISSearchManager or not ISSearchManager.players then return end
     for i = 0, getNumActivePlayers() - 1 do
         local player = getSpecificPlayer(i)
         local manager = player and ISSearchManager.players[player]
         if manager and manager.isSearchMode and M.sig(player, "Fieldcraft.SigZombieSense") then
-            senseTexture = senseTexture or getTexture("media/ui/circle.png")
-            local list = getCell() and getCell():getZombieList()
             local radius = tonumber(manager.radius) or 0
-            if list and senseTexture and radius > 0 then
+            if radius > 0 then
+                local num = player:getPlayerNum()
                 local px, py, pz = player:getX(), player:getY(), player:getZ()
                 local r2 = radius * radius
-                local num = player:getPlayerNum()
-                local size = 6
-                for j = 0, list:size() - 1 do
-                    local z = list:get(j)
-                    if z and not z:isDead() and not z:isReanimatedForGrappleOnly()
-                        and math.abs(z:getZ() - pz) < 1 then
-                        local dx, dy = z:getX() - px, z:getY() - py
+                eachSensed(player, function(c)
+                    if math.abs(c:getZ() - pz) < 1 then
+                        local dx, dy = c:getX() - px, c:getY() - py
                         if dx * dx + dy * dy <= r2 then
-                            local sx = isoToScreenX(num, z:getX(), z:getY(), z:getZ() + 0.75)
-                            local sy = isoToScreenY(num, z:getX(), z:getY(), z:getZ() + 0.75)
-                            getRenderer():renderPoly(senseTexture, sx - size, sy - size, sx + size, sy - size,
-                                sx + size, sy + size, sx - size, sy + size, 0.9, 0.15, 0.1, 0.85)
+                            c:setTargetAlpha(num, 1)
+                            c:setAlpha(num, 1)
                         end
                     end
-                end
+                end)
+                markSeen(player, num, radius)
             end
         end
     end
 end
-Events.OnPreUIDraw.Add(drawZombieSense)
+local senseFailed = false
+Events.OnTick.Add(function()
+    local ok, err = pcall(sixthSense)
+    if not ok and not senseFailed then
+        senseFailed = true
+        print("[TienSkillMastery] sixth sense failed: " .. tostring(err))
+    end
+end)
 
 -- Angling.BaitDigger (phase 3c): foraging finds worms and insects more often. Vanilla's own lever is the category
 -- "specialisation" professions and traits get (`forageSystem.getCategoryBonus(chr, catDef)` = 1 + points / 100,

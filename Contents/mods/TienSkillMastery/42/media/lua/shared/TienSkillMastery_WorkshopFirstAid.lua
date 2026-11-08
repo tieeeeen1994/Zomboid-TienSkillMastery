@@ -28,7 +28,13 @@ single player; never on an MP client), scaled after vanilla set it, then re-sent
   Rand(17, 23) - L/2 (int division; healer traits shift it, injury severity scales it). Reachable after all: the
   time is read back and divided by the bonus factor (shorter wound). Mask 0x40460108 (includes BD_deepWoundTime).
 - Not scaled: ISDisinfect, ISCleanBurn, ISRemoveGlass use the level only for pain (pain was not taken) and Stitch's
-  pain and wound-infection chance stay vanilla.
+  wound-infection chance stays vanilla.
+
+FieldMedicine.StitchPain ("less", user 2026-11-08): `ISStitch:complete` ~110 adds pain = base - doctor level, at least 0, to
+the part's additional pain: base 20 with a plain needle and thread, 10 with a suture needle or a holder, 5 to take stitches
+out. So at First Aid 10 only a plain needle and thread hurts (10). Whatever vanilla added is scaled afterwards and re-sent
+with vanilla's own mask (includes BD_additionalPain). It is the
+doctor's bonus, on whoever is stitched.
 ]]
 
 require "TienSkillMastery"
@@ -124,6 +130,25 @@ end, function(self, mult, hadBullet)
     part:setDeepWoundTime(t / mult)
     syncBodyPart(part, 0x40460108)
 end)
+
+-- FieldMedicine.StitchPain: see the header.
+if ISStitch and ISStitch.complete then
+    local vanillaStitch = ISStitch.complete
+    function ISStitch:complete(...)
+        local part, doctor = self.bodyPart, self.character
+        if isClient() or not part or not doctor then return vanillaStitch(self, ...) end
+        local factor = M.less(doctor, "FieldMedicine.StitchPain")
+        if factor >= 1 then return vanillaStitch(self, ...) end
+        local before = part:getAdditionalPain()
+        local results = { vanillaStitch(self, ...) }
+        local added = part:getAdditionalPain() - before
+        if added > 0 then
+            part:setAdditionalPain(before + added * factor)
+            syncBodyPart(part, 0x00570188)
+        end
+        return unpack(results)
+    end
+end
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- FieldMedicine.Disinfectant (phase 2): sparing disinfectant. `ISDisinfect:complete` (~68, server / single player)

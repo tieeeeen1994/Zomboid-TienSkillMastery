@@ -22,7 +22,8 @@ is known for.
 - **Mastery belongs to the character.** It is gone when the character dies.
 - **Mastery tab** next to Skills in the character window, laid out like the Skills tab: the masteries by group, each
   with its skills (green once at 10), a Pick button when it is ready, ten boxes once picked (hover for the points).
-  Click a mastery to see its effects now and at mastery 10.
+  Click a mastery to see its effects now and at mastery 10. Long lines here and in the Skills tab's effect lists wrap;
+  set the length in Options > Mods.
 - **What your skills do.** Click a skill's name in the vanilla Skills tab to see what its current level gives in
   vanilla: every effect with its number, and the features later levels unlock. Click again to close.
 - **Admin cheats.** Right-click a picked mastery in the Mastery tab to change its points or level, or remove the
@@ -51,9 +52,9 @@ effects apply with a weapon of its kind.
   swinging -15%, 20% chance to undo wear; with anything in hand: stomp damage +20%, shoves deal 0.25 damage.
 - **Knifework** (Short Blade, Sneaking): damage +10%, attack speed +30%, endurance used swinging -15%, 20% chance
   to undo wear, endurance used running while sneaking -15%, +25% damage to zombies not targeting you, and 10% a
-  level that a one-on-one jaw stab kills outright.
+  level that a close one-on-one knife stab is a jaw stab (vanilla only jaw-stabs on a critical hit).
 - **Conditioning** (Strength, Fitness): endurance used -10%, endurance recovery +10%, carry weight +5, Strength and
-  Fitness decay -25%, muscle strain from fighting -25%.
+  Fitness decay -25%, muscle strain from everything (fighting, climbing, carrying, farming, exercise) -25%.
 - **Smithing** (Metalworking, Welding, Maintenance): crafting time -25% and dismantling return +10 on metalworking
   and welding, 20% chance to undo tool wear on smithing recipes, 20% chance to get back each burnt charcoal and
   each blowtorch use, iron from ore and blooms +15%.
@@ -63,16 +64,14 @@ effects apply with a weapon of its kind.
 - **Engineering** (Mechanics, Electrical): crafting time -25% and dismantling return +10 on electrical, part install
   and uninstall time -15%, engine repair +1 condition per part, hotwire success +10, hotwiring time -15%, 25% chance
   of an extra electronics scrap when dismantling electronics, top speed and engine power +15% while you drive.
-- **Salvaging** (Welding, Mechanics): burnt car salvage time -15%, one more salvage roll per burnt car, 20% chance
-  to get back each blowtorch use, engine parts salvaged +20%.
 - **Handicraft** (Carving, Knapping, Glassmaking, Pottery): crafting time -25% on their recipes, 20% chance to undo
-  tool wear on them; weapons and clothing you make ignore 1.5% of their wear per mastery level you had when you
-  made them, whoever uses them; 15% chance of one more item from simple knapping, carving and clay press recipes.
+  tool wear on them; 15% chance of one more item from simple knapping, carving and clay press recipes.
 - **Mending** (Tailoring, Maintenance): tailoring crafting time -25%, patching time -15%, fabric recovery chance
   +10, +1 material from ripping clothes, +1 aramid thread use, patches protect 50% more, repairs restore 15% more
-  and a failed one costs no condition, 20% chance a repair does not add to the repair count.
+  and a failed one costs no condition.
 - **Field Medicine** (First Aid, Tailoring): treatment time -15%, treatment strength +15% (bandages, poultices,
-  splints, stitches, bullet removal), disinfecting uses 50% less, crash injuries -15% for everyone in your car.
+  splints, stitches, bullet removal), disinfecting uses 50% less, stitching hurts 75% less, crash injuries -15% for
+  everyone in your car.
 - **Provisioning** (Cooking, Butchering): cooking crafting time -25%, nutrition from added ingredients +15%, time to
   add ingredients -15%, butchering time -15%, food you cook or butcher stays fresh 25% longer.
 - **Hunting** (Tracking, Trapping, Butchering): track finding +20%, track inspection time -15%, trap catch chance +5
@@ -90,43 +89,49 @@ Whole-number bonuses (carry weight, condition, extra items) build up as a chance
 
 ## Signature abilities
 
-Each mastery also unlocks a signature ability, in full from the moment it is picked (it does not grow with mastery
-levels).
+Each mastery also unlocks a signature ability (a few have two or three), each with its own name, in full from the
+moment it is picked (it does not grow with mastery levels).
 
-- **Firearms:** quickdraw (one-handed guns drawn and holstered 4 times faster) and run-and-gun reloading (reloading
-  does not stop when you run).
-- **Bludgeoning:** push back: every swing with a long blunt weapon also staggers back the zombies in front of you
+- **Firearms:** *Quickdraw*: one-handed guns drawn and holstered 4 times faster. *Running Reload*: reloading does
+  not stop when you run.
+- **Bludgeoning:** *Wild Swing*: every swing with a long blunt weapon also staggers back the zombies in front of you
   that it did not hit, for a little endurance each.
-- **Swordsmanship:** hamstring: sneaking and aiming with a long blade, every hit leaves the zombie crawling.
-- **Street Fighting:** bowl them over: sprinting into a zombie knocks it down instead of tripping you, for a little
-  endurance each (no endurance moodle).
-- **Axemanship:** in combat stance, the throw key (Space, rebindable) throws a one-handed axe at the target under
-  the cursor (a zombie, an animal, or a player where PvP allows it), aimed at the head, for half again its damage:
-  spares first (one loose in your main inventory, then one on your hotbar, never from bags), and only then the one
-  in your hand. Your skill, strength and condition count as for a swing (tired, out of breath, panicked, stressed or
-  with sore arms, it hits softer). It is thrown in an arc that
-  reaches the target: head hits (triple damage, as vanilla's) out to about 4 tiles, body hits beyond that. A target
-  the throw can reach (in range, no wall in between) is outlined in amber. It lands where it stops.
-- **Spearcraft:** the same throw with a spear, just as far and as hard: spares first (main inventory, then hotbar,
+- **Swordsmanship:** *Hamstring*: sneaking and aiming with a long blade, every hit leaves the zombie crawling.
+- **Street Fighting:** *Battering Ram*: sprinting into a zombie knocks it down instead of tripping you, for a little
+  endurance each. The first endurance moodle is a warning; from the second you stumble again.
+- **Axemanship:** *Tomahawk*: in combat stance, the throw key (Space, rebindable) throws a one-handed axe at the
+  zombie, animal or (with PvP) player under the cursor, for half again its damage, aimed at the head (head hits out to
+  about 4 tiles). Spares go first: one loose in your main inventory, then one on your hotbar, then the one in hand.
+  Skill, strength and condition count as for a swing. What the throw can reach is outlined (colour in Options > Mods).
+- **Spearcraft:** *Javelin*: the same throw with a spear, just as far and as hard: spares first (main inventory, then hotbar,
   then the one in your hand), and it flies point first.
-- **Knifework:** the lunge: jaw stabs reach half again as far, and you close the gap as you stab.
-- **Conditioning:** Heavy Load penalties count one level lower (combat speed, endurance used, recovery).
-- **Smithing:** masterwork: weapons and clothing you forge ignore 15% of their wear, whoever uses them.
-- **Construction:** half the time a 4th plank from each sawn log, 12 stones instead of 10 from a large stone.
-- **Handicraft:** deft hands: every timed action 10% faster.
-- **Engineering:** engine overhaul: Engine Parts raise a car's engine quality, one point each up to 100 (easier
+- **Knifework:** *Lunge*: with at most one zombie after you, a stab at a zombie up to 1.5 tiles away (vanilla: 0.6) is a jaw stab, and you lunge in to close the gap.
+- **Conditioning:** *Pack Mule*: the Heavy Load moodle counts one level lower, for everything it does (speed, endurance, health, combat, climbing); just over your max weight there is no moodle at all.
+- **Smithing:** *Masterwork*: what you forge ignores 15% of its wear, whoever uses it. A forged blade or head keeps the mark when a smithing master assembles it into a weapon (a non-master's weapon is plain); on axes, hammers, picks, scythes and spears it covers the head and its edge, not the wooden handle.
+- **Construction:** *Clean Cuts*: one more plank from every carpentry recipe that makes planks
+  (4 from a log, 2 from a large branch). *Clean Breaks*: 12 stones per large stone, not 10;
+  flat stones break into 3.
+- **Handicraft:** *Deft Hands*: every timed action 10% faster, moving items included. *Craftsmanship*: what you carve, knap, blow or fire
+  ignores 15% of its wear, whoever uses it; your handles and heads keep it when a Handicraft master assembles them.
+- **Engineering:** *Engine Overhaul*: Engine Parts raise a car's engine quality, one point each up to 100 (easier
   starts, less fuel, full power).
-- **Salvaging:** scrap any car, not only burnt wrecks (nobody inside, everything taken out, not towing, not in
-  someone else's safehouse), and cut vehicle parts such as doors, hoods and seats into metal.
-- **Mending:** restore: clear an item's repair count for the price of a repair, so it repairs like new again.
-- **Field Medicine:** field triage: "Tend wounds" on yourself or someone next to you queues every needed treatment at
-  once: glass and bullets out, fractures splinted, wounds bandaged with the best bandage you carry (theirs too).
-  Infected wounds are left for proper treatment.
-- **Provisioning:** choice cuts: meat you butcher is 15% more filling and nutritious.
-- **Hunting:** your traps keep their bait and are never destroyed, animals caught alive last 4 times longer, and a
-  quarter of catches come in twos.
-- **Homesteading:** tend the field (water, cure and fertilize every plant in a patch you pick) and sow the field
+- **Mending:** *Restoration*: right-click a repaired item to bring it back to full condition and clear its repair count,
+  for three times the price of a repair (zip ties, tape, glue, epoxy: whatever repairs it and you are carrying).
+- **Field Medicine:** *Field Triage*: the wound key (comma, rebindable) tends you and everyone next to you; the world menu
+  also offers yourself, one person or everyone nearby. It queues every needed treatment at once: glass and bullets out,
+  fractures splinted, wounds bandaged with the best bandage you carry (theirs too, used only on them). Everyone shares one
+  list, you included: anyone under 25% overall health goes first, then the body part costing the most health, whoever's
+  it is. Patients can move around within 2 tiles of you; anyone who goes farther, dies or leaves is skipped and you carry on
+  with the rest. Infected wounds get bandaged like any other, but nothing here disinfects them. *Needlework*: sew a bandage
+  from 2 ripped sheets with a needle (kept) and thread, and make a suture needle from any sewing needle (used up) and thread.
+  Anything that counts as thread will do: thread, sinew, dental floss, fishing line.
+- **Provisioning:** *Choice Cuts*: meat you butcher is 40% more filling and nutritious. *Savory Meals*: food you cook
+  in an oven, on a stove or over a fire causes 80% less unhappiness when eaten (a rat you roast costs 6, not 30). Stale,
+  rotten and burnt food adds its usual penalty on top of that lower number.
+- **Hunting:** *Sturdy Traps*: your traps keep their bait and are never destroyed. *Live Catch*: animals caught alive
+  last 4 times longer. *Double Catch*: a quarter of catches come in twos.
+- **Homesteading:** *Harvest Moon*: tend the field (water, cure and fertilize every plant in a patch you pick) and sow the field
   (plant every plowed square in it with the seed you choose).
-- **Angling:** fish finder: aiming a rod at water shows how many fish are there and how much trash.
-- **Fieldcraft:** search mode is not switched off by zombies or running, and zombies inside the search circle are
-  marked wherever they are.
+- **Angling:** *Fish Finder*: aiming a rod at water shows how many fish are there and how much trash.
+- **Fieldcraft:** *Steady Eyes*: search mode is not switched off by zombies or running. *Sixth Sense*: what is inside the search circle
+  shows as if in plain sight, even behind walls: zombies, animals, survivors, items and corpses.

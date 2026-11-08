@@ -132,3 +132,88 @@ function ISAddItemInRecipe:complete(...)
     end
     return W.unpack(results)
 end
+
+-- Provisioning's signature, Savory Meals (user, 2026-11-08): food a master finishes with heat (oven, stove, campfire...)
+-- causes 80% less unhappiness when eaten (flat, from the pick; not scaled; boredom untouched). Not evolved dishes as
+-- they are put together and not recipes (user, same day), only the moment of cooking.
+-- Eating adds `Food.getUnhappyChange()` x the share eaten (`BodyDamage` ~613), which is the saved `unhappyChange` field
+-- plus flat burnt, frozen, stale and rotten penalties computed on read (Food ~1664). The field is what is reduced, so
+-- those penalties build on the reduced value (user's rule): a master's rat is 6 fresh, 16 stale, 26 rotten.
+-- Nothing ties a heating food to a timed action, but `Food.update` (~470, server / SP) calls the food's `OnCooked`
+-- function at the moment it turns cooked, just before vanilla's cooking XP and `sendItemStats` (~506), so the new value
+-- reaches clients by itself. The cook is the same `chef` vanilla pays that XP to: set on every item transaction
+-- (`Transaction` ~166, username; TienSkillMastery_DeftTransfer sets it too) and in single player by
+-- `ISInventoryTransferAction` (~672, full name). `onCooked` is copied from the script at `InstanceItem` (not saved) and
+-- `Item` has no getter, so at world load every food script gets ours through `DoParam` and the value it had is read from
+-- a throwaway instance and called first (vanilla: canned food, cake prep; other mods' too). Server / SP only: a client's
+-- copy never needs the call. `ReplaceOnCooked` foods (bread to toast) become a new item with no callback; none of
+-- vanilla's has an unhappiness penalty. `BadInMicrowave` (~479, after OnCooked) still sets a flat 5.
+-- An evolved dish cooked by a master counts like any other food. Butchering is not cooking: a skinned rat stays at its
+-- 30 until the master cooks it. An ingredient's own penalty never carries into a dish, even in vanilla (`addItem` ~380).
+local ON_COOKED = "TienSkillMastery.SavoryOnCooked"
+local chainedOnCooked = {} -- [full type] = the OnCooked the food's script had
+
+local function callChained(name, food)
+    local fn
+    local tableName, field = string.match(name, "^([^.]+)%.(.+)$")
+    if tableName then
+        local t = _G[tableName]
+        fn = t and t[field]
+    else
+        fn = _G[name]
+    end
+    if not fn then return end
+    local ok, err = pcall(fn, food)
+    if not ok then print("[TienSkillMastery] OnCooked " .. name .. " failed: " .. tostring(err)) end
+end
+
+--- The online player `food:getChef()` names: a username on a server, a full name in single player.
+local function chefOf(food)
+    local name = food:getChef()
+    if not name or name == "" then return nil end
+    if isServer() then
+        local players = getOnlinePlayers()
+        for i = 0, players:size() - 1 do
+            local p = players:get(i)
+            if p:getUsername() == name then return p end
+        end
+        return nil
+    end
+    for i = 0, getNumActivePlayers() - 1 do
+        local p = getSpecificPlayer(i)
+        if p and (p:getFullName() == name or p:getUsername() == name) then return p end
+    end
+    return nil
+end
+
+--- Called by Java (`Food.update`) when a food turns cooked; looked up by name, so it must stay on the global table.
+function M.SavoryOnCooked(food)
+    local chained = chainedOnCooked[food:getFullType()]
+    if chained then callChained(chained, food) end
+    if isClient() then return end
+    local chef = chefOf(food)
+    if chef then M.savorFood(food, chef) end
+end
+
+Events.OnLoadMapZones.Add(function()
+    if isClient() then return end
+    local hooked = 0
+    local items = getScriptManager():getAllItems()
+    for i = 0, items:size() - 1 do
+        local script = items:get(i)
+        if script:isItemType(ItemType.FOOD) then
+            local fullType = script:getFullName()
+            local ok, instance = pcall(instanceItem, fullType)
+            if ok and instance and instanceof(instance, "Food") then
+                local current = instance:getOnCooked()
+                -- Already ours when the scripts were not reset since the last world load: keep what was chained.
+                if current ~= ON_COOKED then
+                    chainedOnCooked[fullType] = (current ~= nil and current ~= "") and current or nil
+                    script:DoParam("OnCooked", ON_COOKED)
+                    hooked = hooked + 1
+                end
+            end
+        end
+    end
+    print("[TienSkillMastery] Savory Meals: OnCooked set on " .. string.format("%d", hooked) .. " food scripts")
+end)

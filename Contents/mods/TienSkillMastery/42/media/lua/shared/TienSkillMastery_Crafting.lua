@@ -60,14 +60,19 @@ Phase 2 (2026-11-07), also inside `performRecipe`:
   crucible use it was cast from): ExtractIronFromIronOre (`RecipeCodeOnCreate.smeltIronOrSteelIngot`, +12 crucible
   uses for the ore or bloom) gets `M.scaleInt` of those 12 as extra uses within the crucible's max;
   ExtractIronFromIronBloom (12 Base.IronChunk) gets the extra as chunks.
-- `Handicraft.CraftsmansMark`: weapons and clothing a Handicraft master makes in a recipe of its skills are marked
+- `Handicraft.SigCraftsmanship` (the craftsman's mark; a 1.5%-a-level bonus `CraftsmansMark` until 2026-11-08, now a
+  signature, 15% from the pick): everything (weapons and clothing only until 2026-11-08; now parts too, passed on like
+  masterwork, see "Maker's marks") a Handicraft master makes in a recipe of its skills is marked
   (modData `TSM_Mark` = the bonus now, percent, fixed for good; `TSM_MarkBy` = the maker's name as plain text, since a
   dedicated server has no mod translations), sent with `syncItemFields` (carries modData). The mark's wear undo is in
   server/TienSkillMastery_Physical.lua and works for whoever holds or wears the item.
-- Phase 3a signatures: `Smithing.SigMasterwork` marks what a Smithing master makes in an `isSmithing()` recipe like
-  the craftsman's mark, at 15% (`TSM_MarkKind` "masterwork"; a mark is never lowered); `Construction.SigPlanks` /
-  `SigStones`: SawLogs (1 log -> 3 planks) gives a 4th plank on a 50% roll, Make_Stones_from_Large_Stone (-> 10
-  Stone2) 2 more, added with vanilla's own `Actions.addOrDropItem` (sends; drops on the floor when full). Nothing
+- Phase 3a signatures: `Smithing.SigMasterwork` marks everything a Smithing master makes in an `isSmithing()` recipe
+  (= uses the Blacksmith skill or is in the Blacksmithing category; most forging makes a blade or head, a plain item,
+  turned into the weapon by a Maintenance assembly recipe), at 15% (`TSM_MarkKind` "masterwork"; a mark is never
+  lowered), and it passes on through later recipes ("Maker's marks" below, user 2026-11-08);
+  `Construction.SigPlanks` /
+  `SigStones`: every recipe that makes planks gives one more (SawLogs only, on a 50% roll, until 2026-11-08, user;
+  Carpentry recipes only, not when it also uses up a plank), Make_Stones_from_Large_Stone (-> 10 Stone2) 2 more, added with vanilla's own `Actions.addOrDropItem` (sends; drops on the floor when full). Nothing
   turns planks back into logs or stones into a large stone, so neither loops. Recipe tools with a mark are not yet
   given their wear back inside a craft (only held and worn items are watched).
 - `Provisioning.LastingFood` (recipes involving Cooking): created Food stays fresh longer, `setOffAge` /
@@ -242,10 +247,56 @@ local function snapshotTorches(self)
     return found
 end
 
+--- Every item a repair recipe's damaged input could take: { { item, cond, repaired } }, or nil when it has no such
+--- input. The one the recipe repaired is the one whose repair count rose (`RecipeCodeOnCreate.genericFixer` ~1158).
+local function snapshotRepairs(self, recipe)
+    local accepts, any = {}, false
+    local inputs = recipe:getInputs()
+    for i = 0, inputs:size() - 1 do
+        local input = inputs:get(i)
+        if input:getResourceType() == ResourceType.Item and input:isDamaged() then
+            local possible = input:getPossibleInputItems()
+            for j = 0, possible:size() - 1 do
+                accepts[possible:get(j):getFullName()] = true
+                any = true
+            end
+        end
+    end
+    if not any then return nil end
+    local list, seen = {}, {}
+    local function scan(container)
+        if not container then return end
+        local items = container:getItems()
+        for i = 0, items:size() - 1 do
+            local item = items:get(i)
+            if accepts[item:getFullType()] and not seen[item:getID()] then
+                seen[item:getID()] = true
+                list[#list + 1] = { item = item, cond = item:getCondition(), repaired = item:getHaveBeenRepaired() }
+            end
+        end
+    end
+    scan(self.character:getInventory())
+    local containers = (self.logic and self.logic:getContainers()) or self.containers
+    if containers then
+        for i = 0, containers:size() - 1 do scan(containers:get(i)) end
+    end
+    return list
+end
+
+--- Careful repairs on what a repair recipe repaired (M.afterRepair, TienSkillMastery_Repairs.lua).
+local function afterRepairs(chr, list)
+    for _, s in ipairs(list) do
+        if s.item:getHaveBeenRepaired() > s.repaired and M.afterRepair(chr, s.item, s.cond, s.repaired) then
+            s.item:syncItemFields()
+        end
+    end
+end
+
 local function before(self)
     local chr, recipe = self.character, self.craftRecipe
     if not chr or not recipe then return nil end
     local ctx = { name = shortName(recipe) }
+    if M.val(chr, "Mending.CarefulRepairs") > 0 then ctx.repairs = snapshotRepairs(self, recipe) end
     ctx.toolWear = toolWearId(chr, recipe)
     if ctx.toolWear then
         ctx.tools = snapshotTools(self, recipe)
@@ -473,20 +524,99 @@ local function involves(recipe, mastery)
     return false
 end
 
---- Marks weapons and clothing just made: `TSM_Mark` (percent of wear ignored, never lowered), maker, kind.
-local function markCreated(chr, created, mark, kind)
+-- ---------------------------------------------------------------------------------------------------------------
+-- Maker's marks: masterwork (Smithing's signature) and the craftsman's mark (Handicraft), user 2026-11-08.
+-- Every item a master makes in a recipe of their craft is marked in modData (both kinds work the same way):
+--   TSM_Mark / TSM_MarkBy / TSM_MarkKind (+ TSM_MarkPart "head")  the main mark: the whole item, or its head
+--   TSM_HandleMark / TSM_HandleMarkBy / TSM_HandleMarkKind        a hafted tool's handle
+--   TSM_MarkRole "head" | "handle"                                 what a marked part becomes in a hafted tool
+-- A recipe that uses up a marked item as a single piece (a blade, a head, a handle, a knife; not a batch such as nails,
+-- not a drainable) passes its marks to what it makes, keeping the maker's name, but only a mark whose kind the crafter
+-- is a master of (masterwork: Smithing's signature; craftsman: Handicraft's signature Craftsmanship): a non-master's result is
+-- plain. Marks go on every weapon and piece of clothing made, or on the only item made. A weapon with a separate head
+-- condition (axes, hammers, picks, scythes, spears) is hafted: a "head" mark covers its head and edge, a "handle" mark
+-- its overall condition (the handle); anything else takes the best mark whole. Roles: masterwork is metal, a head;
+-- craftsman parts from Carving alone are wood, a handle; from Flint Knapping, Glassmaking or Pottery a head. Marks are
+-- never lowered. Works for modded items: it reads marks, not item names or tags. Wear: `M.markChance`.
+-- ---------------------------------------------------------------------------------------------------------------
+
+local MARK_SKILL = { masterwork = "Smithing.SigMasterwork", craftsman = "Handicraft.SigCraftsmanship" }
+
+--- Writes a mark into a slot ("whole", "head", "handle") if it beats what is there. True when written.
+local function setMark(item, slot, value, by, kind, role)
+    local md = item:getModData()
+    if slot == "handle" then
+        if (tonumber(md.TSM_HandleMark) or 0) >= value then return false end
+        md.TSM_HandleMark, md.TSM_HandleMarkBy, md.TSM_HandleMarkKind = value, by, kind
+    else
+        if (tonumber(md.TSM_Mark) or 0) >= value then return false end
+        md.TSM_Mark, md.TSM_MarkBy, md.TSM_MarkKind = value, by, kind
+        md.TSM_MarkPart = slot == "head" and "head" or nil
+    end
+    if role then md.TSM_MarkRole = role end
+    return true
+end
+
+--- Marks every item just made (whole item) with this master's mark.
+local function markCreated(chr, created, mark, kind, role)
     if mark <= 0 then return end
+    local value = math.floor(mark * 10 + 0.5) / 10
+    local by = chr:getDisplayName() or chr:getUsername()
     for i = 0, created:size() - 1 do
         local item = created:get(i)
-        if item and (instanceof(item, "HandWeapon") or instanceof(item, "Clothing")) then
-            local md = item:getModData()
-            local value = math.floor(mark * 10 + 0.5) / 10
-            if (tonumber(md.TSM_Mark) or 0) < value then
-                md.TSM_Mark = value
-                md.TSM_MarkBy = chr:getDisplayName() or chr:getUsername()
-                md.TSM_MarkKind = kind
-                item:syncItemFields()
+        if item and setMark(item, "whole", value, by, kind, role) then item:syncItemFields() end
+    end
+end
+
+--- What a craftsman's part becomes in a hafted tool: carved wood is a handle, stone / glass / clay a head.
+local function craftsmanRole(recipe)
+    local perks = relevantPerks(recipe)
+    if perks.Carving and not (perks.FlintKnapping or perks.Glassmaking or perks.Pottery) then return "handle" end
+    return "head"
+end
+
+--- The marks a used-up item passes on, for the kinds this crafter is a master of.
+local function marksOf(chr, item, out)
+    local md = item:getModData()
+    local main = tonumber(md.TSM_Mark) or 0
+    if main > 0 and MARK_SKILL[md.TSM_MarkKind] and M.val(chr, MARK_SKILL[md.TSM_MarkKind]) > 0 then
+        local role = md.TSM_MarkPart == "head" and "head" or md.TSM_MarkRole
+            or (md.TSM_MarkKind == "craftsman" and "handle" or "head")
+        out[#out + 1] = { value = main, by = md.TSM_MarkBy, kind = md.TSM_MarkKind, role = role }
+    end
+    local handle = tonumber(md.TSM_HandleMark) or 0
+    if handle > 0 and MARK_SKILL[md.TSM_HandleMarkKind] and M.val(chr, MARK_SKILL[md.TSM_HandleMarkKind]) > 0 then
+        out[#out + 1] = { value = handle, by = md.TSM_HandleMarkBy, kind = md.TSM_HandleMarkKind, role = "handle" }
+    end
+end
+
+--- Passes the marks of single-piece used-up items on to what the recipe made (rules above).
+local function carryMarks(chr, data, created)
+    local consumed = data:getAllConsumedItems()
+    local count, marks = {}, {}
+    for i = 0, consumed:size() - 1 do
+        local item = consumed:get(i)
+        if item then count[item:getFullType()] = (count[item:getFullType()] or 0) + 1 end
+    end
+    for i = 0, consumed:size() - 1 do
+        local item = consumed:get(i)
+        if item and count[item:getFullType()] == 1 and not instanceof(item, "DrainableComboItem") then
+            marksOf(chr, item, marks)
+        end
+    end
+    if #marks == 0 then return end
+    local only = created:size() == 1
+    for i = 0, created:size() - 1 do
+        local item = created:get(i)
+        local weapon = item and instanceof(item, "HandWeapon")
+        if item and (only or weapon or instanceof(item, "Clothing")) then
+            local hafted = weapon and item:hasHeadCondition()
+            local changed = false
+            for _, m in ipairs(marks) do
+                local slot = hafted and (m.role == "handle" and "handle" or "head") or "whole"
+                if setMark(item, slot, m.value, m.by, m.kind, not hafted and m.role or nil) then changed = true end
             end
+            if changed then item:syncItemFields() end
         end
     end
 end
@@ -510,22 +640,64 @@ local function afterExtraOutput(chr, name, created)
     if extra then Actions.addOrDropItem(chr, extra) end
 end
 
-local function afterMark(chr, created)
-    markCreated(chr, created, M.val(chr, "Handicraft.CraftsmansMark"), "craftsman")
+local function afterMark(chr, recipe, created)
+    markCreated(chr, created, M.val(chr, "Handicraft.SigCraftsmanship"), "craftsman", craftsmanRole(recipe))
 end
 
---- Construction's signature: a 4th plank per sawn log on a roll, 12 stones instead of 10 from a large stone.
-local function afterConstruction(chr, name)
-    if name == "SawLogs" then
-        local chance = M.val(chr, "Construction.SigPlanks")
-        if chance > 0 and ZombRandFloat(0, 100) < chance then
+--- Construction's signatures. Clean Cuts (user, 2026-11-08; SawLogs only before): one more plank from every Carpentry
+--- recipe that makes planks (one involving Woodwork: vanilla SawLogs 3 -> 4, SawLargeBranch 1 -> 2; modded ones too;
+--- not vanilla's CarvePlank, a Carving recipe), except one that also uses up a plank, so a plank-in, planks-out
+--- recipe cannot be repeated for endless planks. The
+--- chance is `Construction.SigPlanks` (100). Clean Breaks: 12 stones instead of 10 from a large stone.
+local function afterConstruction(chr, name, recipe, data, created)
+    local chance = M.val(chr, "Construction.SigPlanks")
+    if chance > 0 and relevantPerks(recipe).Woodwork then
+        local made = false
+        for i = 0, created:size() - 1 do
+            local item = created:get(i)
+            if item and item:getFullType() == "Base.Plank" then made = true break end
+        end
+        if made then
+            local consumed = data:getAllConsumedItems()
+            for i = 0, consumed:size() - 1 do
+                local item = consumed:get(i)
+                if item and item:getFullType() == "Base.Plank" then made = false break end
+            end
+        end
+        if made and ZombRandFloat(0, 100) < chance then
             Actions.addOrDropItem(chr, instanceItem("Base.Plank"))
         end
-    elseif name == "Make_Stones_from_Large_Stone" then
+    end
+    if name == "Make_Stones_from_Large_Stone" then
         for _ = 1, math.floor(M.val(chr, "Construction.SigStones")) do
             Actions.addOrDropItem(chr, instanceItem("Base.Stone2"))
         end
     end
+end
+
+--- Clean Breaks' flat stone recipe (TSM_BreakFlatStone, media/scripts/TienSkillMastery_recipes.txt), masters only.
+--- OnAddToMenu (the crafting window's lists, `callLuaBool(name, { player, recipe, shouldShowAll })`) hides it from
+--- everyone else. It must be a plain global name: 42.21 `callLuaBool` looks it up with `env.rawget(name)`, so a
+--- dotted name is never found and the recipe is hidden from everyone (the right-click menu does not ask it); OnTest
+--- goes through `LuaManager.getFunctionObject`, which follows dots. OnTest (`CraftRecipe.OnTestItem(item, character)`, every candidate input item, on the client for
+--- the window and on the server for the craft) refuses it, so a non-master cannot craft it in MP either.
+function TienSkillMastery_FlatStoneMenu(params)
+    local player = params and params.player
+    return player ~= nil and M.sig(player, "Construction.SigStones")
+end
+
+function TienSkillMastery.FlatStoneTest(item, character)
+    return character ~= nil and M.sig(character, "Construction.SigStones")
+end
+
+--- Needlework's recipes (TSM_MakeBandage, TSM_MakeSutureNeedle), gated the same way.
+function TienSkillMastery_NeedleworkMenu(params)
+    local player = params and params.player
+    return player ~= nil and M.sig(player, "FieldMedicine.SigNeedlework")
+end
+
+function TienSkillMastery.NeedleworkTest(item, character)
+    return character ~= nil and M.sig(character, "FieldMedicine.SigNeedlework")
 end
 
 local function afterLastingFood(chr, created)
@@ -541,6 +713,7 @@ local function after(self, ctx)
     local chr, recipe = self.character, self.craftRecipe
     local data = self.logic and self.logic:getRecipeData()
     if not chr or not recipe or not data then return end
+    if ctx.repairs then afterRepairs(chr, ctx.repairs) end
     if ctx.tools then afterToolWear(chr, data, ctx.tools, ctx.toolWear) end
     if ctx.fabric then afterRipping(chr, data, ctx.fabric) end
     if ctx.torches then afterTorches(chr, ctx.torches) end
@@ -549,11 +722,12 @@ local function after(self, ctx)
     if created:size() == 0 then return end
     afterOre(chr, ctx.name, created)
     if involves(recipe, "Handicraft") then
-        afterMark(chr, created)
+        afterMark(chr, recipe, created)
         afterExtraOutput(chr, ctx.name, created)
     end
-    if recipe:isSmithing() then markCreated(chr, created, M.val(chr, "Smithing.SigMasterwork"), "masterwork") end
-    afterConstruction(chr, ctx.name)
+    if recipe:isSmithing() then markCreated(chr, created, M.val(chr, "Smithing.SigMasterwork"), "masterwork", "head") end
+    carryMarks(chr, data, created)
+    afterConstruction(chr, ctx.name, recipe, data, created)
     if involves(recipe, "Provisioning") then afterLastingFood(chr, created) end
     if SPEAR_RECIPES[ctx.name] then afterSpear(chr, created) end
     if ARAMID_RECIPES[ctx.name] then afterAramid(chr, created) end

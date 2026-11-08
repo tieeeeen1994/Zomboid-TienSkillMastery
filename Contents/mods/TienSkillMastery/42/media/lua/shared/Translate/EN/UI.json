@@ -1,4 +1,10 @@
 {
     "UI_optionscreen_binding_TienSkillMastery": "Tien's Skill Mastery",
-    "UI_optionscreen_binding_TsmThrowAxe": "Throw axe or spear (combat stance)"
+    "UI_optionscreen_binding_TsmThrowAxe": "Throw axe or spear (combat stance)",
+    "UI_optionscreen_binding_TsmTendWounds": "Tend wounds (Field Triage)",
+    "UI_TienSkillMastery_Options": "Tien's Skill Mastery",
+    "UI_TienSkillMastery_Option_ThrowOutline": "Throw target outline colour",
+    "UI_TienSkillMastery_Option_ThrowOutline_tooltip": "Colour of the outline on the target a thrown axe or spear would reach (Axemanship and Spearcraft signatures).",
+    "UI_TienSkillMastery_Option_LineLength": "Text line length (characters)",
+    "UI_TienSkillMastery_Option_LineLength_tooltip": "How long a line of text can get in the Mastery tab and the Skills tab's effect lists. Longer text continues on the next line, indented. Set it to the maximum for no wrapping."
 }

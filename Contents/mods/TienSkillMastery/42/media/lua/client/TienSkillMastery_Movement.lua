@@ -15,16 +15,26 @@ when the step stays on the same square or goes to an orthogonal neighbour that `
 share; the animation is not sped up. MP: the client owns its position; these speeds are far under the Speed
 anti-cheat, and NoClip only refuses moves up a level. Steps over half a tile (teleports) are ignored.
 
-Street Fighting's signature, bowl them over (phase 3b): sprinting with no endurance moodle, running into a zombie
+Street Fighting's signature, battering ram (phase 3b; named "bowl them over" until 2026-11-08, still `SigBowlOver` and
+relay kind "bowl" in code): sprinting with at most the first endurance moodle (the
+warning; user, 2026-11-08, was: none), running into a zombie
 knocks it down instead of tripping the master, at an endurance cost per zombie. Vanilla (42.21
 `IsoMovingObject.separate` ~1221): a player moving fast enough bumps a character only when `getBumpedChr()` is not
 that character, and a sprint bump always trips (`setBumpFall(true)`, then the "wasBumped" event). There is no Lua
 event between that roll and the trip, but `setBumpedChr` is public: each update (`OnPlayerUpdate` runs before
-`separate`) the nearest standing zombie within a tile in front is set as already bumped, so no trip is rolled
-against it, and it is knocked down on its owner through the relay (`knockDown`, from behind when the master comes
+`separate`) the nearest standing zombie within a tile is set as already bumped, so no trip is rolled against it, and it is knocked down on its owner through the relay (`knockDown`, from behind when the master comes
 from behind it; shared/TienSkillMastery_Relay.lua, kind "bowl", 0.02 endurance, taken by the server). Each zombie
 at most once every 2 s. The two still push apart for that update (`isPushedByForSeparate`), then the zombie is on the
 floor.
+Any direction (user, 2026-11-08: zombies standing still still tripped the master): vanilla bumps on contact from any
+angle (`len < twidth`, both widths, positions after this update's move), and a zombie standing still is usually
+brushed at an angle while running past it, so the first version's cone (within ~70 degrees of the facing) missed it.
+`setBumpedChr` holds one character, so it shields only the nearest zombie, and two zombies tripped the master (user,
+2026-11-08: the first one, still staggering, stayed the nearest). So every standing zombie within NONSOLID_REACH is
+also made not solid for that update: vanilla bumps (and trips) only on objects that `isSolidForSeparate`, which is
+false while `solid` is false (`IsoMovingObject` ~1174), and `IsoZombie` sets `solid = true` again in its own update
+(~3407), so the flag cannot stick; it is set here, inside the player's update right before its `separate`, every
+update, and put back at once for a zombie no longer in reach.
 ]]
 
 if isServer() then return end
@@ -34,32 +44,61 @@ require "TienSkillMastery_Relay"
 local M = TienSkillMastery
 
 local bowled = {}   -- [zombie] = getTimestampMs() of its knockdown
-local BOWL_REACH, BOWL_DOT = 1.0, 0.3
+local BOWL_REACH = 1.0       -- tiles: the nearest zombie this close is shielded from the trip roll
+local NONSOLID_REACH = 0.8   -- tiles: every standing zombie this close is not solid for this update (no bump at all)
+local BOWL_CONTACT = 0.65    -- tiles: and knocked down once this close (vanilla's contact: the two widths, ~0.5,
+                             -- against next positions), so one merely passed is not
+local unsolid = {}           -- [zombie] = true while made not solid here
+
+local function restoreSolid(keep)
+    for z in pairs(unsolid) do
+        if not keep or not keep[z] then
+            pcall(function() z:setSolid(true) end)
+            unsolid[z] = nil
+        end
+    end
+end
 
 local function bowlOver(player)
-    if not player:isSprinting() or player:getMoodles():getMoodleLevel(MoodleType.ENDURANCE) > 0 then return end
-    if not M.sig(player, "StreetFighting.SigBowlOver") then return end
+    -- Still on at the first endurance moodle, a warning; off from the second (user, 2026-11-08).
+    if not player:isSprinting() or player:getMoodles():getMoodleLevel(MoodleType.ENDURANCE) > 1
+        or not M.sig(player, "StreetFighting.SigBowlOver") then
+        restoreSolid(nil)
+        return
+    end
     local list = getCell() and getCell():getZombieList()
     if not list then return end
     local px, py = player:getX(), player:getY()
-    local fx, fy = player:getForwardDirectionX(), player:getForwardDirectionY()
     local best, bestD = nil, BOWL_REACH
+    local near, knock = {}, {}
     for i = 0, list:size() - 1 do
         local z = list:get(i)
         if z and not z:isDead() and not z:isOnFloor() and not z:isReanimatedForGrappleOnly()
             and math.abs(z:getZ() - player:getZ()) < 0.5 then
             local dx, dy = z:getX() - px, z:getY() - py
             local d = math.sqrt(dx * dx + dy * dy)
-            if d < bestD and d > 0.001 and (dx * fx + dy * fy) / d > BOWL_DOT then best, bestD = z, d end
+            if d < bestD and d > 0.001 then best, bestD = z, d end
+            if d <= NONSOLID_REACH then
+                near[z] = true
+                if d <= BOWL_CONTACT then knock[#knock + 1] = z end
+            end
         end
     end
-    if not best then return end
-    player:setBumpedChr(best)
-    local now = getTimestampMs()
-    if not bowled[best] or now - bowled[best] > 2000 then
-        bowled[best] = now
-        M.Relay.act(player, "bowl", { best })
+    restoreSolid(near)
+    for z in pairs(near) do
+        z:setSolid(false)
+        unsolid[z] = true
     end
+    if best then player:setBumpedChr(best) end
+    local now = getTimestampMs()
+    local due = {}
+    for _, z in ipairs(knock) do
+        if not bowled[z] or now - bowled[z] > 2000 then
+            bowled[z] = now
+            due[#due + 1] = z
+        end
+    end
+    if #due > 0 then M.Relay.act(player, "bowl", due) end
 end
 
 Events.EveryOneMinute.Add(function()

@@ -12,7 +12,7 @@ tree arrow and SkillBarSeparator). Each row: the mastery's name, then its state:
 gold for a picked one (the level in progress filled by its progress, prestige past 10 as +n in a deeper gold,
 grey while inactive), a Pick button when every member is at 10 and a slot is free, else "Locked" / "Closed"; then
 the member skills, each in green once at 10. A slot counter heads the tab. Click a row to list its effects now and
-at mastery 10. Picking asks for confirmation (permanent) and is checked again on the server.
+at mastery 10, signatures first. Picking asks for confirmation (permanent) and is checked again on the server.
 ]]
 
 require "ISUI/ISPanelJoypad"
@@ -98,10 +98,20 @@ function TienSkillMasteryPanel:createChildren()
         table.insert(groups, byGroup[g])
     end
     self.nameLen = 0
+    self.effectOrder = {}
     for _, m in ipairs(M.masteries) do
         local g = byGroup[m.group]
         if g then table.insert(g.masteries, m) end
         self.nameLen = math.max(self.nameLen, tm:MeasureStringX(UIFont.Small, masteryName(m.id)))
+        -- The effect list shows signatures first, each kind in the order it was defined.
+        local order = {}
+        for _, d in ipairs(m.defs) do
+            if d.kind == "sig" then table.insert(order, d) end
+        end
+        for _, d in ipairs(m.defs) do
+            if d.kind ~= "sig" then table.insert(order, d) end
+        end
+        self.effectOrder[m.id] = order
     end
     self.groups = groups
     -- The state column: wide enough for the boxes, the Pick button and the state words.
@@ -212,9 +222,12 @@ function TienSkillMasteryPanel:render()
     local intro2 = getText("IGUI_TienSkillMastery_Intro2")
     local slots = getText("IGUI_TienSkillMastery_Slots", string.format("%d", picked), string.format("%d", M.MAX_PICKS))
     for _, line in ipairs({ intro, intro2 }) do
-        self:drawText(line, PAD, y, 0.8, 0.8, 0.8, 1, UIFont.Small)
-        maxRight = math.max(maxRight, PAD + tm:MeasureStringX(UIFont.Small, line))
-        y = y + FONT_HGT_SMALL
+        for i, part in ipairs(M.wrapText(line)) do
+            local px = PAD + (i > 1 and M.WRAP_INDENT or 0)
+            self:drawText(part, px, y, 0.8, 0.8, 0.8, 1, UIFont.Small)
+            maxRight = math.max(maxRight, px + tm:MeasureStringX(UIFont.Small, part))
+            y = y + FONT_HGT_SMALL
+        end
     end
     y = y + 4
     self:drawText(slots, PAD, y, TAR[1], TAR[2], TAR[3], 1, UIFont.Small)
@@ -282,14 +295,15 @@ function TienSkillMasteryPanel:render()
 
                 if self.expanded[m.id] then
                     local shown = 0
-                    for _, d in ipairs(m.defs) do
+                    for _, d in ipairs(self.effectOrder[m.id]) do
                         if M.enabled(d) then
                             local now = M.val(player, d.id)
                             local line
                             local cr, cg, cb
                             if d.kind == "sig" then
                                 -- Signature: an unlock, in full from the pick.
-                                line = getText("IGUI_TienSkillMastery_Signature", bonusLabel(d)) .. "   ("
+                                local sigName = getTextOrNull("IGUI_TienSkillMastery_SigName_" .. d.name)
+                                line = (sigName and (sigName .. ": ") or "") .. bonusLabel(d) .. "   ("
                                     .. getText(now > 0 and "IGUI_TienSkillMastery_SigOn" or "IGUI_TienSkillMastery_SigOff") .. ")"
                                 if now > 0 then cr, cg, cb = TAR[1], TAR[2], TAR[3] else cr, cg, cb = 0.5, 0.5, 0.5 end
                             else
@@ -299,9 +313,14 @@ function TienSkillMasteryPanel:render()
                                 local g2 = now > 0 and 0.85 or 0.5
                                 cr, cg, cb = g2, g2, g2
                             end
-                            self:drawText(line, nameX + PAD, y + fontOffset, cr, cg, cb, 1, UIFont.Small)
-                            maxRight = math.max(maxRight, nameX + PAD + tm:MeasureStringX(UIFont.Small, line))
-                            y = y + ROW_HGT
+                            -- Long lines wrap at the mod option's length, the rest indented and closer together.
+                            local parts = M.wrapText(line)
+                            for i, part in ipairs(parts) do
+                                local px = nameX + PAD + (i > 1 and M.WRAP_INDENT or 0)
+                                self:drawText(part, px, y + fontOffset, cr, cg, cb, 1, UIFont.Small)
+                                maxRight = math.max(maxRight, px + tm:MeasureStringX(UIFont.Small, part))
+                                y = y + (i < #parts and FONT_HGT_SMALL or ROW_HGT)
+                            end
                             shown = shown + 1
                         end
                     end
@@ -387,6 +406,10 @@ function TienSkillMasteryPanel:askPick(masteryId)
     end
     modal:initialise()
     modal:addToUIManager()
+    -- Above the character window (user, 2026-11-08: the dialog opened behind it): the pick button is drawn inside that
+    -- window, and the same click reaches the window afterwards, which brings itself to the top over the new dialog.
+    modal:setAlwaysOnTop(true)
+    modal:bringToTop()
 end
 
 function TienSkillMasteryPanel:onMouseDown(x, y)
@@ -451,6 +474,8 @@ local function askNumber(self, title, default, onNumber)
     box:initialise()
     box:setOnlyNumbers(true)
     box:addToUIManager()
+    box:setAlwaysOnTop(true)   -- above the character window (see askPick)
+    box:bringToTop()
 end
 
 --- Opens the mastery cheat menu for `masteryId` at the mouse, if the player may use it. Returns true when shown.

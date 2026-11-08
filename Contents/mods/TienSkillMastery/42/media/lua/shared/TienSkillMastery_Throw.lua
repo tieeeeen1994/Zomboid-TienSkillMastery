@@ -446,7 +446,7 @@ local function wearRoll(player, weapon, mastery)
     local odds = base + player:getPerkLevel(Perks.Maintenance) + math.floor(player:getPerkLevel(SKILL[mastery]) / 2)
     if ZombRand(math.max(1, odds)) ~= 0 then return end
     local a = M.val(player, mastery .. ".WearUndo")
-    local b = math.min(100, tonumber(weapon:getModData().TSM_Mark) or 0)
+    local b = M.markChance(weapon, "condition")
     local undo = 100 * (1 - (1 - a / 100) * (1 - b / 100))
     if undo > 0 and ZombRandFloat(0, 100) < undo then return end
     weapon:setCondition(math.max(0, weapon:getCondition() - 1), false)
@@ -1073,14 +1073,17 @@ end)
 -- ---------------------------------------------------------------------------------------------------------------
 -- Target outline when a throw is possible (user, 2026-11-08; replaced a drawn copy of vanilla's aim reticle, which
 -- the user found ugly). While aiming with something the throw key would throw (`Th.throwable`), the target the aim
--- points at within its throw range (`aimTarget`: zombie, animal, PvP player) gets an outline in `Th.OUTLINE_COLOR`, the way vanilla's
+-- points at within its throw range (`aimTarget`: zombie, animal, PvP player) gets an outline (colour below), the way vanilla's
 -- melee outline marks what a swing would hit (`CombatManager.highlightMeleeTargets`: `setOutlineHighlight(index,
 -- true)` + `setOutlineHighlightCol`). `IsoMovingObject.renderlast` clears an outline every frame unless it was set
 -- during that frame's UI update or render (`FBORenderObjectOutline` keeps the UI time), so it is set again from
--- `OnPreUIDraw` every frame and goes away by itself once it is not.
+-- `OnPreUIDraw` every frame and goes away by itself once it is not. The colour is a per-player mod option
+-- (client/TienSkillMastery_Options.lua, `M.throwOutlineColor`, user 2026-11-08), default `M.OUTLINE_COLOR`.
 -- ---------------------------------------------------------------------------------------------------------------
 
-Th.OUTLINE_COLOR = { r = 1.0, g = 0.75, b = 0.2, a = 1.0 }   -- amber, apart from vanilla's red melee outline
+local function outlineColor()
+    return M.throwOutlineColor and M.throwOutlineColor() or M.OUTLINE_COLOR
+end
 
 local function throwTarget(player)
     if not player:isAiming() or player:getVehicle() then return nil end
@@ -1103,7 +1106,7 @@ Events.OnPreUIDraw.Add(function()
     end
     local target = outlined
     if not target or target:isDead() or not player:isAiming() then return end
-    local c = Th.OUTLINE_COLOR
+    local c = outlineColor()
     local index = player:getPlayerNum()
     target:setOutlineHighlight(index, true)
     target:setOutlineHighlightCol(index, c.r, c.g, c.b, c.a)

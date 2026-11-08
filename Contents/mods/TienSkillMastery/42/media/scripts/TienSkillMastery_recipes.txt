@@ -1,0 +1,79 @@
+module TienSkillMastery
+{
+    imports
+    {
+        Base
+    }
+
+    /* Construction's signature Clean Breaks (user, 2026-11-08): a master can break a Large Smooth Flat Stone
+       (Base.FlatStone, 10 kg) into stones, at the master's large-stone rate (12 stones from 40 kg = 3 from 10 kg).
+       Copied from vanilla's Make_Stones_from_Large_Stone (time scaled by weight). Masters only: OnAddToMenu hides it
+       from everyone else's crafting lists, OnTest refuses its items on the client and, for the craft, on the server
+       (shared/TienSkillMastery_Crafting.lua). Nothing makes a flat stone, so it cannot loop. */
+    craftRecipe TSM_BreakFlatStone
+    {
+        time = 150,
+        Tags = InHandCraft;CanBeDoneFromFloor,
+        category = Masonry,
+        xpAward = Masonry:5,
+        timedAction = HammerStoneStanding,
+        OnAddToMenu = TienSkillMastery_FlatStoneMenu,
+        OnTest = TienSkillMastery.FlatStoneTest,
+        inputs
+        {
+            item 1 tags[base:clubhammer;base:sledgehammer;base:stonemaul;base:pickaxe] mode:keep flags[MayDegradeLight;Prop1],
+            item 1 [Base.FlatStone],
+        }
+        outputs
+        {
+            item 3 Base.Stone2,
+        }
+    }
+
+    /* Field Medicine's signature Needlework (user, 2026-11-08): no vanilla recipe makes either item (only boxes unpack
+       them). Gated like the flat stone above (shared/TienSkillMastery_Crafting.lua). Vanilla's DisinfectRag / DisinfectBandage
+       go on from a bandage to an alcohol one, and CleanBandage washes a used one. A bandage takes what vanilla's SewRagBandana
+       takes (user, 2026-11-08): a needle, kept and worn a little, 2 ripped sheets and one use of thread. */
+    craftRecipe TSM_MakeBandage
+    {
+        timedAction = SewingCloth,
+        time = 50,
+        xpAward = Tailoring:3,
+        Tags = InHandCraft;Health,
+        category = Medical,
+        OnAddToMenu = TienSkillMastery_NeedleworkMenu,
+        OnTest = TienSkillMastery.NeedleworkTest,
+        inputs
+        {
+            item 1 tags[base:sewingneedle] mode:keep flags[MayDegradeLight],
+            item 2 [Base.RippedSheets],
+            item 1 tags[base:thread],
+        }
+        outputs
+        {
+            item 1 Base.Bandage,
+        }
+    }
+
+    /* The needle goes into the suture needle. base:sewingneedle = plain, bone, brass and forged needles; base:thread =
+       thread, aramid thread, sinew, dental floss, fishing line and premium fishing line. One use of the thread. */
+    craftRecipe TSM_MakeSutureNeedle
+    {
+        timedAction = SewingCloth,
+        time = 50,
+        xpAward = Tailoring:3,
+        Tags = InHandCraft;Health,
+        category = Medical,
+        OnAddToMenu = TienSkillMastery_NeedleworkMenu,
+        OnTest = TienSkillMastery.NeedleworkTest,
+        inputs
+        {
+            item 1 tags[base:sewingneedle],
+            item 1 tags[base:thread],
+        }
+        outputs
+        {
+            item 1 Base.SutureNeedle,
+        }
+    }
+}

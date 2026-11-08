@@ -534,7 +534,7 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     speed, then `amount = amount - elapsedMinutes x newAmount` and a leak under 70 condition. Wrapper: when
     `vehicle:getDriver()` is a master, give back 15% of the drop the call made (the wrapper only sees the total, so the
     0.01 leak of a worn tank is included).
-- **Salvaging** (**approved**, user 2026-11-06; still to review after it: Mending, Field Medicine, Provisioning,
+- **Salvaging** (**parked**, user 2026-11-08, see CLAUDE.md) (**approved**, user 2026-11-06; still to review after it: Mending, Field Medicine, Provisioning,
   Hunting, Angling, Fieldcraft, Homesteading): burnt-car scrapping time -15%, +1 salvage roll per
   burnt car, engine salvage +20% parts, **torch fuel for scrapping** (new: 20% of the blowtorch uses a burnt car
   takes come back), and the signature ability **scrap any car** (new, user 2026-11-06, below). Dropped: metal window
@@ -619,7 +619,8 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
   +1 material, aramid thread +1 use (all v1, Tailoring), crafting time -25% on Tailoring recipes (v1 had 15%; the
   other crafting masteries' value), and for the Maintenance side (its vanilla job, weapon wear, now belongs to each
   weapon mastery): **careful repairs** (new: repairs restore 15% more condition, and a failed repair costs no
-  condition) and **lasting repairs** (new: a repair counts toward the item's repair count only 80% of the time).
+  condition) and **lasting repairs** (new: a repair counts toward the item's repair count only 80% of the time;
+  **removed**, user 2026-11-08).
   **Stronger patches** (new, user 2026-11-06: a master's patches protect **50%** more against scratches and bites),
   and the signature **restore** (below). **Approved** (user, 2026-11-06).
   - Patch protection (42.21 `Clothing`): `addPatch(chr, part, fabric)` (from `ISRepairClothing`'s server
@@ -701,7 +702,7 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
   (v1 had 15%; the other crafting masteries' value), **lasting food** (new: food a master cooks or butchers stays
   fresh 25% longer), butchering time -15% (v1's, moved here from Hunting, which keeps the part count and part
   chance: Hunting = how much a carcass gives, Provisioning = how good the meat is and how fast it is cut), and the
-  signature **choice cuts** (user 2026-11-06: meat a master butchers is 15% more filling and nutritious, in full
+  signature **choice cuts** (user 2026-11-06: meat a master butchers is 15%, 40% since 2026-11-08, more filling and nutritious, in full
   from the pick). Comfort food, briefly the signature, was replaced by choice cuts (note kept below).
   - Choice cuts (signature, flat x1.15 from the pick) (42.21 `shared/Definitions/animal/ButcheringUtil.lua`, server / SP): `giveMeatModified` (~363)
     makes each meat item, runs `modifyMeat(item, size, meatRatio, hungerBoost, rotten, deathAge)` (~426: hunger,
@@ -919,7 +920,7 @@ the passives are trimmed. **Decided** (user, 2026-11-06): a signature ability is
 ## Open decisions
 
 1. Effects: **decided** (user 2026-11-07): one weapon category per mastery is not too narrow, and Salvaging stays
-   its own mastery; the thin ones got signatures.
+   its own mastery; the thin ones got signatures. (Salvaging parked 2026-11-08.)
 2. **Vanilla skills only** (user 2026-11-07): no masteries for other mods' skills. Also **confirmed** (user 2026-11-07):
    each effect belongs to one mastery only; each mastery stores its own points; nothing counts before a pick.
 3. Passives that are on / off: how they behave below mastery 10. All decided 2026-11-07: Handicraft's

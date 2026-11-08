@@ -14,7 +14,8 @@ int(int(maxWeightBase x getWeightMod() - reducers) x maxWeightDelta) every updat
 Strong 1.5 / Weak 0.75 / Feeble 0.9 / Stout 1.25, else 1) is only set when the player object is built, never saved,
 never touched by vanilla Lua. The bonus is added to the delta as kg / (maxWeightBase x weightMod), whole kg only
 (floor), and what this file added is remembered per player object so it is taken back before a new amount goes on.
-The owner gets `maxWeight` with PlayerDamage (every 2 s).
+The owner gets `maxWeight` with PlayerDamage (every 2 s). Conditioning's signature goes on the same delta: the max
+weight is raised just enough that Heavy Load reads one level lower (shared/TienSkillMastery_HeavyLoad.lua).
 
 Weapon wear (<weapon mastery>.WearUndo, chance per point, each weapon mastery for its own category, Firearms for
 guns): condition, sharpness and head condition loss from use is rolled in `InventoryItem.damageCheck`, from
@@ -29,10 +30,19 @@ Phase 2 (2026-11-07):
   (`IsoPlayer.updateEndurance`). Its share joins the running give-back while sneaking.
 - Conditioning.Recovery: the same per-tick compare adds the bonus share to every endurance rise (vanilla recovers
   standing, sitting and, at a quarter of that, walking: `IsoPlayer.updateEndurance` ~3340).
-- Conditioning.MuscleStrain: combat strain is `addCombatMuscleStrain` -> `addStiffness` on hands and arms (melee,
-  recoil, tree chopping). Each tick a share of every rise in those parts' `getStiffness()` is given back here. In
-  multiplayer the strain from a swing is added on the attacker's client (combat runs there) and from chopping on the
-  server; how a client's strain reaches the server was not traced, so only what the server's copy shows is softened.
+- Conditioning.MuscleStrain: every kind of muscle strain is stiffness on a body part (`BodyPart.addStiffness` /
+  `setStiffness`): combat (`addCombatMuscleStrain`: arms, hands, the right leg for stomps), climbing walls and ropes
+  (both arms), back strain (Heavy Load 3+, farming work), neck, and exercise soreness (`Fitness.increasePain`, +2.5
+  on arms / legs some hours after a workout). Each tick a share of every rise on every body part is given back here
+  (hands and arms only until 2026-11-08). Multiplayer (traced 2026-11-08): the server's copy is the only one that
+  lasts. Stiffness travels server -> owner in PlayerDamage (`BodyDamage.save`, every 2 s), which overwrites the
+  client's body; nothing sends a client's stiffness to the server. A swing's strain is added on the server
+  (`CombatManager.attackCollisionCheck` ~713: a client sends AttackCollisionCheck, whose `processServer` runs
+  `addCombatMuscleStrain`), as are tree chopping and bush clearing (`animEvent` behind `not isClient()` /
+  `isServer()`, emulated events), farming `complete`s, Heavy Load back strain and exercise soreness (BodyDamage /
+  Fitness updates). Strain vanilla adds only in a client-side `update` or client-only anim event (handcraft
+  `ISHandcraftAction:update`, `ISShovelAction` / `ISFillGrave` `update`, sledgehammer and pickaxe hits) shows on
+  that client for up to 2 s and is then overwritten in vanilla MP too, so there is nothing for this to soften.
 - Wear undo now covers the items in both hands and every worn item: a weapon mastery's chance on its own weapon
   category (primary hand), plus the craftsman's mark of any marked item (modData `TSM_Mark`, percent, set when a
   Handicraft master made it; it belongs to the item, whoever uses it). The two chances combine:
@@ -50,6 +60,7 @@ Phase 2 (2026-11-07):
 if isClient() then return end
 
 require "TienSkillMastery"
+require "TienSkillMastery_HeavyLoad"
 local M = TienSkillMastery
 
 -- ---------------------------------------------------------------------------------------------------------------
@@ -70,62 +81,17 @@ local function enduranceShare(player)
     return math.min(share, 60) / 100
 end
 
--- Conditioning's signature, Heavy Load one moodle level lower (42.21 `IsoPlayer.updateEndurance` ~3216): running /
--- sprinting drain x 1.5 / 1.9 / 2.3 / 2.8 at levels 1-4, so the drop is scaled by the next lower factor over this
--- one; walking drains from level 3 (x 1.9 at 3, 2.3 at 4, halved), so level 3 gives the walking drop back whole
--- (level 2 has none) and level 4 scales it by 1.9 / 2.3; recovery (standing still, and a quarter of it walking) stops
--- from level 2, so at level 2 vanilla's own regen is added here. Movement speed stays vanilla (root motion, Java).
-local RUN_FACTOR = { [0] = 1, 1.5, 1.9, 2.3, 2.8 }
-
-local function heavyLevel(player)
-    if not M.sig(player, "Conditioning.SigHeavyLoad") then return 0 end
-    return math.min(4, player:getMoodles():getMoodleLevel(MoodleType.HEAVY_LOAD))
-end
-
---- Share of a drop that one level lower would not have cost.
-local function heavyDropFactor(player, level)
-    if level <= 0 then return 1 end
-    if player:isRunning() or player:isSprinting() then
-        return RUN_FACTOR[level - 1] / RUN_FACTOR[level]
-    end
-    if player:isPlayerMoving() then
-        if level == 3 then return 0 end
-        if level == 4 then return 1.9 / 2.3 end
-    end
-    return 1
-end
-
---- Vanilla's regen for one update, which level 2 blocks (standing still; a quarter while walking).
-local function heavyRegen(player)
-    local ok, v = pcall(function()
-        local stats = player:getStats()
-        local base = ZomboidGlobals.imobileEnduranceReduce * getSandboxOptions():getEnduranceRegenMultiplier()
-            * player:getRecoveryMod() * getGameTime():getMultiplier()
-        if not player:isPlayerMoving() then
-            return base * (1 - stats:get(CharacterStat.FATIGUE) * 0.85)
-        elseif not player:isRunning() and not player:isSprinting()
-            and player:getMoodles():getMoodleLevel(MoodleType.ENDURANCE) < 2 then
-            return base / 4 * (1 - stats:get(CharacterStat.FATIGUE))
-        end
-        return 0
-    end)
-    return ok and v or 0
-end
+-- Conditioning's signature (Heavy Load one level lower) is no longer given back here: the max weight is shifted so
+-- the moodle itself is one level lower (shared/TienSkillMastery_HeavyLoad.lua, applied in updateMaxWeight below).
 
 local function updateEndurance(player)
     local stats = player:getStats()
     local now = stats:get(CharacterStat.ENDURANCE)
     local prev = lastEndurance[player]
-    local heavy = heavyLevel(player)
-    if heavy == 2 and not player:isSitting() then
-        stats:set(CharacterStat.ENDURANCE, now + heavyRegen(player))
-        now = stats:get(CharacterStat.ENDURANCE)
-    end
     if prev and now < prev then
         local share = enduranceShare(player)
-        local factor = heavyDropFactor(player, heavy)
-        if share > 0 or factor < 1 then
-            now = math.min(prev, prev - (prev - now) * factor * (1 - share))
+        if share > 0 then
+            now = math.min(prev, prev - (prev - now) * (1 - share))
             stats:set(CharacterStat.ENDURANCE, now)
             now = stats:get(CharacterStat.ENDURANCE)
         end
@@ -145,14 +111,21 @@ end
 
 local addedDelta = {}   -- [player object] = delta this file added
 
-local function updateCarryWeight(player)
-    local kg = math.floor(M.val(player, "Conditioning.CarryWeight") + 0.0001)
-    local base = player:getMaxWeightBase() * player:getWeightMod()
-    local want = 0
-    if kg > 0 and base > 0 then want = (kg + 0.05) / base end
+--- Conditioning.CarryWeight, plus Conditioning's signature: the max weight raised just enough that Heavy Load is one
+--- level lower (shared/TienSkillMastery_HeavyLoad.lua). Both go on `maxWeightDelta`; the shifted max is reached as
+--- int(base x delta) with delta = (max + 0.5) / base.
+local function updateMaxWeight(player)
+    local HL = M.HeavyLoad
     local had = addedDelta[player] or 0
+    local vanillaDelta = player:getMaxWeightDelta() - had
+    local carry, real, target, base = HL.compute(player, vanillaDelta)
+    HL.realMax[player] = real
+    local want = carry
+    if target and base and base > 0 and target ~= real then
+        want = (target + 0.5) / base - vanillaDelta
+    end
     if math.abs(want - had) < 0.00001 then return end
-    player:setMaxWeightDelta(player:getMaxWeightDelta() - had + want)
+    player:setMaxWeightDelta(vanillaDelta + want)
     addedDelta[player] = want
 end
 
@@ -177,39 +150,39 @@ local function rollPoints(chance, lost)
     return back
 end
 
---- Undo chance in percent for this item now: the weapon mastery's (primary hand only) and the item's mark combined.
-local function undoChance(player, item, primary)
+--- Undo chances in percent for this item now: the weapon mastery's (primary hand only) combined with the item's mark,
+--- for the overall condition and for the head (head condition and sharpness); see `M.markChance`.
+local function undoChances(player, item, primary)
     local a = 0
     if primary then
         local mastery = M.weaponMastery(item)
         if mastery then a = M.val(player, mastery .. ".WearUndo") end
     end
-    local b = tonumber(item:getModData().TSM_Mark) or 0
-    if a <= 0 and b <= 0 then return 0 end
-    return 100 * (1 - (1 - a / 100) * (1 - math.min(100, b) / 100))
+    local function combine(b) return 100 * (1 - (1 - a / 100) * (1 - b / 100)) end
+    return combine(M.markChance(item, "condition")), combine(M.markChance(item, "head"))
 end
 
-local function undoWear(item, prev, now, chance)
+local function undoWear(item, prev, now, chance, headChance)
     local changed = false
-    if now.condition < prev.condition then
+    if chance > 0 and now.condition < prev.condition then
         local back = rollPoints(chance, prev.condition - now.condition)
         if back > 0 then
             item:setCondition(math.min(prev.condition, now.condition + back), false)
             changed = true
         end
     end
-    if prev.head and now.head and now.head < prev.head and now.head > 0 then
-        local back = rollPoints(chance, prev.head - now.head)
+    if headChance > 0 and prev.head and now.head and now.head < prev.head and now.head > 0 then
+        local back = rollPoints(headChance, prev.head - now.head)
         if back > 0 then
             item:setHeadCondition(math.min(prev.head, now.head + back))
             changed = true
         end
     end
-    if prev.sharpness and now.sharpness and now.sharpness < prev.sharpness then
+    if headChance > 0 and prev.sharpness and now.sharpness and now.sharpness < prev.sharpness then
         -- Sharpness drops in steps of 1 / conditionMax; each step is one point.
         local step = 1 / math.max(1, item:getConditionMax())
         local lost = math.floor((prev.sharpness - now.sharpness) / step + 0.5)
-        local back = rollPoints(chance, lost)
+        local back = rollPoints(headChance, lost)
         if back > 0 then
             item:setSharpness(math.min(prev.sharpness, now.sharpness + back * step))
             changed = true
@@ -224,7 +197,7 @@ local function watchedItems(player)
     local primary = player:getPrimaryHandItem()
     if primary then list[#list + 1] = { item = primary, primary = instanceof(primary, "HandWeapon") } end
     local secondary = player:getSecondaryHandItem()
-    if secondary and secondary ~= primary and secondary:getModData().TSM_Mark then
+    if secondary and secondary ~= primary and M.hasMark(secondary) then
         list[#list + 1] = { item = secondary }
     end
     local worn = player:getWornItems()
@@ -232,7 +205,7 @@ local function watchedItems(player)
         for i = 0, worn:size() - 1 do
             local w = worn:get(i)
             local item = w and w:getItem()
-            if item and item:getModData().TSM_Mark and item ~= primary and item ~= secondary then
+            if item and M.hasMark(item) and item ~= primary and item ~= secondary then
                 list[#list + 1] = { item = item }
             end
         end
@@ -249,8 +222,8 @@ local function updateWear(player)
         local now = readItem(item)
         local prev = prevAll[id]
         if prev and now.condition > 0 then
-            local chance = undoChance(player, item, w.primary)
-            if chance > 0 and undoWear(item, prev, now, chance) then
+            local chance, headChance = undoChances(player, item, w.primary)
+            if (chance > 0 or headChance > 0) and undoWear(item, prev, now, chance, headChance) then
                 item:syncItemFields()
                 now = readItem(item)
             end
@@ -261,11 +234,10 @@ local function updateWear(player)
 end
 
 -- ---------------------------------------------------------------------------------------------------------------
--- Muscle strain (hands and arms)
+-- Muscle strain (every body part; hands and arms only until 2026-11-08)
 -- ---------------------------------------------------------------------------------------------------------------
 
-local STRAIN_PARTS = { "Hand_L", "Hand_R", "ForeArm_L", "ForeArm_R", "UpperArm_L", "UpperArm_R" }
-local lastStiffness = {}   -- [player object] = { [part name] = stiffness }
+local lastStiffness = {}   -- [player object] = { [body part index] = stiffness }
 
 local function updateStrain(player)
     local share = M.val(player, "Conditioning.MuscleStrain") / 100
@@ -273,20 +245,18 @@ local function updateStrain(player)
         lastStiffness[player] = nil
         return
     end
-    local body = player:getBodyDamage()
+    local parts = player:getBodyDamage():getBodyParts()
     local prev = lastStiffness[player] or {}
     local now = {}
-    for _, name in ipairs(STRAIN_PARTS) do
-        local part = body:getBodyPart(BodyPartType[name])
-        if part then
-            local v = part:getStiffness()
-            local before = prev[name]
-            if before and v > before then
-                v = v - (v - before) * share
-                part:setStiffness(v)
-            end
-            now[name] = v
+    for i = 0, parts:size() - 1 do
+        local part = parts:get(i)
+        local v = part:getStiffness()
+        local before = prev[i]
+        if before and v > before then
+            v = v - (v - before) * share
+            part:setStiffness(v)
         end
+        now[i] = v
     end
     lastStiffness[player] = now
 end
@@ -411,7 +381,7 @@ local function onTick()
     M.eachPlayer(function(player)
         updateEndurance(player)
         updateWear(player)
-        updateCarryWeight(player)
+        updateMaxWeight(player)
         updateStrain(player)
         noteCrash(player)
     end)

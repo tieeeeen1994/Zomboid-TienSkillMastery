@@ -44,8 +44,9 @@ sides: Gunworks lost its rack phase and reload step and looped (rack, rack, relo
   and the base `getDuration` returns that). Vanilla's hand rules in `complete` are untouched.
 - Handicraft.SigDeftHands: `ISBaseTimedAction:adjustMaxTime(maxTime)` (~99: unhappy, drunk, hand pain, temperature;
   no vanilla subclass overrides it) is what a client's `create` (~79) and the MP server's `NetTimedAction` both run
-  on the duration, so scaling its result by 0.9 shortens every Lua timed action on both sides. Not covered: item
-  transfers (Java `Transaction.getDuration`), build-menu builds (Java `BuildAction.getDuration`), looped actions
+  on the duration, so scaling its result by 0.9 shortens every Lua timed action on both sides. Item transfers (Java
+  `Transaction.getDuration` in MP; later batches skip `adjustMaxTime` in SP) have their own path since 2026-11-08:
+  TienSkillMastery_DeftTransfer*.lua (client / server / shared), right-click Grab too. Not covered: build-menu builds (Java `BuildAction.getDuration`), looped actions
   (-1) and actions that end on anim events (reloading). It multiplies with a mastery's own time bonus.
 ]]
 

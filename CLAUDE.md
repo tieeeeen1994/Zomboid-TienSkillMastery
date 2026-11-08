@@ -8,8 +8,20 @@ Standalone mod, started 2026-11-05; **built 2026-11-05, not yet played in game o
 `docs/v2-draft.md`). **All of v2 built 2026-11-07** (v0.3.0, not yet played) except what is parked with Stealth and Freerunning: see "v2 build" below.
 **Played in game (2026-11-07, user):** Firearms' signatures (Quickdraw, reloading while running) and Axemanship's
 (the throw key: held and carried axes, swing / hit sounds, damage on arrival; the reticle since replaced by an
-outline, animal and PvP targets added after that test). Everything else is still
-unplayed, including Spearcraft's throw and every passive. The v1 sections that
+outline, animal and PvP targets added after that test); 2026-11-08: Smithing's Masterwork and Handicraft's
+Craftsmanship (marks, passing on, tooltip), Construction's Clean Cuts and Clean Breaks (with the flat stone recipe), Conditioning's Pack Mule (moodle one level lower
+via max weight), Knifework's Lunge (1.5-tile reach, vanilla's TargetDist target), Engineering's Engine Overhaul, Street Fighting's
+Battering Ram, Handicraft's Deft Hands (transfers and grabs included), Fieldcraft's Steady Eyes and Sixth Sense, Field
+Medicine's Field Triage (sort, low-health priority, key, shared list), Needlework and the stitching pain passive.
+
+Deft Hands and item transfers (2026-11-08): MP transfers are Java item transactions Lua cannot time, so a master's
+client sends each batch to the server instead (`*_DeftTransfer*.lua`, ported from Zomboid Fixes B42's fast-forward
+timed transfers: container addressing, vanilla's duration formula, `ISTransferAction:transferItem`), which waits
+vanilla's length cut by the signature and moves the items; SP cuts each later batch in `perform`. Steps aside for
+Zomboid Fixes B42's cheat / fast forward transfers. Right-click Grab (`ISGrabItemAction`) has its own path there too
+(ported from Zomboid Fixes B42's quick grab: no transaction, waits for arrival, `isValid` skipped once started).
+Played and working (2026-11-08, at a temporary 90%: transfers and grabs). Everything else is still
+unplayed, including Spearcraft's throw and every other passive. The v1 sections that
 follow still describe the hooks and the parking, which v2 keeps; their per-skill ids and values are superseded.
 
 Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLAUDE.md) and vanilla 42.21 Lua.
@@ -46,13 +58,19 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   `M.masteries` / `M.masteryById` / `M.masteriesOf` (not listed, not pickable, earns nothing), its effects read 0
   (`M.enabled`), and a pick of it in saved data is dropped on read (points kept). Sprinting and Lightfooted belong to
   no shown mastery meanwhile. README / workshop.txt do not list them. Remove an id from `M.PARKED` to bring it back.
+- **Parked: Salvaging** (user, 2026-11-08: hidden for now, too narrow; every bonus sits on scrapping a car or taking
+  engine parts, and a burnt car already drops ~135 items at Welding 10). Same parking as above: its effects, Scrapper and
+  hooks are all still there, off. Splitting them across Smithing and Engineering was tried and reverted the same day.
+  Ideas offered, none chosen: Strip Down (one click uninstalls every part through vanilla's actions), Reclaimed Parts
+  (installed parts sometimes survive scrapping), part scrapping getting the time and torch passives, Scrap Eye (forage
+  Junk), Cut Through (torch opens locked doors, not traced).
 - Phase 2 (same day): the passives that fit existing hooks. Files: `shared/*_Relay.lua` (extra damage on a zombie's
   owner: own zombie inside `OnWeaponHitCharacter`, before `hitConsequences`; remote one via `zombieHit` -> server
   amount from its own copy of the mastery, 4-tile check -> `zombieDamage` to `getOwnerPlayer()`), `shared/*_Falls.lua`
   (safe falls: `lastFallSpeed` held at 90% of the no-damage impact speed, both sides), `shared/*_WeaponsShared.lua`
   (jams via HandWeapon's class-table `checkJam`; tree damage taken off `IsoTree:setHealth` before vanilla's hit,
-  since `getTreeDamage()` includes sharpness and the script has no getter), `shared/*_Repairs.lua` (careful /
-  lasting repairs around `FixingManager.fixItem`'s callers; stronger patches via `addPatchForSync` at Tailoring
+  since `getTreeDamage()` includes sharpness and the script has no getter), `shared/*_Repairs.lua` (careful
+  repairs; lasting repairs removed 2026-11-08, user; around `FixingManager.fixItem`'s callers; stronger patches via `addPatchForSync` at Tailoring
   10 x 1.5, vanilla's condition gain kept in modData `TSM_PatchGain` because the rebuilt patch has none),
   `client/*_Movement.lua` (strafe / sneak position nudge), `client/*_BuildNoise.lua` (quiet work: `addSound` swapped
   during `ISBuildAction:update`). Extended: Combat (fire rate: shoot speed variables + recoil-delay drain floored at
@@ -67,11 +85,20 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   Second harness file `tests2.lua`: 13 checks (safe-fall caps per level and drop, relay amounts, Executioner per
   level, food stretching).
 - Phase 3a (same day): signature abilities that hook vanilla systems. Kind "sig" in the core (`M.sig`,
-  `M.hasSignature`: picked and members at 10, on at mastery 0, fixed value); the panel lists them as "Signature: ..."
-  unlocked / unlocks when picked. Built: Heavy Load one level lower (Combat +0.07 combat speed; Physical: drop x
-  next-lower factor running, walking at 3 / 4, vanilla regen re-added at 2); masterwork (smithing recipes mark at
-  15%, `TSM_MarkKind`); planks / stones (`Actions.addOrDropItem`); choice cuts (`modifyMeat` wrap x1.15, so meat is
-  also 15% heavier: Food weight follows hunger); `server/*_HuntingTraps.lua` (trap modData `tsmTrap` / `tsmDouble`
+  `M.hasSignature`: picked and members at 10, on at mastery 0, fixed value); the panel lists them by name (no
+  "Signature:" prefix since 2026-11-08), unlocked / unlocks when picked. Built: Heavy Load one level lower (since 2026-11-08 for every effect: the
+  max weight is raised so the moodle itself reads one level lower, `shared/*_HeavyLoad.lua`, server through
+  `maxWeightDelta` with CarryWeight, client `setMaxWeight` per update, Lua `IsoPlayer:getMaxWeight` and the main inventory's
+  `ItemContainer:getMaxWeight` wrapped on every side to return the real max (weight label, pickup timers); replaced the per-effect give-backs: +0.07 combat speed, drop factors, regen at 2); masterwork (smithing recipes mark every output at
+  15%, `TSM_MarkKind`; since 2026-11-08 `carryMasterwork` passes it through later recipes for a master crafter only,
+  from a single-piece input, head-only `TSM_MarkPart` on weapons with head condition, `M.markChance`; the same day Handicraft's
+  `CraftsmansMark` bonus became the signature `SigCraftsmanship` and passes on the same way, a handle mark in its own
+  slot `TSM_HandleMark`, see "Maker's marks" in Crafting.lua; marks show in item tooltips,
+  `client/*_MarkTooltip.lua`, TienBagUpgrades' after-the-chain pattern); every signature has a 1-2 word name
+  (`IGUI_TienSkillMastery_SigName_<def name>`, shown as "Name: description" in the panel and the README, user's picks); planks / stones (`Actions.addOrDropItem`; planks always since 2026-11-08; Clean Breaks also gets the mod's
+  first script recipe, `media/scripts/TienSkillMastery_recipes.txt` TSM_BreakFlatStone, FlatStone -> 3 Stone2, gated by
+  `TienSkillMastery_FlatStoneMenu` (OnAddToMenu, a plain global: `callLuaBool` cannot follow dots) and `.FlatStoneTest` (OnTest, also on the server)); choice cuts (`modifyMeat` wrap x1.4, x1.15 until 2026-11-08, so meat is
+  also 40% heavier: Food weight follows hunger); `server/*_HuntingTraps.lua` (trap modData `tsmTrap` / `tsmDouble`
   through `fromModData` / `toModData`; no `checkDestroy`; `animalAliveHour` / 4; second hand-over in
   `removeAnimal`); Fieldcraft (`checkShouldDisable` without the zombie / running tests; red dots in `OnPreUIDraw`);
   `shared/*_Signatures.lua` (run-and-gun `stopOnRun = false` and quickdraw maxTime / 4 + animSpeed x4 in
@@ -92,16 +119,25 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   stand-in, the timers fire `animEvent`, and the animation's copies of those events are ignored. The clip still
   cannot play while running; restore
   (`shared/*_RestoreAction.lua` + `client/*_Restore.lua`, `FixingManager.useFixer` of the first fixer, then
-  `setHaveBeenRepaired(0)`); the lunge (Combat: knife `setMinRange` x1.5 while 0-1 chasers, vanilla value kept per
-  hand item and put back; eased toward the target for 0.25 s); `client/*_FishFinder.lua`. Gaps: no item tooltip line
-  for marks yet; marked recipe tools are not given wear back inside a craft. Third harness file `tests3.lua` (14
+  `setHaveBeenRepaired(0)`); the lunge (Combat: knife min **and** max range raised to the reach, 1.5 tiles, while 0-1
+  chasers; vanilla values kept per hand item and put back, and on `OnSave` because `HandWeapon.save` writes a max
+  range other than 1.0; until 2026-11-08 only min range x1.5, which `calcValidTargets` capped at the knife's max range
+  ~0.9, so the lunge only moved the player for targets 0.61-0.9 away; moved toward the target at up to 5 tiles a second
+  for at most 0.4 s, diagonal steps allowed, a blocked step slides along one axis; the target is vanilla's own, the standing zombie at
+  the `TargetDist` variable `pressedAttack` sets just before `OnWeaponSwing` (an own search missed far jaw stabs);
+  Executioner's close-kill test uses it too; a purple outline on it was tried and dropped 2026-11-08); `client/*_FishFinder.lua`. Gaps: marked recipe tools are not given wear back inside a craft. Third harness file `tests3.lua` (14
   checks: signatures at mastery 0, inactive, the trap wrappers against a mock `STrapGlobalObject`). The harness needs
   `unpack = table.unpack` for Lua 5.5.
 - Phase 3b, first part (same day): the relay grew zombie actions (`zombieAct` -> server: signature, distance, and
   push back's 0.01 endurance per zombie taken there -> `zombieActApply` to the owner; applied next tick, never inside
   the hit): Bludgeoning's push back (cone noted at `OnWeaponSwingHitPoint`, the ones `OnWeaponHitCharacter` did not
   report are staggered: attack position, hit force 0.6, hit dir, `setStaggerBack`, "wasHit") and Swordsmanship's
-  hamstring (`knockDown(false)` + `setBecomeCrawler(true)` + `setCanWalk(false)`). `shared/*_EngineOverhaul.lua` +
+  hamstring (`knockDown(false)` + `setBecomeCrawler(true)` + `setCanWalk(false)`). Hamstring falls inside the
+  hit since 2026-11-08 (user: the zombie froze in its hit reaction, then fell; the actiongroup takes the knockdown only
+  with no hit reaction playing): in `OnWeaponHitCharacter` the attacker's client makes the zombie `alwaysKnockedDown`
+  (plus become crawler, cannot walk) and puts the flag back next tick, so vanilla's own line right after the event
+  (`IsoZombie` ~4238 `setKnockedDown(isCriticalHit || isOnFloor || isAlwaysKnockedDown)`, for an owned zombie or SP;
+  the hit packet carries it) knocks it down in that hit; the relay's later act only knocks down one not yet falling. `shared/*_EngineOverhaul.lua` +
   `client/*_EngineOverhaulMenu.lua` (quality +1 per Engine Parts, power by vanilla's spawn formula, never lowered,
   vanilla spawn loudness then `updatePartStats`, `transmitEngine`). `shared/*_Scrap.lua` + `client/*_ScrapMenu.lua`
   (any car through vanilla's ISRemoveBurntVehicle with a server re-check of the signature and guards; part items by
@@ -110,12 +146,32 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
 - Phase 3b, second part: `shared/*_Triage.lua` + `client/*_TriageMenu.lua` (plan rules in `M.Triage.plan`; another
   player's plan from the server, which also borrows the doctor's missing supplies from the patient and gives the
   unused ones back after the queue: `triage` / `triagePlan` / `triageReturn`; the client queues once the borrowed
-  item IDs are in its inventory or after 3 s). `client/*_Fields.lua` (two `ISSelectCursor` picks, at most 15 x 15;
+  item IDs are in its inventory or after 3 s). Since 2026-11-08 (user; played): key binding `TsmTendWounds` (default
+  comma) and "Tend wounds: everyone nearby" tend you and everyone in reach as one list: anyone under
+  `T.CRITICAL_HEALTH` (25) overall health first, then by `T.drain`, each part's treatments together, walking between
+  patients; a patient's lent supplies go only on that patient; infected parts are bandaged too (skipped before); a
+  patient moving does not stop a treatment while within `T.TEND_TILES` (2) tiles along each axis, same floor; a patient
+  farther off, dead or gone from the server is skipped and the rest carry on (per action `begin` / `isValid` / `stop`,
+  header of the menu file). Scratchpad `triage_harness.lua` / `triage_tests.lua` (real files against mocks, not kept).
+  Passive `StitchPain` (user, 2026-11-08, played): -75% at mastery 10, in `shared/*_WorkshopFirstAid.lua`.
+  Second signature `SigNeedlework` (user, 2026-11-08, played; Field Medicine's Tailoring side): recipes TSM_MakeBandage
+  (2 ripped sheets, one use of `base:thread`, a `base:sewingneedle` kept with MayDegradeLight) and TSM_MakeSutureNeedle (tags `base:sewingneedle` + `base:thread`, the needle is used up), gated
+  like the flat stone (`TienSkillMastery_NeedleworkMenu`, `.NeedleworkTest`). `client/*_Fields.lua` (two `ISSelectCursor` picks, at most 15 x 15;
   tend = water / the four cures / first fertilizer, sow = one seed item per plowed square; a walk before every plant,
-  since vanilla's `walkToPlant` judges adjacency at queue time). Bowl them over in `client/*_Movement.lua`: the
-  nearest standing zombie within a tile in front is set as `setBumpedChr` (vanilla bumps, and so trips, only a
-  character that is not the last bumped one, `IsoMovingObject.separate` ~1221) and knocked down through the relay
-  (kind "bowl", 0.02 endurance; relay costs are `R.COST`). Fifth harness file `tests5.lua` (triage plan order and
+  since vanilla's `walkToPlant` judges adjacency at queue time). Battering ram ("bowl them over" until 2026-11-08; `SigBowlOver`, relay kind "bowl") in
+  `client/*_Movement.lua`: the
+  nearest standing zombie within a tile, from any direction, is set as `setBumpedChr` (vanilla bumps, and so
+  trips, only a character that is not the last bumped one, `IsoMovingObject.separate` ~1221, on contact from any
+  angle; the first version's ~70 degree cone in front let zombies standing still, brushed at an angle, trip the master:
+  2026-11-08) and, once within 0.65 tiles (contact), knocked down through the relay (kind "bowl", 0.02 endurance;
+  relay costs are `R.COST`). `setBumpedChr` holds one character, and two zombies still tripped the master (the
+  first, still staggering, stayed the nearest), so every standing zombie within 0.8 tiles is also made not solid for
+  that update: `isSolidForSeparate` is false while `solid` is false (`IsoMovingObject` ~1174), so vanilla bumps none of
+  them; `IsoZombie` sets `solid = true` in its own update (~3407), it is set from `OnPlayerUpdate` (inside the
+  player's update, before its `separate`) every update and given back at once out of reach. Each zombie in contact is
+  knocked down (2 s each). On up to the first endurance moodle (a warning; user, 2026-11-08, was none at all).
+  `tests14.lua`.
+  Zombies getting up are no risk (`IsoZombie.isSolidForSeparate` is false in `ZombieGetUpState`). Fifth harness file `tests5.lua` (triage plan order and
   rules, borrowing, giving back).
 - Phase 3b, throws: `shared/*_Throw.lua`. Only the throw key throws (below). The first trigger, a swing at a zombie
   beyond reach (`OnWeaponSwing` + `getAttackTargetSquare()`, `OnWeaponSwingHitPoint` sending `throwWeapon`), was
@@ -204,7 +260,8 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   inventory itself (`getItemById`, container check), detaches it from the hotbar (`removeAttachedItem` + slot fields)
   and resolves it like a held throw. Marker: first a drawn copy of vanilla's aim reticle (`IsoReticle` is not
   exposed; `media/ui/Reticle/aimCircleNN.png` + `crosshairXY.png`, texture / 16), dropped 2026-11-08 as ugly; now the
-  target under the cursor gets an amber outline (`Th.OUTLINE_COLOR`) set from `OnPreUIDraw` every frame:
+  target under the cursor gets an outline in a per-player mod option colour (`client/*_Options.lua`, `M.throwOutlineColor`, default
+  `M.OUTLINE_COLOR` purple; amber until 2026-11-08) set from `OnPreUIDraw` every frame:
   `IsoMovingObject.renderlast` clears outlines each frame unless set during that frame's UI update / render
   (`FBORenderObjectOutline` UI times), which is how vanilla's melee outline (`CombatManager.highlightMeleeTargets`)
   stays on. `tests9.lua` (order, combat stance only, attack ban held and restored).
@@ -246,6 +303,19 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   has no such parameter, so the throw sets it on the played sound (`setParameterValueByName(handle, "MeleeHitSurface",
   1)`; a just-played sound waits in `toStart`, where the value is queued). Whether the spear events really go silent
   at Default is a guess from that difference, not traced in the FMOD banks.
+- Two repair systems raise an item's repair count (traced 2026-11-08, reported on an axe repaired with zip ties):
+  `Fixing` scripts (`fixing.txt` / `vehiclesfixing.txt`: firearms and vehicle parts only) and craft recipes
+  (`recipes_fixing.txt`, `genericFixer`: tools and melee weapons, the count rising on failures too). Restoration and
+  careful repairs read only the first until then. Now restoration offers each usable repair recipe, charging its
+  consumed inputs (`M.repairRecipes`, `M.restoreOptions`), and careful repairs also run after repair recipes
+  (`M.afterRepair`). Restoration clears the count and fills the condition for 3 repairs' worth (`M.RESTORE_COST`, user,
+  2026-11-08; head condition and sharpness left alone). Not yet played.
+- Savory Meals (user, 2026-11-08, Provisioning's second signature, not yet played): food a master finishes with heat
+  causes 80% less unhappiness, flat, boredom untouched; not butchering, not putting dishes together, not recipes (user
+  dropped those the same day). Through `OnCooked`, set on every food script by `DoParam` at `OnLoadMapZones` with the old
+  value chained; the cook is vanilla's `chef`, which `*_DeftTransfer` now sets too (before, a Deft Hands master's food
+  earned no cooking XP). The saved field is what is cut, so stale / rotten / burnt penalties build on the lower value (a
+  rat: 6, 16, 26), as the user asked. Header of `shared/*_WorkshopCooking.lua`.
 - Phase 3c: spare materials (`ISBuildingObject:updateModData` wrap in `server/*_CraftingBuild.lua`: rolls per new
   `need:` unit, drops the spared items and lowers the count, so dismantling never pays back the saving); tuned engine
   (`client/*_TunedEngine.lua`, driver's client, power / max speed x f, vanilla values per vehicle, re-boosted when the
@@ -258,17 +328,20 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   spears only. No tooltip line for marked items yet.
 - MP checks owed (from reading only): whether the server runs `updateFalling` for players, whether stomp's
   `ItemBodyLocation.SHOES` lookup works from Lua, `OnWeaponHitCharacter` on the attacker for a remote zombie, the
-  strafe / sneak nudge feel, Gunworks bursts with the RPM wrap, and where combat muscle strain lands in MP; for 3a:
-  reload animation while running, quickdraw look, the lunge distance and feel, zombie sense dot placement, fish
-  counts between clients, a second live animal from a double catch; for 3b: whether a Lua-set stagger / knockdown
+  strafe / sneak nudge feel, Gunworks bursts with the RPM wrap (where combat muscle strain lands in MP: traced 2026-11-08, on the
+  server, see Physical.lua's header); for 3a:
+  reload animation while running, quickdraw look, the lunge distance and feel, fish
+  counts between clients, a second live animal from a double catch, triage's merged queue with two patients; for 3b: whether a Lua-set stagger / knockdown
   on a zombie is picked up outside a hit, the crawler getting up, the engine state reaching clients after
   `transmitEngine`, triage's item arrival order and bandages on another player, the area picker's cursor, whether
   `setBumpedChr` set before `separate` really stops the sprint trip; for the throws and 3c: the swing reaching
   `OnWeaponSwingHitPoint` with no target in reach, the flight visual, tuned engine against the vehicle anti-cheat,
   whether the build's `need:` counts really become the thumpable's build materials.
-- workshop.txt: `scripts/make_workshop.py` cuts the README's "Masteries and their effects" section down to names and
-  skills plus a pointer to the Mastery tab (Steam's 8000-character cap; 5261 after 3a). README keeps the full list
-  and a "Signature abilities" section.
+- forum.txt / workshop.txt (user, 2026-11-08): `py scripts/make_workshop.py` writes both from README.md. forum.txt is
+  the whole README in BBCode, the pinned thread in the Workshop page's Discussions tab (full details live there);
+  workshop.txt is the summary (intro, rules, each mastery's name and skills, each mastery's signature names, a
+  pointer to the thread), well under Steam's 8000-character cap (4575). Keep README the full source: signature
+  lines start with the names in italics (`*Name*:`), which the script lists for the summary.
 
 ## Why mastery and not real levels 11+
 
@@ -326,6 +399,9 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
 - **UI**: a Mastery tab after Skills in the character window (`client/TienSkillMastery_Panel.lua`), styled like the
   vanilla Skills tab (user, 2026-11-06): collapsible categories, SkillBarSeparator, SkillUnit boxes in vanilla gold, the
   level in progress filled by progress, XP in a tooltip over the boxes; prestige in a deeper gold with +n.
+  Text in the Mastery tab and the Skills tab's effect lists wraps at a mod option's length in characters (user,
+  2026-11-08, `M.wrapText` in `client/*_Options.lua`, default 80, 300 = none), the rest indented. The Skills tab is
+  generated: change `scripts/make_skills_tab.py`, then run it.
 - Tests: a lupa harness ports `XP.AddXP` (float storage included) and runs 30 parking scenarios
   (session scratchpad `tsm_test`; not kept in the repo).
 

@@ -119,7 +119,10 @@ local function applyAct(zombie, kind, args)
         if zombie:isCrawling() then return end
         zombie:setBecomeCrawler(true)
         zombie:setCanWalk(false)
-        zombie:knockDown(false)
+        -- Already falling from the hit itself (the attacker's client makes it `alwaysKnockedDown` for that hit, see
+        -- client/TienSkillMastery_Combat.lua): only the crawler flags are needed here; a knockDown now would wait
+        -- for the hit reaction and look like a freeze.
+        if not zombie:isKnockedDown() and not zombie:isOnFloor() then zombie:knockDown(false) end
     elseif kind == "bowl" then
         -- Street Fighting's signature: knocked down by a sprinting master (`knockDown(hitFromBehind)`).
         if zombie:isOnFloor() or zombie:isCrawling() then return end
@@ -162,7 +165,7 @@ Events.OnTick.Add(function()
 end)
 
 R.PUSH_COST = 0.01
--- Endurance per zombie (server-owned stat): push back 0.01 (user, 2026-11-07), bowl them over 0.02 (to tune in game).
+-- Endurance per zombie (server-owned stat): push back 0.01 (user, 2026-11-07), battering ram (bowl) 0.02 (to tune in game).
 R.COST = { pushback = R.PUSH_COST, bowl = 0.02 }
 
 --- Attacker side. kind "hamstring": `zombies` is one zombie; "pushback": a list of zombies.

@@ -114,7 +114,8 @@ M.GROUPS = { "Combat", "Body", "Crafting", "Field" }
 -- Parked masteries (user, 2026-11-07: Stealth and Freerunning, until their missing effects can be built): defined
 -- with their effects and hooks, but not listed, not pickable, earning nothing, effects off. Remove an id here to
 -- bring it back. A pick of one made before it was parked is dropped from the character's picks (its points stay).
-M.PARKED = { Freerunning = true, Stealth = true }
+-- Salvaging (user, 2026-11-08): hidden for now, too narrow as it stands.
+M.PARKED = { Freerunning = true, Salvaging = true, Stealth = true }
 M.parked = {}         -- [id] = mastery, for parked ones
 
 M.masteries = {}      -- display order
@@ -137,7 +138,7 @@ function M.mastery(id, group, members)
     return m
 end
 
--- Every vanilla 42.21 skill, 35 skills in 22 masteries (approved 2026-11-06), 20 shown while two are parked
+-- Every vanilla 42.21 skill, 35 skills in 22 masteries (approved 2026-11-06), 19 shown while three are parked
 -- (Sprinting and Lightfooted then belong to none). Perk ids, not display names.
 M.mastery("Firearms", "Combat", { "Aiming", "Reloading" })
 M.mastery("Axemanship", "Combat", { "Axe", "Strength" })
@@ -456,7 +457,9 @@ def("Axemanship", "TreeDamage", 20, "pct")
 def("StreetFighting", "StompDamage", 20, "pct")
 def("StreetFighting", "ShoveDamage", 0.25, "flat")
 def("Knifework", "SneakRunEndurance", 15, "less")
--- Executioner: chance (10% a level) that a one-on-one jaw stab is a critical, i.e. the instant kill.
+-- Executioner: chance (10% a level) that a close one-on-one knife stab is a critical, i.e. the jaw stab (instant kill).
+-- Vanilla plays the jaw stab (`KnifeCrit*` nodes, CriticalHit) only when its own crit roll succeeds; a close stab
+-- without it is an ordinary stab. It forces the crit only from behind on a zombie with no target (~3306).
 def("Knifework", "Executioner", 100, "pts")
 def("Knifework", "Ambush", 25, "pct")
 def("Swordsmanship", "StrafeSpeed", 15, "pct")
@@ -471,12 +474,11 @@ def("Smithing", "TorchFuel", 20, "pts")
 def("Construction", "QuietWork", 50, "less")
 def("Salvaging", "TorchFuel", 20, "pts")
 -- Craftsman's mark: what a master makes ignores 1.5% of its wear per maker's mastery level, fixed at creation.
-def("Handicraft", "CraftsmansMark", 15, "pts")
 def("Mending", "CarefulRepairs", 15, "pct")
-def("Mending", "LastingRepairs", 20, "pts")
 def("Mending", "StrongerPatches", 50, "pct")
 def("FieldMedicine", "CrashSafety", 15, "less")
 def("FieldMedicine", "Disinfectant", 50, "pct")
+def("FieldMedicine", "StitchPain", 75, "less")
 def("Provisioning", "LastingFood", 25, "pct")
 -- Keen eyes: share of the darkness, weather and moving penalties ignored in search mode.
 def("Fieldcraft", "KeenEyes", 100, "pct")
@@ -486,10 +488,12 @@ def("Homesteading", "AnimalStress", 15, "less")
 -- Phase 3a (2026-11-07).
 def("Conditioning", "SigHeavyLoad", 1, "sig")       -- Heavy Load penalties one moodle level lower
 def("Smithing", "SigMasterwork", 15, "sig")         -- wear ignored (%) by what the master forges
-def("Construction", "SigPlanks", 50, "sig")         -- chance (%) of a 4th plank per sawn log
+def("Construction", "SigPlanks", 100, "sig")        -- chance (%) of a 4th plank per sawn log (always since 2026-11-08; 50 before)
 def("Construction", "SigStones", 2, "sig")          -- extra stones per broken large stone
 def("Handicraft", "SigDeftHands", 10, "sig")        -- every timed action (%) faster
-def("Provisioning", "SigChoiceCuts", 15, "sig")     -- butchered meat (%) more filling and nutritious
+def("Handicraft", "SigCraftsmanship", 15, "sig")    -- wear ignored (%) by what the master makes (a "pts" bonus until 2026-11-08)
+def("Provisioning", "SigChoiceCuts", 40, "sig")     -- butchered meat (%) more filling and nutritious (15 until 2026-11-08)
+def("Provisioning", "SigSavoryMeals", 80, "sig")    -- food the master finishes with heat causes (%) less unhappiness
 def("Hunting", "SigSturdyTraps", 1, "sig")          -- traps keep their bait and are never destroyed
 def("Hunting", "SigLiveCatch", 4, "sig")            -- live catches last x times longer in the trap
 def("Hunting", "SigDoubleCatch", 25, "sig")         -- chance (%) a trap holds two
@@ -498,7 +502,7 @@ def("Fieldcraft", "SigZombieSense", 1, "sig")       -- zombies in the forage cir
 def("Firearms", "SigQuickdraw", 4, "sig")           -- one-handed gun drawn / holstered x times faster
 def("Firearms", "SigRunReload", 1, "sig")           -- reloading does not stop when running
 def("Mending", "SigRestore", 1, "sig")              -- reset an item's repair count with its first fixer
-def("Knifework", "SigLunge", 50, "sig")             -- jaw-stab window (%) wider, eased in with a lunge
+def("Knifework", "SigLunge", 1.5, "sig")            -- jaw-stab reach (tiles; vanilla 0.61), closed with a lunge
 def("Angling", "SigFishFinder", 1, "sig")           -- the aimed water's fish and trash shown
 -- Phase 3b.
 def("Bludgeoning", "SigPushBack", 1, "sig")         -- every swing staggers back the zombies in front it did not hit
@@ -506,6 +510,7 @@ def("Swordsmanship", "SigHamstring", 1, "sig")      -- sneaking and aiming, a lo
 def("Engineering", "SigEngineOverhaul", 1, "sig")   -- Engine Parts raise a car's engine quality, +1 each
 def("Salvaging", "SigScrapAnyCar", 1, "sig")        -- scrap any car, and vehicle parts into metal
 def("FieldMedicine", "SigTriage", 1, "sig")         -- "Tend wounds": vanilla treatments queued for every part
+def("FieldMedicine", "SigNeedlework", 1, "sig")     -- recipes: bandages from ripped sheets, suture needles from needle and thread
 def("Homesteading", "SigFields", 1, "sig")          -- tend / sow a picked area of the field
 def("StreetFighting", "SigBowlOver", 1, "sig")      -- sprinting into zombies knocks them down
 def("Axemanship", "SigThrowAxe", 1, "sig")          -- the throw key throws a one-handed axe (spares first)
@@ -567,6 +572,28 @@ end
 function M.sig(player, id)
     return M.val(player, id) > 0
 end
+
+--- Wear-undo chance (percent) an item's marks give, for `what` = "condition" (overall condition) or "head" (head
+--- condition and sharpness). The main mark (`TSM_Mark`) covers the whole item, or only the head when `TSM_MarkPart`
+--- is "head" (a hafted tool: axes, hammers, picks, scythes, spears); a hafted tool's handle mark (`TSM_HandleMark`)
+--- covers the overall condition. See "Maker's marks" in TienSkillMastery_Crafting.lua (user, 2026-11-08).
+function M.markChance(item, what)
+    local md = item:getModData()
+    local main = math.min(100, tonumber(md.TSM_Mark) or 0)
+    if what == "head" then return main end
+    if md.TSM_MarkPart == "head" then main = 0 end
+    return math.max(main, math.min(100, tonumber(md.TSM_HandleMark) or 0))
+end
+
+--- True when the item carries any maker's mark.
+function M.hasMark(item)
+    local md = item:getModData()
+    return (tonumber(md.TSM_Mark) or 0) > 0 or (tonumber(md.TSM_HandleMark) or 0) > 0
+end
+
+--- Default outline colour of the throw's target (a per-player mod option, client/TienSkillMastery_Options.lua):
+--- purple, apart from vanilla's red melee outline (user, 2026-11-08; amber before).
+M.OUTLINE_COLOR = { r = 0.72, g = 0.38, b = 1.0, a = 1.0 }
 
 --- 1 + bonus%, for "pct" bonuses.
 function M.more(player, id)
@@ -640,6 +667,19 @@ function M.stretchFood(item, f)
     if offMax <= 0 or offMax >= 1e8 then return false end
     item:setOffAge(off * f)
     item:setOffAgeMax(offMax * f)
+    return true
+end
+
+--- Savory Meals: takes the signature's share off the unhappiness a food causes, once per item (modData `TSM_Savory`).
+--- Only a penalty is touched: a food that cheers you up stays as it is. True when the item changed (server / SP).
+--- Called when a food turns cooked (TienSkillMastery_WorkshopCooking.lua).
+function M.savorFood(item, player)
+    if not item or not instanceof(item, "Food") or item:getModData().TSM_Savory then return false end
+    local share = M.val(player, "Provisioning.SigSavoryMeals")
+    local unhappy = item:getUnhappyChangeUnmodified()
+    if share <= 0 or unhappy <= 0 then return false end
+    item:setUnhappyChange(unhappy * (1 - share / 100))
+    item:getModData().TSM_Savory = true
     return true
 end
 
