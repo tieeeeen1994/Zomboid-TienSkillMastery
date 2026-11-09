@@ -67,8 +67,8 @@ local function blocksIn(x1, y1, x2, y2, z)
 end
 
 --- Queue the walk to a block unless the last stop reaches it. False when there is nowhere to stand at all.
+--- Timed Action Instant walks too: the server only works squares within FIELD_REACH of the character.
 local function walkToBlock(playerObj, block, at)
-    if playerObj:isTimedActionInstant() then return true end
     if at.x >= block.x1 - 1 and at.x <= block.x2 + 1 and at.y >= block.y1 - 1 and at.y <= block.y2 + 1 then
         return true
     end

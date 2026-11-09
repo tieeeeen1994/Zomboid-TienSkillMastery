@@ -9,8 +9,15 @@ client file could not derive from it at file level. MP clients load this folder 
 
 The squares are the ones vanilla's plow cursor accepts (`ISFarmingMenu.canDigHereSquare`: dirt, free, no grave, no
 furrow or living plant; on a client `ISShovelGroundCursor.GetDirtGravelSand` also skips dirt under any plot, so dead ones
-are removed first) that the character could see when clicked; the server checks again for itself. A square under
-something else is left out, not refused: a click is valid when any square of the 3 x 3 can be dug.
+are removed first); the server checks again for itself. A square under something else is left out, not refused.
+
+Sight only decides whether a click counts (any square of the 3 x 3 that can be dug and that the character could see),
+like the rake's cursor; it never picks the squares. `tryBuild` runs `walkTo` and `create` in one call, so the character is
+still where it clicked from when the list is made, and a wall or tall fence in that line would have cost squares that are
+in plain view once it stands in the block (reported 2026-11-09: 4 dug of 9).
+
+The walk is queued in `create`, not `walkTo`: `tryBuild` skips `walkTo` under Build Cheat, and the server digs only within
+FIELD_REACH of the character, so a far click without the walk dug part of the block or nothing, without a word.
 ]]
 
 if isServer() then return end
@@ -26,15 +33,14 @@ local C = TienSkillMasteryFurrowCursor
 local SIZE = M.FIELD_BLOCK
 local DIG_TIME = 110    -- one square with a tool, `ISPlowAction:getDuration`
 
---- The squares of the 3 x 3 from (x, y) that can be dug now: { { x, y }, ... }.
+--- The squares of the 3 x 3 from (x, y) that can be dug now: { { x, y, square }, ... }.
 function C:targets(x, y, z)
     local list = {}
-    local playerNum = self.character:getPlayerNum()
     for x2 = x, x + SIZE - 1 do
         for y2 = y, y + SIZE - 1 do
             local square = getCell():getGridSquare(x2, y2, z)
-            if square and square:isCouldSee(playerNum) and ISFarmingMenu.canDigHereSquare(square) then
-                list[#list + 1] = { x = x2, y = y2 }
+            if square and ISFarmingMenu.canDigHereSquare(square) then
+                list[#list + 1] = { x = x2, y = y2, square = square }
             end
         end
     end
@@ -43,7 +49,11 @@ end
 
 function C:isValid(square)
     if not ISFarmingMenu.getShovel(self.character) then return false end
-    return #self:targets(square:getX(), square:getY(), square:getZ()) > 0
+    local targets = self:targets(square:getX(), square:getY(), square:getZ())
+    for i = 1, #targets do
+        if targets[i].square:isCouldSee(self.player) then return true end
+    end
+    return false
 end
 
 function C:isRunningAction()
@@ -51,9 +61,9 @@ function C:isRunningAction()
     return queue and queue.queue and queue.queue[1]
 end
 
-function C:walkTo(x, y, z)
+--- Queue the walk into the block unless the character is already in reach. False when there is nowhere to stand.
+function C:queueWalk(x, y, z)
     local chr = self.character
-    if chr:isTimedActionInstant() then return true end
     local here = chr:getCurrentSquare()
     -- With actions queued the character will not be where it stands now.
     if here and not self:isRunningAction() and here:getX() >= x - 1 and here:getX() <= x + SIZE
@@ -66,11 +76,15 @@ function C:walkTo(x, y, z)
     return true
 end
 
+function C:walkTo(x, y, z)
+    return true
+end
+
 function C:create(x, y, z)
     local chr = self.character
     local tool = ISFarmingMenu.getShovel(chr)
     local targets = self:targets(x, y, z)
-    if not tool or #targets == 0 then return end
+    if not tool or #targets == 0 or not self:queueWalk(x, y, z) then return end
     ISInventoryPaneContextMenu.equipWeapon(tool, true, tool:isTwoHandWeapon(), self.player)
     ISTimedActionQueue.add(TienSkillMasteryFieldAction:new(chr, tool, "furrow", "", z, M.fieldEncode(targets),
         DIG_TIME))

@@ -682,6 +682,25 @@ function M.stretchFood(item, f)
     return true
 end
 
+--- What butchering gives a master's food (user, 2026-11-09): Lasting Food stretches its spoil times, and Provisioning's
+--- signature, Choice Cuts, makes it 10% more filling (hunger, base hunger, so 10% heavier too: Food weight follows hunger)
+--- and 30% more nutritious, flat from the pick. Call once per item, on the item as butchering made it. True when changed.
+function M.butcherBonus(item, player)
+    if not item or not player or not instanceof(item, "Food") then return false end
+    local changed = M.stretchFood(item, M.more(player, "Provisioning.LastingFood"))
+    if M.sig(player, "Provisioning.SigChoiceCuts") then
+        local filling, nutrition = 1.1, 1.3
+        item:setHungChange(item:getHungChange() * filling)
+        item:setBaseHunger(item:getBaseHunger() * filling)
+        item:setCalories(item:getCalories() * nutrition)
+        item:setLipids(item:getLipids() * nutrition)
+        item:setProteins(item:getProteins() * nutrition)
+        item:setCarbohydrates(item:getCarbohydrates() * nutrition)
+        changed = true
+    end
+    return changed
+end
+
 --- Savory Meals: takes the signature's share off the unhappiness a food causes, once per item (modData `TSM_Savory`).
 --- Only a penalty is touched: a food that cheers you up stays as it is. True when the item changed (server / SP).
 --- Called when a food turns cooked (TienSkillMastery_WorkshopCooking.lua).

@@ -210,42 +210,36 @@ ButcheringUtil.addAnimalPart = function(part, player, carcass, ...)
     return (text or "") .. (more or "")
 end
 
--- Provisioning.LastingFood (phase 2) and the choice cuts signature (phase 3a): meat a master butchers stays fresh
--- longer and is more filling (hunger, base hunger x 1.1, so 10% heavier too: Food weight follows hunger) and more
--- nutritious (calories, lipids, proteins, carbs x 1.3) (user, 2026-11-08; one x 1.15 for all of them before; vanilla's
--- own `modifyMeat` scales the same fields by animal size and cut). `giveMeatModified(meatDef, nb,
--- player, ...)` (~363) makes each meat item, runs `modifyMeat(item, size, meatRatio, hungerBoost, rotten, deathAge)`
--- (~426: nutrition, age), then `AddItem` + `sendAddItemToContainer`. `modifyMeat` has no player, so the butcher is
--- noted for the giveMeatModified call and modifyMeat's item gets its spoil times stretched before the send.
--- Organs and other parts (`addAnimalPart` without a meat definition) are left as they are.
+-- Provisioning.LastingFood (phase 2) and the choice cuts signature (phase 3a), `M.butcherBonus`: all the food a master
+-- butchers from an animal (user, 2026-11-09; only parts with a meat definition before, so not whole chickens and turkeys,
+-- chicken feet, small bird and animal meat, skinned rats and mice). Both of `addAnimalPart`'s routes run `modifyMeat(item,
+-- size, meatRatio, hungerBoost, rotten, deathAge)` (~426: nutrition, age) on each food item, then `AddItem` +
+-- `sendAddItemToContainer`: `giveMeatModified(meatDef, nb, player, ...)` (~363) for a part with a meat definition, its
+-- own loop (~327) for any other. `modifyMeat` has no player, so the butcher is noted around both calls and the bonus goes
+-- on before the send. Animal heads are not given by that path and stay as they are. Small animals and fish butchered
+-- by a recipe: TienSkillMastery_Crafting.lua.
 local butcher = nil
-local meatCall = ButcheringUtil.giveMeatModified
-ButcheringUtil.giveMeatModified = function(meatDef, nb, player, ...)
+local function withButcher(player, call, ...)
     local was = butcher
     butcher = player
-    local results = { pcall(meatCall, meatDef, nb, player, ...) }
+    local results = { pcall(call, ...) }
     butcher = was
     if not results[1] then error(results[2], 0) end
     return unpack(results, 2)
+end
+local meatCall = ButcheringUtil.giveMeatModified
+ButcheringUtil.giveMeatModified = function(meatDef, nb, player, ...)
+    return withButcher(player, meatCall, meatDef, nb, player, ...)
+end
+local partCall = ButcheringUtil.addAnimalPart
+ButcheringUtil.addAnimalPart = function(part, player, ...)
+    return withButcher(player, partCall, part, player, ...)
 end
 local vanillaModifyMeat = ButcheringUtil.modifyMeat
 if vanillaModifyMeat then
     ButcheringUtil.modifyMeat = function(item, ...)
         local text = vanillaModifyMeat(item, ...)
-        if butcher and item then
-            M.stretchFood(item, M.more(butcher, "Provisioning.LastingFood"))
-            -- Provisioning's signature, choice cuts: the meat is 10% more filling and 30% more nutritious (flat, from
-            -- the pick).
-            if M.sig(butcher, "Provisioning.SigChoiceCuts") and instanceof(item, "Food") then
-                local filling, nutrition = 1.1, 1.3
-                item:setHungChange(item:getHungChange() * filling)
-                item:setBaseHunger(item:getBaseHunger() * filling)
-                item:setCalories(item:getCalories() * nutrition)
-                item:setLipids(item:getLipids() * nutrition)
-                item:setProteins(item:getProteins() * nutrition)
-                item:setCarbohydrates(item:getCarbohydrates() * nutrition)
-            end
-        end
+        if butcher and item then M.butcherBonus(item, butcher) end
         return text
     end
 end

@@ -260,7 +260,7 @@ function TienSkillMasteryPanel:render()
                 local prestige = isPicked and level > M.BONUS_LEVELS
                 table.insert(self.rows, { y = y, h = ROW_HGT, id = m.id })
                 local hovered = mouseIn and mouseY >= y and mouseY < y + ROW_HGT
-                if hovered and mouseX < stateX then
+                if hovered and mouseX >= left and mouseX < stateX then
                     self:drawRect(left, y, stateX - left, ROW_HGT, 0.08, 1, 1, 1)
                 end
                 local c = GREY
@@ -570,6 +570,9 @@ function M.showSkillCheatMenu(playerNum, perkId)
         askNumber(nil, getText("IGUI_TienSkillMastery_SkillCheat_LevelTitle", perk:getName()), player:getPerkLevel(perk), function(n)
             applySkillCheat(player, { perk = perkId, op = "level", level = math.min(10, n) })
         end)
+    end)
+    context:addOption(getText("IGUI_TienSkillMastery_SkillCheat_MaxAll"), nil, function()
+        applySkillCheat(player, { op = "maxAll" })
     end)
     return true
 end

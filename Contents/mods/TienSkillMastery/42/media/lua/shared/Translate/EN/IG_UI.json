@@ -277,6 +277,7 @@
     "IGUI_TienSkillMastery_SkillCheat_Add": "Add XP...",
     "IGUI_TienSkillMastery_SkillCheat_Remove": "Remove XP...",
     "IGUI_TienSkillMastery_SkillCheat_Level": "Set level...",
+    "IGUI_TienSkillMastery_SkillCheat_MaxAll": "Max All (every skill to 10)",
     "IGUI_TienSkillMastery_SkillCheat_AddTitle": "XP to add to %1",
     "IGUI_TienSkillMastery_SkillCheat_RemoveTitle": "XP to remove from %1",
     "IGUI_TienSkillMastery_SkillCheat_LevelTitle": "New level for %1 (0 to 10)",

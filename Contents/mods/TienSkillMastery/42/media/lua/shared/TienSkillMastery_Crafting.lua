@@ -16,6 +16,11 @@ Cooking; `M.CRAFT_MASTERY`), both sides
 - Which skill: the same set vanilla calls relevant. Mastery only exists at level 10, the highest level, so the
   "highest relevant skill" vanilla uses is any relevant skill at 10; the bonus is the best CraftTime of the masteries
   the recipe's relevant skills map to (skills without one count 0). Values <= 1 (instant, no recipe) are left alone.
+- Kiln firing (user, 2026-11-09): a 42.21 kiln is a `CraftBench` (entity_kiln_small / large, bench tags KilnSmall /
+  KilnLarge), so its Fire* recipes are ordinary handcrafts through this action, but they list no skill at all (no xpAward,
+  no requirement). `relevantPerks` counts them as Pottery here, so Handicraft's crafting time and the craftsman's mark
+  apply. Vanilla's own `getTime(chr)` still sees no skill. The dome kiln (charcoal, coke) has other tags and is left out.
+- The crafting window's time labels: client/TienSkillMastery_CraftTimeLabels.lua, through `M.craftTimeFactor`.
 
 Everything below runs inside `performRecipe` (~221), which vanilla calls only where items are really made:
 `perform` when `not isClient()` (single player, ~191) and `complete` when `isServer()` (MP server, ~210). It runs
@@ -45,8 +50,12 @@ condition, sharpness, uses) and every item it adds goes out with `sendAddItemToC
   SharpnessCheck = `sharpnessCheck`; `InventoryItem.damageCheck` ~4520 can take a sharpness step (1 / conditionMax),
   a head condition point and a condition point). The kept tools are not known before the call, so every item in the
   craft's containers that a kept, wearing input accepts is noted first; after it, each lost point of the tools
-  `getAllKeepInputItems()` reports is put back on its own `M.roll`. Tools tagged BreakOnSmithing (broken on purpose
+  `getAllKeepInputItems()` reports is put back on its own roll. Tools tagged BreakOnSmithing (broken on purpose
   by smithing) and a condition forced to 0 by a head at 0 are left alone.
+- A kept tool's maker's mark (user, 2026-11-09), whoever crafts with it: same notes and rolls, at `M.markChance`,
+  combined with the tool wear undo above as server/TienSkillMastery_Physical.lua combines a weapon's. A tool in a hand or
+  worn is left to that file's per-tick watcher, which already rolls its mark on whatever the craft took, so the mark
+  never rolls twice for it.
 
 Phase 2 (2026-11-07), also inside `performRecipe`:
 - `Smithing.TorchFuel` (any recipe, Smithing master): blowtorch uses are recipe inputs (`item 2 / 4 / 6 / 8
@@ -73,11 +82,14 @@ Phase 2 (2026-11-07), also inside `performRecipe`:
   `Construction.SigPlanks` /
   `SigStones`: every recipe that makes planks gives one more (SawLogs only, on a 50% roll, until 2026-11-08, user;
   Carpentry recipes only, not when it also uses up a plank), Make_Stones_from_Large_Stone (-> 10 Stone2) 2 more, added with vanilla's own `Actions.addOrDropItem` (sends; drops on the floor when full). Nothing
-  turns planks back into logs or stones into a large stone, so neither loops. Recipe tools with a mark are not yet
-  given their wear back inside a craft (only held and worn items are watched).
+  turns planks back into logs or stones into a large stone, so neither loops.
 - `Provisioning.LastingFood` (recipes involving Cooking): created Food stays fresh longer, `setOffAge` /
   `setOffAgeMax` x the bonus (saved per item; not in SyncItemFieldsPacket, so the item is re-sent whole with
   `sendReplaceItemInContainer` on a server). Items that never spoil (1e9) are left alone.
+- Recipes that give Butchering XP (vanilla: ButcherSmallAnimal, SliceFillet; user, 2026-11-09): what they make gets
+  `M.butcherBonus` (Lasting Food and Choice Cuts) like an animal's meat. Their Java OnCreate (`cutSmallAnimal`, `cutFish`)
+  has set the values by then; the re-send carries them too. CutChicken / CutTurkey give Cooking XP and keep Lasting Food
+  only: a master's whole chicken has its Choice Cuts already. Fish guts and roe are not created items, so they stay plain.
 ]]
 
 require "TienSkillMastery"
@@ -99,9 +111,21 @@ end
 -- Crafting time
 -- ---------------------------------------------------------------------------------------------------------------
 
---- Perk ids of the recipe's relevant skills (vanilla's `getHighestRelevantSkillLevel` set), as a set.
+--- True for a kiln's firing recipe (the bench tags; see "Kiln firing" above).
+local function isKilnRecipe(recipe)
+    local tags = recipe:getTags()
+    for i = 0, tags:size() - 1 do
+        local tag = string.lower(tags:get(i))
+        if tag == "kilnsmall" or tag == "kilnlarge" then return true end
+    end
+    return false
+end
+
+--- Perk ids of the recipe's relevant skills (vanilla's `getHighestRelevantSkillLevel` set, plus Pottery for a kiln's
+--- firing), as a set.
 local function relevantPerks(recipe)
     local set = {}
+    if isKilnRecipe(recipe) then set.Pottery = true end
     local function each(count, get)
         for i = 0, count - 1 do
             local entry = get(i)
@@ -116,14 +140,31 @@ local function relevantPerks(recipe)
     return set
 end
 
---- Best CraftTime bonus (percent) among the masteries of the recipe's relevant skills.
+--- The crafting window's categories that name a crafting skill (`CraftRecipe:getCategory`). Many vanilla recipes list no
+--- skill at all (37 Blacksmithing, 33 Metalworking, 44 Cooking, 21 Tailoring...), so for crafting time a recipe also
+--- counts as its category's skill (user, 2026-11-09). Time only: marks, tool wear and the rest still follow
+--- `relevantPerks`. Categories without an entry (Farming, Packing, Weaponry, Tools...) add nothing.
+local CATEGORY_PERK = {
+    Blacksmithing = "Blacksmith", Metalworking = "MetalWelding", Carpentry = "Woodwork", Masonry = "Masonry",
+    Electrical = "Electricity", Carving = "Carving", Knapping = "FlintKnapping", Glassmaking = "Glassmaking",
+    Pottery = "Pottery", Tailoring = "Tailoring", Cooking = "Cooking",
+}
+
+--- Best CraftTime bonus (percent) among the masteries of the recipe's relevant skills and its category's skill.
 local function craftTimeBonus(chr, recipe)
     local best = 0
+    local categoryPerk = CATEGORY_PERK[recipe:getCategory()]
+    if categoryPerk then best = M.valFor(chr, M.CRAFT_MASTERY, categoryPerk, "CraftTime") end
     for perkId in pairs(relevantPerks(recipe)) do
         local v = M.valFor(chr, M.CRAFT_MASTERY, perkId, "CraftTime")
         if v > best then best = v end
     end
     return best
+end
+
+--- The share of a recipe's time this crafter takes: 1 without a bonus, never below 0.05.
+function M.craftTimeFactor(chr, recipe)
+    return math.max(0.05, 1 - craftTimeBonus(chr, recipe) / 100)
 end
 
 --- Which tool wear undo applies to the recipe for this crafter, if any.
@@ -141,9 +182,9 @@ local function scaleCraftDuration(self, d, ...)
     if type(d) == "number" and d > 1 and self.craftRecipe then
         local chr = self.character
         if chr and not chr:isTimedActionInstant() then
-            local ok, bonus = pcall(craftTimeBonus, chr, self.craftRecipe)
-            if ok and bonus > 0 then
-                d = math.max(2, math.floor(d * math.max(0.05, 1 - bonus / 100) + 0.5))
+            local ok, factor = pcall(M.craftTimeFactor, chr, self.craftRecipe)
+            if ok and factor < 1 then
+                d = math.max(2, math.floor(d * factor + 0.5))
             end
         end
     end
@@ -184,13 +225,15 @@ local function wearsTool(input)
             or input:mayDegradeVeryLight() or input:sharpnessCheck())
 end
 
---- Notes condition / head condition / sharpness of every item a kept, wearing input of the recipe could take.
-local function snapshotTools(self, recipe)
-    local accepts, any = {}, false
+--- Notes condition / head condition / sharpness of every item a kept, wearing input of the recipe could take: all of
+--- them, or with `markedOnly` the ones with a maker's mark.
+local function snapshotTools(self, recipe, markedOnly)
+    local accepts, any, wears = {}, false, false
     local inputs = recipe:getInputs()
     for i = 0, inputs:size() - 1 do
         local input = inputs:get(i)
         if wearsTool(input) then
+            wears = true
             if input:isAcceptsAnyItem() then
                 any = true
             else
@@ -201,13 +244,15 @@ local function snapshotTools(self, recipe)
             end
         end
     end
+    if not wears then return nil end
     local tools, found = {}, false
     local function scan(container)
         if not container then return end
         local items = container:getItems()
         for i = 0, items:size() - 1 do
             local item = items:get(i)
-            if (any or accepts[item:getFullType()]) and tools[item:getID()] == nil then
+            if (any or accepts[item:getFullType()]) and tools[item:getID()] == nil
+                and (not markedOnly or M.hasMark(item)) then
                 tools[item:getID()] = {
                     c = item:getCondition(),
                     h = item:hasHeadCondition() and item:getHeadCondition() or nil,
@@ -298,9 +343,7 @@ local function before(self)
     local ctx = { name = shortName(recipe) }
     if M.val(chr, "Mending.CarefulRepairs") > 0 then ctx.repairs = snapshotRepairs(self, recipe) end
     ctx.toolWear = toolWearId(chr, recipe)
-    if ctx.toolWear then
-        ctx.tools = snapshotTools(self, recipe)
-    end
+    ctx.tools = snapshotTools(self, recipe, not ctx.toolWear)
     if RIP_RECIPES[ctx.name] and M.val(chr, "Mending.Ripping") > 0 then
         ctx.fabric = countFabric(chr:getInventory())
     end
@@ -314,15 +357,28 @@ local function addToInventory(chr, item)
     sendAddItemToContainer(inv, item)
 end
 
+--- Percent chance a lost point comes back, for the overall condition and for the head: the tool wear undo `id` (may be
+--- nil) combined with the tool's own mark. A tool in a hand or worn keeps its mark for Physical's watcher.
+local function wearChances(chr, item, id)
+    local a = id and M.val(chr, id) or 0
+    local watched = chr:isEquipped(item)
+    local function combine(what)
+        local b = watched and 0 or M.markChance(item, what)
+        return 100 * (1 - (1 - a / 100) * (1 - b / 100))
+    end
+    return combine("condition"), combine("head")
+end
+
 local function undoToolWear(chr, item, s, id)
-    local function lucky() return M.roll(chr, id) end
+    local chance, headChance = wearChances(chr, item, id)
+    local function lucky(percent) return percent > 0 and ZombRandFloat(0, 100) < percent end
     local changed = false
     local headBackFromZero = false
     if s.h and item:hasHeadCondition() then
         local now = item:getHeadCondition()
         local back = 0
         for _ = 1, s.h - now do
-            if lucky() then back = back + 1 end
+            if lucky(headChance) then back = back + 1 end
         end
         if back > 0 then
             item:setHeadCondition(now + back)
@@ -342,7 +398,7 @@ local function undoToolWear(chr, item, s, id)
         if lost > 0 and lost <= 2 then
             local back = 0
             for _ = 1, lost do
-                if lucky() then back = back + 1 end
+                if lucky(chance) then back = back + 1 end
             end
             if back > 0 then
                 item:setConditionNoSound(cond + back)
@@ -357,7 +413,7 @@ local function undoToolWear(chr, item, s, id)
             local lost = math.floor((s.s - now) / inc + 0.5)
             local back = 0
             for _ = 1, lost do
-                if lucky() then back = back + 1 end
+                if lucky(headChance) then back = back + 1 end
             end
             if back > 0 then
                 item:setSharpness(math.min(s.s, now + back * inc))
@@ -624,8 +680,8 @@ end
 -- Handicraft.ExtraOutput (phase 3c, "pts"): one more of the recipe's first output on a roll, only for recipes vetted
 -- so that nothing turns the output back into its inputs (42.21 scripts): knapping (flakes, blades, drills, axe and maul
 -- heads), carving end products (spoons, forks, pipes, goblets, cutting boards, dice, stakes, knapping tools) and the
--- hand press (unfired bricks, shingles, tiles: nothing turns them back into clay). Kiln firing runs in the kiln's
--- Java CraftLogic (no performRecipe), not covered. Added with vanilla's `Actions.addOrDropItem`.
+-- hand press (unfired bricks, shingles, tiles: nothing turns them back into clay). Kiln firing is not on the list: the
+-- user asked for its time and mark only. Added with vanilla's `Actions.addOrDropItem`.
 local EXTRA_OUTPUT = {
     MakeSharpFlintFlake = true, MakeStoneBlade = true, MakeStoneDrill = true, MakeLargeStoneAxeHead = true,
     MakeStoneMaulHead = true, CarveWoodenSpoon = true, CarveWoodenFork = true, CarvePipe = true, CarveGoblets = true,
@@ -709,6 +765,13 @@ local function afterLastingFood(chr, created)
     end
 end
 
+local function afterButchering(chr, created)
+    for i = 0, created:size() - 1 do
+        local item = created:get(i)
+        if M.butcherBonus(item, chr) then M.resendItem(item) end
+    end
+end
+
 local function after(self, ctx)
     local chr, recipe = self.character, self.craftRecipe
     local data = self.logic and self.logic:getRecipeData()
@@ -728,7 +791,11 @@ local function after(self, ctx)
     if recipe:isSmithing() then markCreated(chr, created, M.val(chr, "Smithing.SigMasterwork"), "masterwork", "head") end
     carryMarks(chr, data, created)
     afterConstruction(chr, ctx.name, recipe, data, created)
-    if involves(recipe, "Provisioning") then afterLastingFood(chr, created) end
+    if relevantPerks(recipe).Butchering then
+        afterButchering(chr, created)
+    elseif involves(recipe, "Provisioning") then
+        afterLastingFood(chr, created)
+    end
     if SPEAR_RECIPES[ctx.name] then afterSpear(chr, created) end
     if ARAMID_RECIPES[ctx.name] then afterAramid(chr, created) end
     afterScrap(chr, recipe, data, created)

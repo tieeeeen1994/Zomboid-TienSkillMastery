@@ -56,7 +56,7 @@ end
 local originalMouseDown = ISCharacterInfo.onMouseDown
 function ISCharacterInfo:onMouseDown(x, y)
     for _, r in ipairs(self.tsmRows or {}) do
-        if y >= r.y and y < r.y + r.h and x < r.barX then
+        if y >= r.y and y < r.y + r.h and x >= r.nameX and x < r.barX then
             toggle(self, r.perk)
             return true
         end
@@ -70,7 +70,7 @@ end
 local originalRightMouseUp = ISCharacterInfo.onRightMouseUp
 function ISCharacterInfo:onRightMouseUp(x, y)
     for _, r in ipairs(self.tsmRows or {}) do
-        if y >= r.y and y < r.y + r.h and x < r.barX then
+        if y >= r.y and y < r.y + r.h and x >= r.nameX and x < r.barX then
             if M.showSkillCheatMenu then M.showSkillCheatMenu(self.playerNum, r.perk:getId()) end
             return true
         end
@@ -117,8 +117,8 @@ def main():
     patch("\t\t\t\ty = y + rowHgt;\n",
           "\t\t\t\t-- Tien's Skill Mastery: note the row, then the open skill's lines\n"
           "\t\t\t\ttable.insert(self.tsmRows, { y = y, h = rowHgt, perk = perk,\n"
-          "\t\t\t\t\tbarX = left + UI_BORDER_SPACING*3 + self.txtLen })\n"
-          "\t\t\t\tif self:getMouseY() >= y and self:getMouseY() < y + rowHgt and self:getMouseX() < left + UI_BORDER_SPACING*3 + self.txtLen then\n"
+          "\t\t\t\t\tnameX = left, barX = left + UI_BORDER_SPACING*3 + self.txtLen })\n"
+          "\t\t\t\tif self:isMouseOver() and self:getMouseY() >= y and self:getMouseY() < y + rowHgt and self:getMouseX() >= left and self:getMouseX() < left + UI_BORDER_SPACING*3 + self.txtLen then\n"
           "\t\t\t\t\tself:drawRect(left, y, self.txtLen + UI_BORDER_SPACING*3, rowHgt, 0.08, 1, 1, 1)\n"
           "\t\t\t\tend\n"
           "\t\t\t\ty = y + rowHgt;\n"

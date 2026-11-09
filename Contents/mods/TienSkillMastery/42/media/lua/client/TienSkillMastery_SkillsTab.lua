@@ -136,8 +136,8 @@ function ISCharacterInfo:render()
 				end
 				-- Tien's Skill Mastery: note the row, then the open skill's lines
 				table.insert(self.tsmRows, { y = y, h = rowHgt, perk = perk,
-					barX = left + UI_BORDER_SPACING*3 + self.txtLen })
-				if self:getMouseY() >= y and self:getMouseY() < y + rowHgt and self:getMouseX() < left + UI_BORDER_SPACING*3 + self.txtLen then
+					nameX = left, barX = left + UI_BORDER_SPACING*3 + self.txtLen })
+				if self:isMouseOver() and self:getMouseY() >= y and self:getMouseY() < y + rowHgt and self:getMouseX() >= left and self:getMouseX() < left + UI_BORDER_SPACING*3 + self.txtLen then
 					self:drawRect(left, y, self.txtLen + UI_BORDER_SPACING*3, rowHgt, 0.08, 1, 1, 1)
 				end
 				y = y + rowHgt;
@@ -220,7 +220,7 @@ end
 local originalMouseDown = ISCharacterInfo.onMouseDown
 function ISCharacterInfo:onMouseDown(x, y)
     for _, r in ipairs(self.tsmRows or {}) do
-        if y >= r.y and y < r.y + r.h and x < r.barX then
+        if y >= r.y and y < r.y + r.h and x >= r.nameX and x < r.barX then
             toggle(self, r.perk)
             return true
         end
@@ -234,7 +234,7 @@ end
 local originalRightMouseUp = ISCharacterInfo.onRightMouseUp
 function ISCharacterInfo:onRightMouseUp(x, y)
     for _, r in ipairs(self.tsmRows or {}) do
-        if y >= r.y and y < r.y + r.h and x < r.barX then
+        if y >= r.y and y < r.y + r.h and x >= r.nameX and x < r.barX then
             if M.showSkillCheatMenu then M.showSkillCheatMenu(self.playerNum, r.perk:getId()) end
             return true
         end

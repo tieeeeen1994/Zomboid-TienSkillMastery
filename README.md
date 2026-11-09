@@ -27,7 +27,7 @@ is known for.
 - **What your skills do.** Click a skill's name in the vanilla Skills tab to see what its current level gives in
   vanilla: every effect with its number, and the features later levels unlock. Click again to close.
 - **Admin cheats.** Right-click a picked mastery in the Mastery tab to change its points or level, or remove the
-  pick; right-click a skill's name in the Skills tab to change its XP or level. Own character only: in multiplayer
+  pick; right-click a skill's name in the Skills tab to change its XP or level, or max every skill. Own character only: in multiplayer
   for roles allowed to add XP, in single player with -debug.
 - **Multiplayer.** Masteries are kept on the server and work on dedicated servers. Your skill panel, Skill Journal
   and other mods still see level 10 skills as full.

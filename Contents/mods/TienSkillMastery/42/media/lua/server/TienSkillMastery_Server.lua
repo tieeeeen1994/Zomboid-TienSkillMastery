@@ -360,14 +360,45 @@ function M.adminChange(player, args)
     return true
 end
 
+--- Admin "Max All": every skill below 10 goes to 10, mastery untouched. `XP.AddXP` runs `LevelPerk` once per level
+--- crossed, each with its halo line and level-up sound (350 of each from a fresh character), so a skill is set to 9
+--- first and crosses only the last level. `xpUpdate.levelPerk` tests only level ranges and thresholds, so level 10
+--- gives the same traits and recipes as climbing there. One over the gap is awarded because Java clamps at total(10)
+--- and float rounding must not stop short of it. AddXP does nothing while asleep, or for Fitness with weight trouble
+--- (`canAddFitnessXp`): such a skill gets its old level back and is logged.
+local function maxAllSkills(player)
+    local raised, failed = 0, {}
+    for _, perk in ipairs(M.perks()) do
+        local before = player:getPerkLevel(perk)
+        if before < 10 then
+            local gap = M.total10(perk) - M.rawXp(player, perk) + 1
+            player:setPerkLevelDebug(perk, 9)
+            adminVanilla = true
+            pcall(addXpNoMultiplier, player, perk, gap / proteinFactor(player, perk))
+            adminVanilla = false
+            if player:getPerkLevel(perk) >= 10 then
+                if M.rawXp(player, perk) > M.parkValue(perk) + M.EPS then park(player, perk) end
+                raised = raised + 1
+            else
+                player:setPerkLevelDebug(perk, before)
+                table.insert(failed, perk:getId())
+            end
+        end
+    end
+    print(string.format("[TienSkillMastery] %s maxed own skills: %d raised, not raised: %s",
+        tostring(player:getUsername()), raised, #failed > 0 and table.concat(failed, ", ") or "none"))
+    return true
+end
+
 --- Admin cheat on the vanilla skill (the Skills tab's right-click menu): args { perk = id, op = "add" | "remove" |
---- "level", amount = n, level = n }. Goes through the `addXpNoMultiplier` global: on a server that is
+--- "level", amount = n, level = n }, or { op = "maxAll" } for every skill. Goes through the `addXpNoMultiplier` global: on a server that is
 --- GameServer.addXp (no boosts, then `updateXpChecker`, so the XP anti-cheat's snapshot follows, as for /addxp), in
 --- single player a plain AddXP without boosts. Java's level loops do the levelling (several levels in one award), and
 --- the Strength protein factor is divided out so the amount lands as asked. A parked skill is first put back at
 --- vanilla's total(10) so a removal counts from the real cap. Mastery is left as it is (it only counts at 10).
 function M.adminSkill(player, args)
     if type(args) ~= "table" or not player then return false end
+    if args.op == "maxAll" then return maxAllSkills(player) end
     local perk = M.perk(args.perk)
     if not perk then return false end
     local amount = math.max(0, math.min(1e7, tonumber(args.amount) or 0))

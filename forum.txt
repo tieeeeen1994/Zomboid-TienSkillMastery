@@ -11,7 +11,7 @@ Skills stay vanilla, levels 0 to 10. On top of them come [b]masteries[/b]: named
 [*][b]Mastery belongs to the character.[/b] It is gone when the character dies.
 [*][b]Mastery tab[/b] next to Skills in the character window, laid out like the Skills tab: the masteries by group, each with its skills (green once at 10), a Pick button when it is ready (a grey Coming Soon on those not open yet), ten boxes once picked (hover for the points). Click a mastery to see its effects now and at mastery 10. Long lines here and in the Skills tab's effect lists wrap; set the length in Options > Mods.
 [*][b]What your skills do.[/b] Click a skill's name in the vanilla Skills tab to see what its current level gives in vanilla: every effect with its number, and the features later levels unlock. Click again to close.
-[*][b]Admin cheats.[/b] Right-click a picked mastery in the Mastery tab to change its points or level, or remove the pick; right-click a skill's name in the Skills tab to change its XP or level. Own character only: in multiplayer for roles allowed to add XP, in single player with -debug.
+[*][b]Admin cheats.[/b] Right-click a picked mastery in the Mastery tab to change its points or level, or remove the pick; right-click a skill's name in the Skills tab to change its XP or level, or max every skill. Own character only: in multiplayer for roles allowed to add XP, in single player with -debug.
 [*][b]Multiplayer.[/b] Masteries are kept on the server and work on dedicated servers. Your skill panel, Skill Journal and other mods still see level 10 skills as full.
 [/list]
 
