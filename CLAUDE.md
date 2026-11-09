@@ -5,7 +5,7 @@ the bonus), then endless prestige with no more bonuses. Mastery is earned only b
 by reading. Skill Journal (lait, workshop 3776641628) should one day record and restore it (low priority).
 Standalone mod, started 2026-11-05.
 **v2 replaces v1** (picked masteries over groups of skills, with effects of their own; design and every decision in
-`docs/v2-draft.md`). **All of v2 built 2026-11-07** (v0.3.0) except most of Stealth's and Freerunning's effects: see "v2 build" below. What has been played is listed next; no full pass on a dedicated server is recorded.
+`docs/v2-draft.md`). **All of v2 built 2026-11-07** (v0.3.0) except most of Stealth's and Freerunning's effects: see "v2 build" below. Now v0.4.0 (merged to master 2026-11-09, Workshop item unlisted). What has been played is listed next; no full pass on a dedicated server is recorded.
 **Played in game (2026-11-07, user):** Firearms' signatures (Quickdraw, reloading while running) and Axemanship's
 (the throw key: held and carried axes, swing / hit sounds, damage on arrival; the reticle since replaced by an
 outline, animal and PvP targets added after that test, those played 2026-11-08); 2026-11-08: Smithing's Masterwork and Handicraft's
@@ -328,11 +328,12 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   (`hitConsequences` ~6219); in MP a kill is judged from the server's copy of the health against
   `min(amount, R.MAX_DAMAGE)`, and `setAttackedBy` gives the corpse its killer. Stagger: `R.show` broadcasts
   `zombieActShow` (kind "pushback": thrown hits and Wild Swing), and each client sets the flag on its remote copy, as
-  vanilla's hit packet does (`fields/hit/Zombie.process`); the owner's ZombieStagger still moves it. Not done: "bowl"
-  (knockdown; remote floor state not traced). Still open: the server's `isOnFloor` is not fed by ZombiePacket
-  (`NetworkZombieVariables`: reanimated players only), so it may treat lying zombies as standing in `Th.postureOf`;
-  `zombie:getRealState()` and `isCrawling()` do reach it, if a test shows this is real. Animal and player targets show
-  no flinch on clients (animal blood is server only too). Checks: `throwsync.lua` (server + client mocks, 21 checks, session scratchpad, not kept).
+  vanilla's hit packet does (`fields/hit/Zombie.process`); the owner's ZombieStagger still moves it. Since 2026-11-09 (user, not played): "bowl" too (`R.SHOWN`; `knockDown` sets what the hit
+  packet sets, and the fall states run on the remote copy; simulator's own `isKnockedDown` jump to on-ground is at zombie creation only). The
+  server's `isOnFloor` is not fed by ZombiePacket (`NetworkZombieVariables`: reanimated players only), so `Th.postureOf`
+  also reads `zombie:getRealState()` (falldown, onground, getup, fakedead; sitting) and `isCrawling()`, both in every ZombiePacket.
+  Animal and player targets flinch on every client from `throwHit` (`Th.showHit`, sent now for a weapon with no hit sound too):
+  animal `setHitReaction("hitreact")` + blood; player `IsoPlayer.hitConsequences`' PvP lines ("HitReaction", `washitpvp`, `hitpvp`, hit force, from behind) + blood. Checks: `throwsync.lua` (server + client mocks, 21 checks, session scratchpad, not kept).
   Old harness files `tests.lua`, `tests3-5.lua` already fail on checks these fixes do not touch (same failures with
   the committed Throw and Relay).
 - Two repair systems raise an item's repair count (traced 2026-11-08, reported on an axe repaired with zip ties):

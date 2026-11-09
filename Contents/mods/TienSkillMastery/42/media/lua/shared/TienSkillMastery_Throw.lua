@@ -101,6 +101,10 @@ Th.ANIMAL_AIM = 0.6   -- share of an animal's height the throw is aimed at
 -- a zombie's `isSitAgainstWall()`, else "stand". Tops: 0.15 / 0.4 / 0.8 levels. A low target is aimed at its own
 -- height (sitting: the head, SIT_AIM; lying: LOW_AIM) with the full drop correction, like an animal; a sitting one
 -- can take a head hit (at or above SIT_HEAD of its top), a lying one takes body hits.
+-- The server resolves the flight, but its copy of a zombie is not told `isOnFloor` (42.21 `NetworkZombieVariables`:
+-- reanimated players only). Every ZombiePacket does carry the state the owner's zombie is in (`getRealState()`, the action
+-- state's name; `NetworkZombiePacker.applyZombie`) and the crawling and sitting flags, so those answer for a zombie.
+local ZOMBIE_DOWN_STATES = { falldown = true, onground = true, getup = true, fakedead = true }
 Th.DOWN_TOP = 0.15
 Th.SIT_TOP = 0.4
 Th.SIT_AIM = 0.85   -- share of a sitting target's top aimed at (its head)
@@ -115,7 +119,14 @@ end
 function Th.postureOf(chr, kind)
     if kind == "animal" then return "animal" end
     if bool(chr, "isOnFloor") then return "down" end
-    if bool(chr, "isSitOnGround") or bool(chr, "isSittingOnFurniture")
+    local realState = nil
+    if kind == "zombie" then
+        if bool(chr, "isCrawling") then return "down" end
+        local ok, state = pcall(function() return chr:getRealState() end)
+        realState = ok and state or nil
+        if ZOMBIE_DOWN_STATES[realState] then return "down" end
+    end
+    if bool(chr, "isSitOnGround") or bool(chr, "isSittingOnFurniture") or realState == "sitting"
         or (kind == "zombie" and bool(chr, "isSitAgainstWall")) then
         return "sit"
     end
@@ -558,19 +569,18 @@ local function arrive(f)
         local dx, dy = t:getX() - f.x, t:getY() - f.y
         if dx * dx + dy * dy <= Th.TRACK_RADIUS * Th.TRACK_RADIUS then
             -- The weapon's zombie hit sound, at the target, for everyone (see `Th.playHit`), before the hit (a kill
-            -- turns the target into a corpse).
-            local sound = f.weapon:getZombieHitSound()
-            if sound and sound ~= "" then
-                local data = { x = t:getX(), y = t:getY(), z = t:getZ(), sound = sound }
-                data.kind, data.id = f.kind, t:getOnlineID()
-                if isServer() then
-                    sendServerCommand(M.MODULE, "throwHit", data)
-                elseif Th.playHit then
-                    -- Guarded: an error here must never stop the landing below (a sound error lost the thrown
-                    -- weapon twice on 2026-11-08).
-                    local ok, err = pcall(Th.playHit, data)
-                    if not ok then print("[TienSkillMastery] throw hit sound failed: " .. tostring(err)) end
-                end
+            -- turns the target into a corpse). The same message carries the flinch (`Th.showHit`), so it goes out
+            -- for a weapon with no hit sound too.
+            local data = { x = t:getX(), y = t:getY(), z = t:getZ(), sound = f.weapon:getZombieHitSound() }
+            data.kind, data.id = f.kind, t:getOnlineID()
+            data.tx, data.ty = f.player and f.player:getX(), f.player and f.player:getY()
+            if isServer() then
+                sendServerCommand(M.MODULE, "throwHit", data)
+            elseif Th.playHit then
+                -- Guarded: an error here must never stop the landing below (a sound error lost the thrown
+                -- weapon twice on 2026-11-08).
+                local ok, err = pcall(Th.playHit, data)
+                if not ok then print("[TienSkillMastery] throw hit sound failed: " .. tostring(err)) end
             end
             local ok, err = pcall(applyHit, f.player, t, f.kind, f.damage, f.part, f.weapon)
             if not ok then print("[TienSkillMastery] thrown hit failed: " .. tostring(err)) end
@@ -777,9 +787,41 @@ function Th.playHit(args)
     end
 end
 
+--- What a thrown hit looks like on an MP client, on every client, the target's owner included, as vanilla's hit packet
+--- does it (42.21 `fields/hit/Character.process` sets the reaction on every client). The damage is the server's.
+--- Animal: `setHitReaction("hitreact")` (`IsoAnimal.hitConsequences` sets it only when not a client; the animal's
+--- `hashitreaction` transition and `AnimalHitReactionState`, whose exit clears it) and the blood. Player: what
+--- `IsoPlayer.hitConsequences` does for a PvP hit: hit force at most 0.5, "HitReaction", from behind or not, then the
+--- `washitpvp` event and `hitpvp` variable (the `hitreactionpvp` node of every player state).
+function Th.showHit(args)
+    local id = tonumber(args.id)
+    if not id then return end
+    if args.kind == "animal" then
+        local animal = getAnimal(id)
+        if not animal or animal:isDead() then return end
+        animal:setHitReaction("hitreact")
+        animal:splatBloodFloorBig()
+    elseif args.kind == "player" then
+        local target = getPlayerByOnlineID(id)
+        if not target or target:isDead() or target:getVehicle() or target:isAsleep() then return end
+        target:setHitForce(math.min(0.5, target:getHitForce()))
+        local tx, ty = tonumber(args.tx), tonumber(args.ty)
+        if tx and ty then
+            target:setHitFromBehind(target:getForwardDirectionX() * (tx - target:getX())
+                + target:getForwardDirectionY() * (ty - target:getY()) < 0)
+        end
+        target:setHitReaction("HitReaction")
+        target:reportEvent("washitpvp")
+        target:setVariable("hitpvp", true)
+        target:splatBloodFloorBig()
+    end
+end
+
 Events.OnServerCommand.Add(function(module, command, args)
     if module == M.MODULE and command == "throwHit" and type(args) == "table" then
         Th.playHit(args)
+        local ok, err = pcall(Th.showHit, args)
+        if not ok then print("[TienSkillMastery] throw hit reaction failed: " .. tostring(err)) end
         return
     end
     if module == M.MODULE and command == "throwKill" and type(args) == "table" then

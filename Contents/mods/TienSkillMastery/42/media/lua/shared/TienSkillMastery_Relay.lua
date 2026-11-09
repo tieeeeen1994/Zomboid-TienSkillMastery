@@ -111,8 +111,11 @@ end
 --   clients' copies there (`HitReactionNetworkAI.process`). Vanilla's flag comes with the hit packet, which sets it on
 --   every client (`fields/hit/Zombie.process`); here the server sends `zombieActShow` to everyone and each client sets
 --   it on its remote copy (`R.show`; the owner has `zombieActApply`). A remote copy's `StaggerBackState` plays the
---   animation with its own root motion off while ZombieStagger moves it, and clears the flag on exit. Not done for
---   "bowl" (a knockdown): other clients still see that zombie only move.
+--   animation with its own root motion off while ZombieStagger moves it, and clears the flag on exit.
+-- - "bowl" (Street Fighting's signature) is shown the same way: `knockDown` sets on a remote copy what vanilla's hit
+--   packet sets there (`fields/hit/Character.process` + `Zombie.process`: knocked down, stagger back, attack position,
+--   no hit reaction), and `StaggerBackState`, `ZombieFallDownState` and `ZombieOnGroundState` then run on that copy as
+--   after a vanilla knockdown. The attacker sees it too when another client owns the zombie.
 -- Server checks: the signature, the 4-tile distance (5 for push back's cone), and for push back the endurance cost
 -- (0.01 a zombie, server-owned stat) before anything is forwarded.
 -- ---------------------------------------------------------------------------------------------------------------
@@ -159,6 +162,8 @@ local function queueAct(zombie, kind, args)
 end
 --- Queues an action on a zombie this side owns (no checks, no cost): the throw's stagger uses it.
 R.queueAct = queueAct
+
+R.SHOWN = { pushback = true, bowl = true }     -- acts other clients play on their copies of the zombie
 
 --- Server: every client plays this act on its remote copies of these zombies (online IDs), attacker at (x, y).
 function R.show(kind, ids, x, y)
@@ -238,7 +243,7 @@ if isServer() then
             end
             shown[#shown + 1] = data.id
         end
-        if kind == "pushback" and #shown > 0 then R.show(kind, shown, player:getX(), player:getY()) end
+        if R.SHOWN[kind] and #shown > 0 then R.show(kind, shown, player:getX(), player:getY()) end
     end)
 end
 
@@ -249,10 +254,10 @@ if isClient() then
         if zombie and not zombie:isRemoteZombie() then queueAct(zombie, args.kind, args) end
     end)
 
-    -- What everyone else sees of it. Only "pushback" is sent (see the header); checked anyway, it comes off the wire.
+    -- What everyone else sees of it (see the header); checked anyway, it comes off the wire.
     Events.OnServerCommand.Add(function(module, command, args)
         if module ~= M.MODULE or command ~= "zombieActShow" or type(args) ~= "table" then return end
-        if args.kind ~= "pushback" or type(args.ids) ~= "table" then return end
+        if not R.SHOWN[args.kind] or type(args.ids) ~= "table" then return end
         local i = 1
         while args.ids[i] ~= nil do
             local zombie = R.findZombie(tonumber(args.ids[i]))
