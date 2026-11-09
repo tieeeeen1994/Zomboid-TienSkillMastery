@@ -1,5 +1,54 @@
 # Tien's Skill Mastery — working notes
 
+## Start here (status 2026-11-09)
+
+The notes below grew as a log, and v1 sections are marked superseded. This section is the current state.
+
+- **Version 0.4.0**, on `master` and `v2-draft` (same commit), Workshop item 3836051294, **unlisted by choice**.
+- **Open masteries:** 19 of 22. Coming Soon: Freerunning, Stealth, Salvaging.
+- **Next:** play `docs/test-checklist.md` on a dedicated server with two players, then fix what it finds.
+- **Tests:** `tests/README.md` (`py tests/run_all.py`; `--release` adds the release report). They need `tests/.lupa`, installed
+  once per computer. Older notes below mention harness files in a session scratchpad; those are gone.
+
+Still to do, in order:
+1. Freerunning: exhaustion no longer adding to vault trips and tall-wall failures (traced in `docs/v2-draft.md`), then Evasion
+   (15% dodge, phasing through what you run into; a dodge must happen before the client's hit roll, phasing untraced).
+2. Stealth: Lose Them, Quiet Hands, Distraction Throw (how to end a zombie's path to a sound is untraced).
+3. Salvaging needs the user's decision. Suggested: Strip Down (one click uninstalls every part) plus the time and torch
+   passives on part scrapping. Other ideas are under "Salvaging's problem" below.
+4. Skill Journal recording and restoring mastery (low priority).
+5. To trace from Java: whether the server runs `updateFalling` for players (the server's half of Freerunning's safe falls).
+6. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
+
+Releasing: bump `modversion` in `mod.info`, drop "(coming soon)" from `README.md` for anything opened, remove the id from
+`M.COMING_SOON`, run `py scripts/make_workshop.py`, `py tests/run_all.py --release`. Commit, fast-forward master, upload in
+game. The summary goes in `workshop.txt` (Steam caps it at 8000 characters) and the full text in `forum.txt`, the pinned
+Discussions thread, which the user pastes in; keep `README.md` the full source and never trim features to fit.
+
+### The user's standing rules
+
+These apply to all of the user's mods and were kept outside this repo until now.
+
+- **Dedicated server first.** The user's mods run on their dedicated server; single-player-only or host-only behaviour is useless.
+  Every plan says how each piece works there: which side changes the world, which call syncs it, and which events fire there.
+- **The server runs the Workshop copy.** A client runs the local working folder, and the server only fetches updates when it
+  starts. When something "does nothing" or "waits for the server" in multiplayer, first compare the Workshop mirror's timestamp
+  with the server's start time, then debug.
+- **Verify against the implementation.** Docs, headers and these notes can be wrong: read the Lua or decompiled Java before relying
+  on a claim, correct the note when it is wrong, and look for a simple cause before building sync workarounds.
+- **Findings go next to the code:** in the header or a comment of the file that relies on them, plus a short line here.
+- **No over-the-head text as feature feedback** (`HaloTextHelper`), except the vanilla-style level-up halo, which is wanted.
+- **No timers just to notice sandbox option changes.** This mod has no sandbox options for now (user: "I want to control the values").
+- **TODO files hold open work only.** No "check in game" lists for built features there; `docs/test-checklist.md` was asked for
+  separately and is deleted once done.
+- **Workshop preview text** states only what plays, no real-world trivia.
+- Lua sees a Java class's methods and static fields only: instance fields read as nil, so look for getters.
+
+Windows tools: Python is `py`. The game is at `C:/Program Files (x86)/Steam/steamapps/common/ProjectZomboid`; its `jre64/bin/java.exe`
+runs Vineflower on the jar's Java 25 classes (recipe in ZomboidFixesB42's `CLAUDE.md`, a separate repo).
+
+## Overview and history
+
 Skills keep going past level 10 as **mastery**: levels 1-10 with small per-skill bonuses (each level a tenth of
 the bonus), then endless prestige with no more bonuses. Mastery is earned only by experience (real XP gains), never
 by reading. Skill Journal (lait, workshop 3776641628) should one day record and restore it (low priority).
