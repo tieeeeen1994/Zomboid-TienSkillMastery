@@ -5,8 +5,10 @@ Tien's Skill Mastery: server core (also runs in single player). See shared/TienS
   (a share of the skill's level-10 step, see the shared core) and parks the skill again; a gain no picked mastery
   takes is lost, as in vanilla. Negative XP (Strength / Fitness decay) comes out of every such mastery that still
   has points; the skill drops below 10 only once none could pay. The event fires on the server / single player only (`XP.AddXP`, `!GameClient.client`).
-- A pass every second notes every online player's XP object (for the getXP wrapper), parks level-10 skills that sit
-  at total(10) (just reached, an older save, Skill Journal, admin /addxp), and sends changed mastery to the owner.
+- A pass every second notes every online player's XP object (for the getXP wrapper), parks level-10 skills that a
+  picked, active mastery lists and that sit at total(10) (just reached, a new pick, Skill Journal, admin /addxp),
+  unparks the others (back to total(10), where Java ignores gains and shows no XP halo), and sends changed mastery to
+  the owner.
 - Not experience: Skill Journal's restore (lait, 3776641628) calls the 6-argument `AddXP`, which fires the event too;
   `SkillJournal.restore` is wrapped to ignore gains while it runs. Admin `/addxp` cannot be told apart.
 - Mastery belongs to the character: cleared on death (`OnCharacterDeath`, fires on the server for players), and
@@ -107,6 +109,19 @@ local function activeMasteriesOf(player, perk)
     return list
 end
 
+--- A level-10 skill is parked only while a picked, active mastery lists it (user, 2026-11-10). A parked skill lets
+--- gains land, and Java's AddXP then shows its "<skill> XP: n" halo (`XP.AddXP` ~281, for awards made with haloText
+--- on the local player: foraging, for one); for a skill no mastery takes, that showed XP going nowhere. Any other
+--- level-10 skill sits at vanilla's total(10), where AddXP returns before the halo, as in vanilla.
+local function wantsPark(player, perk)
+    return #activeMasteriesOf(player, perk) > 0
+end
+
+--- Back to vanilla's cap from the park line: at most PARK_MARGIN up, under the XP anti-cheat's 250 floor.
+local function unpark(player, perk)
+    return setRawXp(player, perk, M.total10(perk))
+end
+
 local function addPoints(player, masteryId, points)
     local e = M.entry(player, true)
     local before = e.points[masteryId] or 0
@@ -128,7 +143,7 @@ local function onAddXP(player, perk, amount)
     if adminVanilla then
         -- Admin skill cheat: the XP stays vanilla XP. Park a skill it brought to 10, bank nothing, eat no mastery.
         if instanceof(player, "IsoPlayer") and player:getPerkLevel(perk) >= 10
-            and M.rawXp(player, perk) > M.parkValue(perk) + M.EPS then
+            and M.rawXp(player, perk) > M.parkValue(perk) + M.EPS and wantsPark(player, perk) then
             setRawXp(player, perk, M.parkValue(perk))
         end
         return
@@ -144,8 +159,8 @@ local function onAddXP(player, perk, amount)
 
     if not wasParked then
         -- Just reached 10 (Java clamped at total(10)), or somewhere else at level 10 (an admin set the level):
-        -- park if above the line, nothing to bank.
-        if raw > parkAt + M.EPS then park(player, perk) end
+        -- park if above the line and a mastery takes the skill, nothing to bank.
+        if raw > parkAt + M.EPS and wantsPark(player, perk) then park(player, perk) end
         return
     end
 
@@ -158,7 +173,8 @@ local function onAddXP(player, perk, amount)
             local points = M.pointsFor(perk, earned)
             for _, id in ipairs(earners) do addPoints(player, id, points) end
         end
-        park(player, perk)
+        -- No earner left (a pick removed, a member dropped below 10 before the pass saw it): back to vanilla's cap.
+        if #earners > 0 then park(player, perk) else unpark(player, perk) end
         return
     end
 
@@ -254,7 +270,13 @@ local function passPlayer(player)
     for _, perk in ipairs(M.perks()) do
         if player:getPerkLevel(perk) >= 10 then
             local raw = M.rawXp(player, perk)
-            if raw >= M.total10(perk) - M.EPS then park(player, perk) end
+            if wantsPark(player, perk) then
+                if raw >= M.total10(perk) - M.EPS then park(player, perk) end
+            elseif M.isParked(player, perk, raw) then
+                -- Picked away, inactive, or parked by an older version: vanilla's cap. Only from the park line
+                -- (isParked), so a level-10 skill an admin left far below the cap is never raised past the anti-cheat.
+                unpark(player, perk)
+            end
         end
     end
 end
@@ -377,7 +399,9 @@ local function maxAllSkills(player)
             pcall(addXpNoMultiplier, player, perk, gap / proteinFactor(player, perk))
             adminVanilla = false
             if player:getPerkLevel(perk) >= 10 then
-                if M.rawXp(player, perk) > M.parkValue(perk) + M.EPS then park(player, perk) end
+                if M.rawXp(player, perk) > M.parkValue(perk) + M.EPS and wantsPark(player, perk) then
+                    park(player, perk)
+                end
                 raised = raised + 1
             else
                 player:setPerkLevelDebug(perk, before)
@@ -421,8 +445,9 @@ function M.adminSkill(player, args)
         pcall(addXpNoMultiplier, player, perk, delta / proteinFactor(player, perk))
         adminVanilla = false
     end
-    -- Back to the park line when the skill is (still) 10.
-    if player:getPerkLevel(perk) >= 10 and M.rawXp(player, perk) > M.parkValue(perk) + M.EPS then
+    -- Back to the park line when the skill is (still) 10 and a mastery takes it.
+    if player:getPerkLevel(perk) >= 10 and M.rawXp(player, perk) > M.parkValue(perk) + M.EPS
+        and wantsPark(player, perk) then
         park(player, perk)
     end
     print(string.format("[TienSkillMastery] %s %s own %s XP by %d (level %d -> %d)", tostring(player:getUsername()),

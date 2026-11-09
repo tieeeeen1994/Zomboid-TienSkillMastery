@@ -32,9 +32,9 @@ options = [
      "The step the mastery costs grow from, as a percentage of what the skill's own level 9 to 10 cost "
      "(9000 XP for most skills, 150000 for Fitness and Strength). Default 100."),
     ("MasteryCostGrowth", 0, 100, 5, "Mastery cost growth (%%)",
-     "How much more each mastery level costs than the step before, compounding from the base. Default 5: for most "
-     "skills mastery 1 costs 9500, mastery 10 costs 14700, and mastery 1 to 10 together 119000 XP (each level rounded to hundreds). Prestige levels "
-     "past mastery 10 keep growing the same way."),
+     "How much each mastery level adds to the cost, as a percentage of the base, the same amount every level. "
+     "Default 5: for most skills mastery 1 costs 9450, mastery 10 costs 13500, and mastery 1 to 10 together 114750 XP. "
+     "Prestige levels past mastery 10 keep growing the same way."),
     ("BonusStrength", 0, 500, 100, "Bonus strength (%%)",
      "Scales every mastery bonus. 100 gives the designed values (about a fifth better than skill level 10 at "
      "mastery 10), 0 turns every bonus off while mastery still counts up."),

@@ -11,7 +11,8 @@ is known for.
   levels 1 to 10, each giving a tenth of its effects, then endless **prestige**. Reading never counts: a skill book's
   multiplier is taken back out, and Skill Journal restores are not counted.
 - **Growing cost.** One mastery level is about one level-10 step of any of its skills (9000 XP for most skills,
-  150000 for Strength and Fitness), and each level costs 5% more than the one before.
+  150000 for Strength and Fitness). Mastery 1 costs 5% more than that step, and each level after it adds another 5%
+  of the step: 105%, 110%, 115% and so on.
 - **Shared skills.** A skill can be in several masteries (Strength is in three). Experience in it counts for every
   picked mastery that lists it.
 - **Paused, not lost.** If a skill in a picked mastery drops below 10 (Strength or Fitness decay), the mastery pauses

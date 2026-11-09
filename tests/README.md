@@ -22,6 +22,7 @@ are at the top of each file). A break should print FAILED.
 | `torch_test.py` | Torch Fuel on builds, Handicraft tool wear by category |
 | `weld_test.py` | Smithing's tool wear and Masterwork on welding and metalworking recipes |
 | `partcount_test.py` | Butchering part count: no extra feet or whole birds |
+| `parking_test.py` | Only picked masteries' skills are parked: no XP halo for unpicked level-10 skills, anti-cheat-safe moves |
 | `preflight.py` | Release report: Lua compiles, translations and labels, scripts, leftovers, values, mod.info |
 
 Lua 5.5 is stricter than the game's Kahlua in places, and it has things Kahlua lacks, so passing here is not proof the

@@ -823,9 +823,11 @@ too. What changes is where a gain goes:
   `amount / xp10(perk) x 100` points to **every picked, active mastery that lists the skill**. Each gain counts as
   a share of its own skill's level-10 step, so 900 Strength XP is worth much less than 900 Aiming XP (150000 vs 9000
   per step); one mastery level is about one level-10 step of any member, the v1 pace.
-- Level n costs `100 x (1 + MasteryCostGrowth%)^n` points (5% default, the v1 curve).
+- Level n costs `100 x (1 + MasteryCostGrowth% x n)` points (5% default: 105, 110, 115...; the v1 compounding curve
+  was replaced by this flat step, user 2026-11-10).
 - A gain on a skill that no picked, active mastery lists is lost, as in vanilla. Nothing earned before a pick counts.
-  Every level-10 skill stays parked anyway (harmless, and ready for a later pick).
+  Only skills a picked, active mastery lists are parked; the others sit at vanilla's cap (user, 2026-11-10: a parked
+  skill showed vanilla's "<skill> XP: n" halo for gains no mastery took). A new pick parks its skills within a second.
 - Decay (negative Strength / Fitness XP) comes out of every picked mastery listing the skill that still has points;
   the skill drops below 10 only once none has any left.
 - Why not v1's per-skill storage: two masteries sharing a skill can be picked at different times, so a shared pool

@@ -1,4 +1,4 @@
-# In-game test checklist (version 0.4.0)
+# In-game test checklist (version 0.4.1)
 
 What still has to be seen on a real server before sharing the link. Written 2026-11-09. Everything here is coded and
 passes the mock tests in `tests/`; none of it has been confirmed in game unless a note says so.
@@ -28,6 +28,10 @@ they pass. When one fails, write what you saw under it, then give this file to C
       a Pick button once its skills are at 10.
 - [ ] Pick one: the choice survives leaving and rejoining. The level-up halo and sound play when a level is gained.
 - [ ] Mastery progress is earned from real XP (use the skill for a while) and is not earned by reading a skill book.
+- [ ] (2026-11-10) Foraging at level 10 **without** a mastery that lists it: no "Foraging XP" text over the head. With
+      Angling or Fieldcraft picked, the text shows and the mastery grows. Remove the pick: the text stops within a second.
+- [ ] (2026-11-10) Mastery costs read 105, 110, 115... in the Mastery tab tooltip; mastery 10 costs 150.
+- [ ] No XP anti-cheat kick on the first login after the update (every level-10 skill goes back up 240 XP once).
 
 ## 2. Today's sync fixes
 

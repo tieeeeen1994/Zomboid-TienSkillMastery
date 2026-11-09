@@ -1,10 +1,10 @@
 # Tien's Skill Mastery — working notes
 
-## Start here (status 2026-11-09)
+## Start here (status 2026-11-10)
 
 The notes below grew as a log, and v1 sections are marked superseded. This section is the current state.
 
-- **Version 0.4.0**, on `master` and `v2-draft` (same commit), Workshop item 3836051294, **unlisted by choice**.
+- **Version 0.4.1**, on `master` and `v2-draft` (same commit), Workshop item 3836051294, **unlisted by choice**.
 - **Open masteries:** 19 of 22. Coming Soon: Freerunning, Stealth, Salvaging.
 - **Next:** play `docs/test-checklist.md` on a dedicated server with two players, then fix what it finds.
 - **Tests:** `tests/README.md` (`py tests/run_all.py`; `--release` adds the release report). They need `tests/.lupa`, installed
@@ -54,7 +54,7 @@ the bonus), then endless prestige with no more bonuses. Mastery is earned only b
 by reading. Skill Journal (lait, workshop 3776641628) should one day record and restore it (low priority).
 Standalone mod, started 2026-11-05.
 **v2 replaces v1** (picked masteries over groups of skills, with effects of their own; design and every decision in
-`docs/v2-draft.md`). **All of v2 built 2026-11-07** (v0.3.0) except most of Stealth's and Freerunning's effects: see "v2 build" below. Now v0.4.0 (merged to master 2026-11-09, Workshop item unlisted). What has been played is listed next; no full pass on a dedicated server is recorded.
+`docs/v2-draft.md`). **All of v2 built 2026-11-07** (v0.3.0) except most of Stealth's and Freerunning's effects: see "v2 build" below. Now v0.4.1 (0.4.0 merged to master 2026-11-09; 0.4.1 on 2026-11-10: flat mastery costs, only picked skills parked; Workshop item unlisted). What has been played is listed next; no full pass on a dedicated server is recorded.
 **Played in game (2026-11-07, user):** Firearms' signatures (Quickdraw, reloading while running) and Axemanship's
 (the throw key: held and carried axes, swing / hit sounds, damage on arrival; the reticle since replaced by an
 outline, animal and PvP targets added after that test, those played 2026-11-08); 2026-11-08: Smithing's Masterwork and Handicraft's
@@ -89,7 +89,7 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   dropped on read; v1 was never played). Client cache has the same shape. `M.state` = picked / inactive / available /
   locked / closed; `M.level` is 0 unless picked and every member at 10; `M.MAX_PICKS` = 3 (code constant).
 - Points: a gain on a parked skill adds `amount / xp10 x 100` to every picked, active mastery listing it (none =
-  lost). Level n costs `100 x base% x (1 + growth%)^n` points (rounded to 0.1; 105 .. 162.9, 1-10 = 1320.7). Decay
+  lost). Level n costs `100 x base% x (1 + growth% x n)` points (rounded to 0.1; 105, 110 .. 150, 1-10 = 1275). Decay
   (x `Conditioning.Decay`) is paid by every earning mastery listing the skill; the skill stays at 10 while one paid
   in full, else the rest goes the vanilla way.
 - Server: `M.pick` (client command `pick`, checked: exists, not picked, slot free, members at 10), `M.adminChange`
@@ -461,12 +461,16 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   every second.
 - **Parking**: a level-10 skill keeps its real XP at total(10) - 240 (`M.PARK_MARGIN`). A gain lands there without a
   level-up (that needs total(11) = total(10)), the event amount becomes mastery XP, and the skill is moved back.
+  Only skills a picked, active mastery lists are parked (user, 2026-11-10): a gain landing on a parked skill shows
+  Java's "<skill> XP: n" halo (`XP.AddXP` ~281, awards made with haloText on the local player, e.g. foraging), which
+  for an unpicked skill showed XP going nowhere. The others sit at total(10), where AddXP returns before the halo.
+  The pass parks a new pick's skills and unparks the rest (a rise of at most 240, under the anti-cheat's floor).
   Lua can only write XP through `AddXP` (6 arguments, no boosts; Strength's protein factor divided out) and
   `setXPToLevel` (boundaries only); a move that would cross a boundary runs with the level set to 0 for that one call
   (`setPerkLevelDebug`, no event or packet on a server).
 - **Why 240**: `AntiCheatXPUpdate` (AntiCheatXP, default 2 = kick) flags a perk whose server XP rose more than
-  1000 x multiplier x boost factor (>= 250) between 60 s snapshots. Parking only lowers XP; the one rise (mastery
-  used up by decay, back to vanilla's total(10) - rest) nets at most 240.
+  1000 x multiplier x boost factor (>= 250) between 60 s snapshots. Parking lowers XP; the rises (mastery used up by
+  decay, back to vanilla's total(10) - rest; unparking a skill no mastery takes) net at most 240.
 - Java stores XP as a float: at Strength / Fitness totals (~325000) it lands only within 1/32, so park checks use
   `M.EPS` = 0.1.
 - `XP:getXP` is wrapped on both sides (class metatable `__index`, owner looked up in `M.xpOwner` by XP object) to
@@ -483,12 +487,13 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   a client's `transmitModData()` of its player (`ObjectModDataPacket`) replaces the server's whole player modData.
   Cleared on death (`OnCharacterDeath`); reset when the same name shows up with fewer hours survived. The server
   sends the owner `state` on request (client repeats until answered) and at most once a second after a change.
-- **Cost** (user, 2026-11-06: compounding 5% from the level-10 step, never the bare step; no XP boosters reach
-  mastery, so it stays tough): mastery level n costs xp10 x MasteryCostBase% x (1 + MasteryCostGrowth%)^n, defaults 100 / 5. xp10 = `getXpForLevel(10)`, already x1.5 from
-  `PerkFactory.AddPerk` (every vanilla table is multiplied on build): 9000 for most skills (total to 10: 32775),
-  150000 for Fitness / Strength. Each level rounded to whole hundreds: mastery 1 = 9500, mastery 10 = 14700, 1-10 together = 119000
-  (~3.6x the 0-10 climb).
-  Prestige levels continue the curve.
+- **Cost** (user, 2026-11-06: never the bare step; no XP boosters reach mastery, so it stays tough. Changed
+  2026-11-10 from compounding 5% to a flat +5% of the step a level, "105, 110, 115, 120 and so forth"; vanilla's
+  doubling was considered and turned down, as there are no skill books for mastery): mastery level n costs
+  xp10 x MasteryCostBase% x (1 + MasteryCostGrowth% x n), defaults 100 / 5. xp10 = `getXpForLevel(10)`, already x1.5
+  from `PerkFactory.AddPerk` (every vanilla table is multiplied on build): 9000 for most skills (total to 10: 32775),
+  150000 for Fitness / Strength. For most skills mastery 1 = 9450 XP, mastery 10 = 13500, 1-10 together = 114750
+  (~3.5x the 0-10 climb). Prestige levels continue the line (+40, mastery 50 = 350 points, 31500 XP).
 - **No sandbox options** (user, 2026-11-06: "I want to control the values for now"). `M.option(name, default)` reads
   `M.SETTINGS` (empty) and returns the caller's default, so every value lives in the code: `MasteryCostBase` 100,
   `MasteryCostGrowth` 5, `BonusStrength` 100, one % per skill (perk id) 100, `NimbleStrafe` true.

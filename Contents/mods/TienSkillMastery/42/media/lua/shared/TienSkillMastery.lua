@@ -12,7 +12,8 @@ to 10, and 14 Java tables end `level == 10 ? best : default`, so a real level 11
 How XP past 10 is caught ("parking", server / single player only):
 - XP only lands on the server in MP. The Lua `AddXP(character, perk, amount)` event fires at the end of `XP.AddXP`
   for every award (whenever not a client), after traits, boosts, sandbox multipliers and the clamp.
-- A level-10 skill keeps its real XP at total(10) - PARK_MARGIN. A gain then lands normally (no level-up: that needs
+- A level-10 skill that a picked, active mastery lists keeps its real XP at total(10) - PARK_MARGIN (any other stays
+  at total(10), as in vanilla: a parked skill shows Java's "<skill> XP: n" halo for each gain, user 2026-11-10). A gain then lands normally (no level-up: that needs
   total(11) = total(10), which only a gain >= PARK_MARGIN reaches), the event hands us the amount, it becomes mastery
   XP and the skill is parked again.
 - Lua cannot write XP directly: `xpMap` is a field and the only writers are `AddXP` and `setXPToLevel` (level
@@ -195,8 +196,9 @@ M.anyPerkId = anyPerkId
 -- Progress: points per picked mastery. A gain on a parked level-10 skill adds amount / xp10(skill) x 100 points to
 -- every picked, active mastery listing the skill, so one mastery level is about one level-10 step of any member
 -- (9000 XP for most skills, 150000 for Strength / Fitness), the v1 pace. Mastery level n costs
--- 100 x MasteryCostBase% x (1 + MasteryCostGrowth%)^n points (100 / 5 by default): mastery 1 = 105, mastery 10 =
--- 162.9, 1-10 together = 1320.7. Past 10 the curve continues as prestige.
+-- 100 x MasteryCostBase% x (1 + MasteryCostGrowth% x n) points (100 / 5 by default, user 2026-11-10: +5 a level
+-- from a base of 100, no compounding): mastery 1 = 105, 2 = 110, mastery 10 = 150, 1-10 together = 1275. Past 10
+-- the line continues as prestige (+40, mastery 50 = 350).
 -- ---------------------------------------------------------------------------------------------------------------
 
 function M.pointsFor(perk, amount)
@@ -215,7 +217,7 @@ function M.costFor(n)
     if c then return c end
     local base = math.max(1, tonumber(M.option("MasteryCostBase", 100)) or 100) / 100
     local growth = math.max(0, tonumber(M.option("MasteryCostGrowth", 5)) or 5) / 100
-    c = math.max(1, math.floor(100 * base * (1 + growth) ^ n * 10 + 0.5) / 10)
+    c = math.max(1, math.floor(100 * base * (1 + growth * n) * 10 + 0.5) / 10)
     costCache[n] = c
     return c
 end
