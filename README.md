@@ -47,7 +47,8 @@ effects apply with a weapon of its kind.
 - **Swordsmanship** (Long Blade, Nimble): damage +10%, attack speed +5%, 5% crit reroll, reach +10%, endurance used
   swinging -15%, 20% chance to undo wear, strafe speed while aiming +15%.
 - **Spearcraft** (Spear, Carving): damage +10%, attack speed +5%, 5% crit reroll, reach +10%, endurance used swinging
-  -15%, 30% chance to undo spear wear, carved spears +2 condition.
+  -15%, 30% chance to undo spear wear. Spears you carve or fire-harden have +8% damage and +3% reach, for whoever uses them,
+  set by your mastery level when you make them: near a forged spear's numbers at mastery 10, but they stay wooden and wear out as fast as ever.
 - **Street Fighting** (Short Blunt, Fitness): damage +10%, attack speed +5%, 10% crit reroll, endurance used
   swinging -15%, 20% chance to undo wear; with anything in hand: stomp damage +20%, shoves deal 0.25 damage.
 - **Knifework** (Short Blade, Sneaking): damage +10%, attack speed +30%, endurance used swinging -15%, 20% chance
@@ -58,7 +59,7 @@ effects apply with a weapon of its kind.
 - **Freerunning (coming soon)** (Sprinting, Lightfooted): endurance used running -15%, drop one floor without harm from mastery 5, two at 10.
 - **Stealth (coming soon)** (Sneaking, Lightfooted): sneaking speed +15%.
 - **Smithing** (Metalworking, Welding, Maintenance): crafting time -25% and dismantling return +10 on metalworking
-  and welding, 20% chance to undo tool wear on smithing recipes, 20% chance to get back each burnt charcoal and
+  and welding, 20% chance to undo tool wear on forging, metalworking and welding recipes, 20% chance to get back each burnt charcoal and
   each blowtorch use, iron from ore and blooms +15%.
 - **Construction** (Carpentry, Masonry): crafting time -25% and dismantling return +10 on carpentry and masonry,
   built structure health +20%, unbarricading time -15%, window break chance when picking up -5, building noise
@@ -77,9 +78,9 @@ effects apply with a weapon of its kind.
   everyone in your car.
 - **Provisioning** (Cooking, Butchering): cooking crafting time -25%, nutrition from added ingredients +15%, time to
   add ingredients -15%, butchering time -15%, food you cook or butcher stays fresh 25% longer.
-- **Hunting (coming soon)** (Tracking, Trapping, Butchering): track finding +20%, track inspection time -15%, trap catch chance +5
-  on traps you place, butchering parts +10%, part chance +15%.
-- **Angling (coming soon)** (Fishing, Foraging): line tension limit +15%, natural bait kept +10, big fish +10, junk catches -20%,
+- **Hunting** (Tracking, Trapping, Butchering): track finding +20%, track inspection time -15%, trap catch chance +5
+  on traps you place, meat, sinew and bones from butchering +10%, chance of better cuts +15%.
+- **Angling** (Fishing, Foraging): line tension limit +15%, natural bait kept +10, big fish +10, junk catches -20%,
   trophy fish +2, worms and insects found more often when foraging, fishing nets catch 25% more.
 - **Fieldcraft** (Foraging, Tracking): search radius +15%, spotting time -20%, found item size +10%, search mode's
   darkness, weather and moving penalties fade (gone at mastery 10).
@@ -110,7 +111,7 @@ moment it is picked (it does not grow with mastery levels).
   then the one in your hand), and it flies point first.
 - **Knifework:** *Lunge*: with at most one zombie after you, a stab at a zombie up to 1.5 tiles away (vanilla: 0.6) is a jaw stab, and you lunge in to close the gap.
 - **Conditioning:** *Pack Mule*: the Heavy Load moodle counts one level lower, for everything it does (speed, endurance, health, combat, climbing); just over your max weight there is no moodle at all.
-- **Smithing:** *Masterwork*: what you forge ignores 15% of its wear, whoever uses it. A forged blade or head keeps the mark when a smithing master assembles it into a weapon (a non-master's weapon is plain); on axes, hammers, picks, scythes and spears it covers the head and its edge, not the wooden handle.
+- **Smithing:** *Masterwork*: what you forge, and weapons and armor you weld, ignore 15% of their wear, whoever uses them. A forged blade or head keeps the mark when a smithing master assembles it into a weapon (a non-master's weapon is plain); on axes, hammers, picks, scythes and spears it covers the head and its edge, not the wooden handle.
 - **Construction:** *Clean Cuts*: one more plank from every carpentry recipe that makes planks
   (4 from a log, 2 from a large branch). *Clean Breaks*: 12 stones per large stone, not 10;
   flat stones break into 3.
@@ -133,13 +134,13 @@ moment it is picked (it does not grow with mastery levels).
 - **Provisioning:** *Choice Cuts*: meat you butcher is 10% more filling and 30% more nutritious. *Savory Meals*: food you cook
   in an oven, on a stove or over a fire causes 80% less unhappiness when eaten (a rat you roast costs 6, not 30). Stale,
   rotten and burnt food adds its usual penalty on top of that lower number.
-- **Hunting (coming soon):** *Sturdy Traps*: your traps keep their bait and are never destroyed. *Live Catch*: animals caught alive
+- **Hunting:** *Sturdy Traps*: your traps keep their bait and are never destroyed. *Live Catch*: animals caught alive
   last 4 times longer. *Double Catch*: a quarter of catches come in twos.
 - **Homesteading:** *Harvest Moon*: right-click a crop or furrow to tend the field (water, cure and fertilize every plant in a patch you pick and, with a shovel, remove its harvested plots) and sow the field
   (plant every plowed square in it with the seed you choose). One action covers 3 x 3 squares in the time a single plant takes;
   water, sprays, fertilizer and seeds are still used per plant. With a shovel or trowel you can also remove dead, rotten or destroyed
   plots over a patch, and dig furrows: a 3 x 3 square follows the mouse, like the rake, and each click digs it in one action until you cancel. *Animal Whisperer*: while you are in an animal zone, its
   animals (hutched ones and joined zones included) lose 1 stress every 10 in-game minutes.
-- **Angling (coming soon):** *Fish Finder*: aiming a rod at water shows how many fish are there and how much trash.
+- **Angling:** *Fish Finder*: aiming a rod at water shows how many fish are there and how much trash.
 - **Fieldcraft:** *Steady Eyes*: search mode is not switched off by zombies or running. *Sixth Sense*: what is inside the search circle
   shows as if in plain sight, even behind walls: zombies, animals, survivors, items and corpses.

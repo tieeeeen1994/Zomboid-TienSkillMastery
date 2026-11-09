@@ -3,9 +3,9 @@
 Skills keep going past level 10 as **mastery**: levels 1-10 with small per-skill bonuses (each level a tenth of
 the bonus), then endless prestige with no more bonuses. Mastery is earned only by experience (real XP gains), never
 by reading. Skill Journal (lait, workshop 3776641628) should one day record and restore it (low priority).
-Standalone mod, started 2026-11-05; **built 2026-11-05, not yet played in game or on a server**.
+Standalone mod, started 2026-11-05.
 **v2 replaces v1** (picked masteries over groups of skills, with effects of their own; design and every decision in
-`docs/v2-draft.md`). **All of v2 built 2026-11-07** (v0.3.0, not yet played) except most of Stealth's and Freerunning's effects: see "v2 build" below.
+`docs/v2-draft.md`). **All of v2 built 2026-11-07** (v0.3.0) except most of Stealth's and Freerunning's effects: see "v2 build" below. What has been played is listed next; no full pass on a dedicated server is recorded.
 **Played in game (2026-11-07, user):** Firearms' signatures (Quickdraw, reloading while running) and Axemanship's
 (the throw key: held and carried axes, swing / hit sounds, damage on arrival; the reticle since replaced by an
 outline, animal and PvP targets added after that test, those played 2026-11-08); 2026-11-08: Smithing's Masterwork and Handicraft's
@@ -23,12 +23,12 @@ vanilla's length cut by the signature and moves the items; SP cuts each later ba
 Zomboid Fixes B42's cheat / fast forward transfers. Right-click Grab (`ISGrabItemAction`) has its own path there too
 (ported from Zomboid Fixes B42's quick grab: no transaction, waits for arrival, `isValid` skipped once started).
 Played and working (2026-11-08, at a temporary 90%: transfers and grabs). Everything else is still
-unplayed: Hunting's, Homesteading's and Angling's signatures and every other passive. The v1 sections that
+unplayed: Hunting's and Angling's signatures, Homesteading's (one report on Dig furrows, 2026-11-09, below) and every other passive. The v1 sections that
 follow still describe the hooks and the parking, which v2 keeps; their per-skill ids and values are superseded.
 
 Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLAUDE.md) and vanilla 42.21 Lua.
 
-## v2 build (phase 1, 2026-11-07, not yet played)
+## v2 build (from 2026-11-07)
 
 - Core (`shared/TienSkillMastery.lua`): `M.mastery(id, group, members)` for the 22 masteries (ids without spaces:
   `StreetFighting`, `FieldMedicine`; names in `IGUI_TienSkillMastery_Mastery_<id>`), `M.def(mastery, name, at10,
@@ -66,15 +66,14 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   Ideas offered, none chosen: Strip Down (one click uninstalls every part through vanilla's actions), Reclaimed Parts
   (installed parts sometimes survive scrapping), part scrapping getting the time and torch passives, Scrap Eye (forage
   Junk), Cut Through (torch opens locked doors, not traced).
-- **Coming soon: Hunting, Angling** (user, 2026-11-08: the masteries whose signatures have not been
-  played) **and Stealth, Freerunning, Salvaging** (the same day: unhidden, see Parking; Stealth shows only Sneak Speed,
-  Freerunning only running endurance and safe falls, and neither has a signature). Homesteading was on this list too
-  until the user opened it on 2026-11-09, its Harvest Moon not yet played as far as these notes know.
+- **Coming soon: Stealth, Freerunning, Salvaging** (user, 2026-11-08: unhidden, see Parking; Stealth shows only Sneak Speed,
+  Freerunning only running endurance and safe falls, and neither has a signature). Homesteading, Hunting and Angling were on
+  this list too (their signatures not played) until the user opened them on 2026-11-09, still unplayed as far as these notes know.
   `M.COMING_SOON` in the core: listed with their effects, but `M.state` gives "soon" (after picked / inactive and
   closed, whatever the members' levels, so nobody levels up to a Locked that never opens), the panel draws a grey
   Coming Soon button that does nothing, and `M.pick` refuses them on the server. Unlike parking, an existing pick
-  stays and works. Remove an id once it has been played, and drop its "(coming soon)" from README, forum.txt and
-  workshop.txt.
+  stays and works. Remove an id once the user opens it, and drop its "(coming soon)" from the README (`py
+  scripts/make_workshop.py` writes forum.txt and workshop.txt from it).
 - Phase 2 (same day): the passives that fit existing hooks. Files: `shared/*_Relay.lua` (extra damage on a zombie's
   owner: own zombie inside `OnWeaponHitCharacter`, before `hitConsequences`; remote one via `zombieHit` -> server
   amount from its own copy of the mastery, 4-tile check -> `zombieDamage` to `getOwnerPlayer()`), `shared/*_Falls.lua`
@@ -176,7 +175,7 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   Checked against mocks with vanilla's real action files, not played). Passive `MilkTime`
   (user, 2026-11-09, -15%, `shared/*_FarmTimes.lua`, not played). Second signature `SigWhisperer`, Animal Whisperer (user, 2026-11-09, not played;
   `server/*_FarmAnimals.lua`): flat -1 stress every 10 game minutes (`EveryTenMinutes`) to the master's pen, connected zones and hutches included, once however many masters.
-  Also in the block action (user, 2026-11-09, not played; digging tool required, the options hidden without one): "Remove plots" (dead / rotten / destroyed, picked area) and "Dig furrows" (`server/*_FurrowCursor.lua`, rake-style 3 x 3 cursor that stays until cancelled, one action of 110 per click; `ISPlowAction:complete` removes any plant it finds, so the server's `canFurrow` re-checks). Strain and worms stay per square. Sight only validates the click, never picks squares (`tryBuild` runs `walkTo` + `create` in one call, so a per-square sight test sees from the click spot: 4 dug of 9, reported 2026-11-09). Field work always walks, cheats too: `tryBuild` skips `walkTo` under Build Cheat, so the cursor queues its walk in `create`, and `FIELD_REACH` on the server silently drops anything farther.
+  Also in the block action (user, 2026-11-09; Dig furrows played once, as reported below, its fixes and Remove plots not; digging tool required, the options hidden without one): "Remove plots" (dead / rotten / destroyed, picked area) and "Dig furrows" (`server/*_FurrowCursor.lua`, rake-style 3 x 3 cursor that stays until cancelled, one action of 110 per click; `ISPlowAction:complete` removes any plant it finds, so the server's `canFurrow` re-checks). Strain and worms stay per square. Sight only validates the click, never picks squares (`tryBuild` runs `walkTo` + `create` in one call, so a per-square sight test sees from the click spot: 4 dug of 9, reported 2026-11-09). Field work always walks, cheats too: `tryBuild` skips `walkTo` under Build Cheat, so the cursor queues its walk in `create`, and `FIELD_REACH` on the server silently drops anything farther.
   World menus (user, 2026-11-09, not played): the field options sit in a "Homesteading" submenu, on a clicked crop or furrow, plus diggable ground with a tool (Dig furrows only there). Triage has no world menu any more, the key only (same day; a menu only for the wounded was built and dropped, needing the server to send each master who is wounded, since a client cannot read another player's body). Battering ram ("bowl them over" until 2026-11-08; `SigBowlOver`, relay kind "bowl") in
   `client/*_Movement.lua`: the
   nearest standing zombie within a tile, from any direction, is set as `setBumpedChr` (vanilla bumps, and so
@@ -356,25 +355,31 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   vetted `EXTRA_OUTPUT` recipe names); bait digger (`forageSystem.getCategoryBonus` + points for "FishBait" /
   "Insects", vanilla's specialisation lever); big haul (`server/*_FishingNets.lua`: a second run of
   `fishingNet.checkTrap` for the bonus share of the hours, at most 5, so no break roll and no extra bait).
-- **Open questions for the user** (2026-11-09, session paused; all of that day's work is uncommitted and not played):
-  - Spear condition covers only CarveSpear and FireHardenSpear. Should AssembleSpear, BindSpear, WireSpear and
-    DuctTapeSpear get it too? Recommended yes: the bonus text says "Crafted spear condition".
-  - Torch Fuel covers handcrafts only (27 recipes use a blowtorch). The 40 build-menu entities that do (metal counters,
-    crates, lockers, shelves, metal barricades, barrel oven...) get nothing, as Java `BuildAction` runs them. Asked whether
-    to trace if Lua can reach them; if not, change the README's "each blowtorch use".
-  - Crafting time by category reaches small recipes too (opening a can or a beer, toast, Tie Headband). Offered to limit
-    it to real work if that feels wrong; no answer yet.
-  - Next without the game, proposed and not yet approved: fix the out-of-date notes ("No tooltip line for marked items",
-    `MetalWelding.WindowBreak`, whose "may never apply" also needs checking), and settle from Java whether the
-    server runs `updateFalling` for players (the server's half of safe falls). Salvaging still needs a design decision.
-- **Open, decide before Hunting opens** (user, 2026-11-09: leave it for now): Hunting's `PartCount`
-  (`server/*_FarmAnimals.lua`, `addAnimalPart` wrap) copies any part, so a chicken can give a third foot (20%) or a second
-  whole chicken (10%). The user does not want parts added where anatomy fixes the count. Proposed: skip parts with a fixed
-  `nb` in `AnimalPartsDefinitions`, keep scaling ranges and meat definitions. Live now only for a pick made before Hunting
-  went Coming Soon, since such picks keep working.
+- **Open questions for the user** (2026-11-09):
+  - Next without the game, proposed and not yet approved: settle from Java whether the server runs `updateFalling` for
+    players (the server's half of safe falls). Salvaging still needs a design decision.
+- **Carved spears** (user, 2026-11-09, not played): `Spearcraft.CarvedDamage` +8% and `CarvedReach` +3% replaced
+  `SpearCondition`, a +2 that did nothing (Carving 10, a member skill, already fills carved and fire-hardened spears). Any
+  spear from a recipe listing Carving (vanilla: CarveSpear, FireHardenSpear; stone, bone, knife and other bound, wired or taped
+  spears and assembled ones list Maintenance) gets them, fixed when made, for whoever uses it (saved and synced); same wooden
+  model. A plain bonus, no forged spear in the formula, with values set to land near forged (user): at mastery 10 carved
+  averages 1.296 damage (forged short 1.30), fire-hardened 1.35 (forged long 1.45), reach 1.442 (1.45, 1.48). A lifespan mark and
+  lowering fire-hardened's crit were offered and declined, so lifespan stays vanilla (60 / 98 wear rolls against forged's
+  200 at Spear 10, Maintenance 5) and fire-hardened keeps its vanilla crit (30%, x10 against 20%, x5), which already
+  out-damages forged on average. Header "Carved spears" in `shared/*_Crafting.lua`.
+- **Decided** (user, 2026-11-09): Hunting's `PartCount` (`server/*_FarmAnimals.lua`, `addAnimalPart` wrap) skips parts
+  with a fixed `nb` in `AnimalPartsDefinitions` (all 26 are anatomy or a whole carcass; it used to give a third foot at 20%,
+  a second whole chicken at 10%); ranges and meat definitions still scale. So poultry, rats, mice and small birds get only
+  extra bones from it. The test is `nb > 0`: vanilla writes `nb = -1` into the shared definition on first use. Checked
+  against a port of vanilla's `addAnimalPart` (lupa, not kept), not played. Labels now say what they do: "meat, sinew and
+  bones", and "better cuts" for `PartChance` (`getPartChance` splits meat among prime / medium / poor cuts).
+- **Torch Fuel on builds** (user, 2026-11-09, not played; `server/*_CraftingBuild.lua`): the 40 build-menu entities that burn
+  a blowtorch get it too. Corrects an earlier note here: Java `BuildAction.perform` only fires `OnProcessAction("build")`;
+  Lua's `ISBuildIsoEntity:create` consumes through `buildPanelLogic:performCurrentRecipe()`, so it can be wrapped. In-game
+  check owed on a server: vanilla sends the torch during `create` (`sendItemStats`, `syncItemFields`, reliable, and our
+  `SyncItemFields` is unordered), so confirm the client ends on the returned uses.
 - **Not built**: only what waits with its Coming Soon mastery (Stealth: lose them, quiet hands, distraction
-  throw; Freerunning: vault / wall rolls, evasion). Spear condition still covers carved / fire-hardened
-  spears only. No tooltip line for marked items yet.
+  throw; Freerunning: vault / wall rolls, evasion).
 - MP checks owed (from reading only): whether the server runs `updateFalling` for players, whether stomp's
   `ItemBodyLocation.SHOES` lookup works from Lua, `OnWeaponHitCharacter` on the attacker for a remote zombie, the
   strafe / sneak nudge feel, Gunworks bursts with the RPM wrap (where combat muscle strain lands in MP: traced 2026-11-08, on the
@@ -682,7 +687,7 @@ Combat power (damage, crit, attack speed, hit) sits at 5-10%, defense / enduranc
 - Lightfooted and Sneaking: no bonuses (user, 2026-11-05; amplifiers of other skills were offered and declined).
   Their mastery is earned and shown like any other skill's, prestige only.
 
-## Built hooks (2026-11-05, not yet played)
+## Built hooks (v1, 2026-11-05; what has been played is at the top of this file)
 
 Every file opens with a header naming the vanilla code, the side it runs on and why the hook works; this is the map.
 Bonus amounts all come from `M.val / more / less / roll / int / scaleInt(player, "Perk.Name")` (`M.defs`, shared core).
@@ -731,7 +736,7 @@ Bonus amounts all come from `M.val / more / less / roll / int / scaleInt(player,
     Pottery by bench tag (KilnSmall / KilnLarge). Crafting time and the craftsman's mark apply; extra output does not.
     Many other vanilla recipes list no skill either (37 Blacksmithing, 33 Metalworking, 21 Tailoring, 44 Cooking...), so
     for crafting time only a recipe also counts as its crafting window category's skill (`CATEGORY_PERK`, user
-    2026-11-09, not played); opening a can is a Cooking recipe and gets it too. Deft Hands is strictly timed actions and
+    2026-11-09, not played); opening a can is a Cooking recipe and gets it too, and small recipes keep it (user, 2026-11-09). Deft Hands is strictly timed actions and
     item transfers by design (user, 2026-11-09): builds, looped actions and reloads staying out is not a gap.
   - Dismantle: `getChanceByDef` is already 100 from level 9, so the points go on the per-roll chance in
     `addScrapItemToList` (80 / 70% at level 10) while `getScrapItemsList` runs.
@@ -741,10 +746,14 @@ Bonus amounts all come from `M.val / more / less / roll / int / scaleInt(player,
   - Spear / rip / aramid recipes are found by name (`CraftRecipe.LuaCall` is not exposed); their OnCreate changes
     were never synced by vanilla, and are synced when a bonus applies.
   - ToolWear: notes condition / head / sharpness of every candidate kept tool before the craft, restores per point
-    after (`isSmithing` recipes). A kept tool's maker's mark does the same for anyone crafting with it (user,
+    after (`isSmithing` recipes; since 2026-11-09, user, not played: category Metalworking and any recipe listing Welding
+    too, because `isSmithing()` (Java: involves Blacksmith or category Blacksmithing) misses all 58 Metalworking recipes
+    and 10 Weaponry ones; those Welding recipes also get Masterwork on the weapons and clothing they make). The 37
+    Blacksmithing recipes listing no skill were never a gap for these: `isSmithing()` takes them by category. Handicraft's
+    Tool Wear also goes by category (user, 2026-11-09, not played), for the five recipes listing no skill (MeltSand,
+    MeltGlass, three wooden molds); its mark and extra output do not. A kept tool's maker's mark does the same for anyone crafting with it (user,
     2026-11-09, not played), combined with ToolWear; a tool in a hand or worn keeps its mark for Physical's watcher,
     so it never rolls twice.
-  - MetalWelding.WindowBreak may never apply (no window found picked up with the "Metal" tool).
 - Workshop (`*_Workshop*.lua`): "computed" actions wrap `getDuration`; "stored" ones (`ISSplint`,
   `ISInstallVehiclePart`, `ISMedicalCheckAction`) wrap `getDuration` on the server and `create` on the client.
   - Nutrition: scaled inside `ISAddItemInRecipe.checkTemperature` (called after `EvolvedRecipe.addItem`, before
@@ -776,4 +785,4 @@ Engine findings from the build (42.21), worth keeping:
 - `RecipeCodeOnCreate.ripClothing` / `pickAramidThread` / spear condition change items after they were sent and
   never sync.
 
-Design settled and built 2026-11-05; nothing has been played yet.
+v1's design was settled and built 2026-11-05; v2 replaced it before v1 was played.

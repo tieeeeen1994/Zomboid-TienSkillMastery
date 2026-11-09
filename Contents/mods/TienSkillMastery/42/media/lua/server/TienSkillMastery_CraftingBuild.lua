@@ -156,3 +156,45 @@ if ISBuildingObject and ISBuildingObject.updateModData then
         return unpack(r)
     end
 end
+
+-- ---------------------------------------------------------------------------------------------------------------
+-- Smithing.TorchFuel on builds (user, 2026-11-09; handcrafts: TienSkillMastery_Crafting.lua): 40 vanilla build entities
+-- burn blowtorch uses (`item 1 .. 4 [Base.BlowTorch] flags[DontRecordInput]`: metal counters, crates, lockers, shelves,
+-- metal barricades, the barrel oven). Java `BuildAction.perform` only fires `OnProcessAction("build")`, and Lua's
+-- `ISBuildIsoEntity:create` (~501, server / single player) does the consuming through
+-- `buildPanelLogic:performCurrentRecipe()`, so the torches are noted before it and each use gone after comes back on its
+-- own roll. A Build Cheat consumes nothing. DontRecordInput keeps the torch out of `getAllRecordedConsumedItems`, so
+-- it never reaches the `need:` counts Spare Materials rolls on: one use is never rolled twice.
+-- ---------------------------------------------------------------------------------------------------------------
+
+if ISBuildIsoEntity and ISBuildIsoEntity.create then
+    local function noteBuild(self)
+        local chr = self.character
+        if not chr or type(chr) == "number" or not M.noteTorches or M.val(chr, "Smithing.TorchFuel") <= 0 then
+            return nil, nil
+        end
+        local logic = self.buildPanelLogic
+        return chr, M.noteTorches(chr, (logic and logic:getContainers()) or self.containers)
+    end
+
+    local function afterBuild(chr, torches, ok, ...)
+        if torches then
+            local fine, err = pcall(M.returnTorchFuel, chr, torches)
+            if not fine then print("[TienSkillMastery] build torch fuel failed: " .. tostring(err)) end
+        end
+        if not ok then error((...), 0) end
+        return ...
+    end
+
+    local vanillaCreate = ISBuildIsoEntity.create
+    function ISBuildIsoEntity:create(...)
+        local fine, chr, torches = pcall(noteBuild, self)
+        if not fine then
+            print("[TienSkillMastery] build torch fuel failed: " .. tostring(chr))
+            chr, torches = nil, nil
+        end
+        return afterBuild(chr, torches, pcall(vanillaCreate, self, ...))
+    end
+else
+    print("[TienSkillMastery] ISBuildIsoEntity:create not found, Smithing.TorchFuel not applied to builds")
+end

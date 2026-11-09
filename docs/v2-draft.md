@@ -3,7 +3,7 @@
 All of it built 2026-11-07 (v0.3.0), except what is parked with Stealth and Freerunning (core, picks, points, tab, v1 hooks moved to masteries; then the passives that fit
 existing hooks). CLAUDE.md "v2 build" lists what is not built yet.
 Stealth and Freerunning were parked (hidden; user, 2026-11-07) until their remaining effects are built, Salvaging too (2026-11-08).
-Those three, and Hunting and Angling until their signatures have been played, are now listed but marked Coming Soon, not pickable (user, 2026-11-08; Homesteading was too, until the user opened it on 2026-11-09). v1 (one mastery per skill, bonuses that copy the skill's vanilla effects) is described in CLAUDE.md.
+Those three are now listed but marked Coming Soon, not pickable (user, 2026-11-08; Homesteading, Hunting and Angling were too, until the user opened them on 2026-11-09). v1 (one mastery per skill, bonuses that copy the skill's vanilla effects) is described in CLAUDE.md.
 v2 keeps v1's XP capture and changes what the XP is spent on. **Approved** (user, 2026-11-06): the rules under "The
 idea" and the masteries with their members and names (23 approved, Livestock later dropped: 22). **Not yet approved**: the effects, and everything marked
 "proposed" below.
@@ -180,8 +180,8 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     stagger or knockdown, see ZomboidFixesB42's notes), they only see the attack not land.
 - **Spearcraft** (**approved**, user 2026-11-06): damage +10%, attack speed +5%, crit reroll 5%, reach +10%, swing
   endurance -15%, spear wear undone 30% (condition, head condition and sharpness: v1's hook already restores all
-  three; above the other weapons' 20% because spears are the ones that break), every crafted spear +2 condition
-  (up to its max). Signature **throw spears** (user 2026-11-06; the axe throw's machinery, under "TODO: signature
+  three; above the other weapons' 20% because spears are the ones that break), spears from Carving recipes get +8% damage and +3% reach, fixed when made,
+  landing near forged at mastery 10 (user 2026-11-09, replaced a +2 condition that did nothing; see CLAUDE.md "Forged spears"). Signature **throw spears** (user 2026-11-06; the axe throw's machinery, under "TODO: signature
   abilities").
   - Spear crafting (42.21 `recipes_spears.txt`): CarveSpear (`RecipeCodeOnCreate.carveSpear`, random default +
     Carving), FireHardenSpear (`fireHardenSpear`), BindSpear / DuctTapeSpear / WireSpear (knife, glass, bone, stone
@@ -535,7 +535,7 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     speed, then `amount = amount - elapsedMinutes x newAmount` and a leak under 70 condition. Wrapper: when
     `vehicle:getDriver()` is a master, give back 15% of the drop the call made (the wrapper only sees the total, so the
     0.01 leak of a worn tank is included).
-- **Salvaging** (**parked**, user 2026-11-08, see CLAUDE.md) (**approved**, user 2026-11-06; still to review after it: Mending, Field Medicine, Provisioning,
+- **Salvaging** (**Coming Soon**, user 2026-11-08; too narrow as it stands, see CLAUDE.md) (**approved**, user 2026-11-06; still to review after it: Mending, Field Medicine, Provisioning,
   Hunting, Angling, Fieldcraft, Homesteading): burnt-car scrapping time -15%, +1 salvage roll per
   burnt car, engine salvage +20% parts, **torch fuel for scrapping** (new: 20% of the blowtorch uses a burnt car
   takes come back), and the signature ability **scrap any car** (new, user 2026-11-06, below). Dropped: metal window

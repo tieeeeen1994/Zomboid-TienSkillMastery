@@ -121,10 +121,10 @@ M.parked = {}         -- [id] = mastery, for parked ones
 
 -- Coming soon (user, 2026-11-08): listed with their effects, but not pickable, the Pick button a grey Coming Soon.
 -- Unlike a parked mastery, a pick made before it was listed here stays and keeps working. Remove an id once it is
--- ready: Angling and Hunting have signatures not played in game yet; Freerunning and Stealth lack most of their
--- effects; Salvaging is too narrow as it stands. Homesteading opened 2026-11-09 (user).
+-- ready: Freerunning and Stealth lack most of their effects; Salvaging is too narrow as it stands. Homesteading opened
+-- 2026-11-09, Angling and Hunting the same day (user).
 M.COMING_SOON = {
-    Angling = true, Freerunning = true, Hunting = true, Salvaging = true, Stealth = true,
+    Freerunning = true, Salvaging = true, Stealth = true,
 }
 
 M.masteries = {}      -- display order
@@ -394,7 +394,8 @@ end
 def("Bludgeoning", "ExtraTarget", 2, "step", { steps = { { 5, 1 }, { 10, 2 } }, unit = "flat", when = multiHit })
 def("Bludgeoning", "Reach", 10, "step", { steps = { { 5, 5 }, { 10, 10 } }, unit = "pct",
     when = function() return not multiHit() end })
-def("Spearcraft", "SpearCondition", 2, "int")
+def("Spearcraft", "CarvedDamage", 8, "pct")       -- spears this master carves, fixed when made
+def("Spearcraft", "CarvedReach", 3, "pct")
 
 -- Body
 def("Conditioning", "Endurance", 10, "less")

@@ -173,9 +173,14 @@ if originalMeat then
     end
 end
 
+-- A part with a fixed count (`nb` > 0) gets no extras (user, 2026-11-09): all 26 in vanilla's AnimalPartsDefinitions are
+-- anatomy or a whole carcass (2 chicken feet, 1 whole chicken or turkey, 1 skinned rat or mouse, 1 small bird), so the
+-- copy below made a third foot or a second chicken. Parts with a minNb / maxNb range (meat, sinew, bones) still scale.
+-- Test `> 0`, not `nb ~= nil`: vanilla's addAnimalPart writes `part.nb = -1` into the shared definition on first use.
 local originalPart = ButcheringUtil.addAnimalPart
 ButcheringUtil.addAnimalPart = function(part, player, carcass, ...)
     if extraDepth > 0 or type(part) ~= "table" or not part.item or not player
+            or (tonumber(part.nb) or -1) > 0
             or M.val(player, "Hunting.PartCount") <= 0 then
         return originalPart(part, player, carcass, ...)
     end
