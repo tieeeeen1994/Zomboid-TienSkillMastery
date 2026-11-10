@@ -17,8 +17,7 @@ Still to do, in order:
 3. Salvaging needs the user's decision. Suggested: Strip Down (one click uninstalls every part) plus the time and torch
    passives on part scrapping. Other ideas are under "Salvaging's problem" below.
 4. Skill Journal recording and restoring mastery (low priority).
-5. To trace from Java: whether the server runs `updateFalling` for players (the server's half of Freerunning's safe falls).
-6. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
+5. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
 
 Releasing: bump `modversion` in `mod.info`, drop "(coming soon)" from `README.md` for anything opened, remove the id from
 `M.COMING_SOON`, run `py scripts/make_workshop.py`, `py tests/run_all.py --release`. Commit, fast-forward master, upload in
@@ -406,8 +405,8 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   "Insects", vanilla's specialisation lever); big haul (`server/*_FishingNets.lua`: a second run of
   `fishingNet.checkTrap` for the bonus share of the hours, at most 5, so no break roll and no extra bait).
 - **Open questions for the user** (2026-11-09):
-  - Next without the game, proposed and not yet approved: settle from Java whether the server runs `updateFalling` for
-    players (the server's half of safe falls). Salvaging still needs a design decision.
+  - Settled 2026-11-10: the server runs `updateFalling` for every player (header of `shared/*_Falls.lua`, which now
+    also keeps the cap one update's step under the threshold, for fast forward). Salvaging still needs a design decision.
 - **Carved spears** (user, 2026-11-09, not played): `Spearcraft.CarvedDamage` +8% and `CarvedReach` +3% replaced
   `SpearCondition`, a +2 that did nothing (Carving 10, a member skill, already fills carved and fire-hardened spears). Any
   spear from a recipe listing Carving (vanilla: CarveSpear, FireHardenSpear; stone, bone, knife and other bound, wired or taped
@@ -430,7 +429,7 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   `SyncItemFields` is unordered), so confirm the client ends on the returned uses.
 - **Not built**: only what waits with its Coming Soon mastery (Stealth: lose them, quiet hands, distraction
   throw; Freerunning: vault / wall rolls, evasion).
-- MP checks owed (from reading only): whether the server runs `updateFalling` for players, whether stomp's
+- MP checks owed (from reading only): whether stomp's
   `ItemBodyLocation.SHOES` lookup works from Lua, `OnWeaponHitCharacter` on the attacker for a remote zombie, the
   strafe / sneak nudge feel, Gunworks bursts with the RPM wrap (where combat muscle strain lands in MP: traced 2026-11-08, on the
   server, see Physical.lua's header); for 3a:

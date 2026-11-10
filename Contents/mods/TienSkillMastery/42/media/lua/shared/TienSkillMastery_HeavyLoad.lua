@@ -131,11 +131,15 @@ if isClient() then
         local ok, _, real, target = pcall(HL.compute, player, player:getMaxWeightDelta())
         if not ok then return end
         HL.realMax[player] = real
-        -- Set while shifted, and once more when it stops (else the shifted max stays until PlayerDamage).
-        if target and (target ~= real or shifted[player]) and player:getMaxWeight() ~= target then
+        -- Set while shifted, and once more when it stops (else the shifted max stays until PlayerDamage). Not compared
+        -- with `getMaxWeight()`: that is wrapped below to return the real max, so the "once more" never ran.
+        if target and target ~= real then
             player:setMaxWeight(target)
+            shifted[player] = true
+        elseif shifted[player] then
+            if real then player:setMaxWeight(real) end
+            shifted[player] = nil
         end
-        shifted[player] = target ~= nil and target ~= real or nil
     end)
 end
 

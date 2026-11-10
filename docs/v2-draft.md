@@ -296,6 +296,33 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     relay to that owner), and the server re-rolls a hit that gets through (`Bite.process`, ZomboidFixesB42 "Zombie
     attacks on players"), so a dodge must also stop the `ZombieHitPlayerPacket`, i.e. happen before the client's
     roll. **Animals included** (user, 2026-11-06).
+    Traced 2026-11-10 (42.21 `AttackState.animEvent`): the whole hit runs in the `AttackCollisionCheck` branch, gated
+    by `!zombie.isNoTeeth()`; inside it `triggerPlayerReaction` → `BodyDamage.AddRandomDamageFromZombie` does the
+    player's `setHitReaction` (the hit animation), the damage, holes and `sendZombieHit` (the packet the server
+    re-rolls). `IsoZombie:setNoTeeth(b)` is public; `noTeeth` is read only there and by `cantBite()` (itself read
+    only inside `AddRandomDamageFromZombie`), reset in the zombie's reset, not saved and not in any packet. So a dodge
+    = the zombie's owner sets `setNoTeeth(true)` for that swing (rolled when it enters AttackState, outcome "start",
+    at a master) and clears it when the swing ends: no damage, no player animation, no packet, nothing to undo.
+    Still runs: the zombie's own swing, `testDefense` in `execute` (vanilla's front defense, can play "Defended"),
+    the sprinter slow factor, and observers' `AttackNetworkState` bite sound / blood splat. MP: only the owner's
+    `AttackState` counts, so a client owning a zombie that targets another player must know that player's chance
+    (clients get only their own mastery entry today: the server would broadcast masters' evasion). Animals are
+    separate (`AnimalAttackState`, server, no gate found): undo plan below; leaving animals out is fine (user,
+    2026-11-10).
+  - Dodging other players (user, 2026-11-10: masters dodge PvP hits too). Traced 42.21: `IsoGameCharacter.Hit`
+    (~5856) fires `OnWeaponHitCharacter` and `OnPlayerGetDamage "WEAPONHIT"`, then `LuaHookManager.TriggerHook(
+    "WeaponHitCharacter", wielder, target, weapon, damageSplit)`; a Lua hook returning true (`Hook.WeaponHitCharacter
+    .Add(fn)`, same API as vanilla's `Hook.Attack`) makes `Hit` return 0 before `processHitDamage` and
+    `hitConsequences` (damage, hit reaction). (`setAvoidDamage(true)` is the same skip, one hit, not synced.) `Hit`
+    runs on every machine: the attacker's client (`CombatManager` ~1159, local wielder; its return value is the
+    damage put in the packet via `processClientHit`), then `PlayerHitPlayerPacket` (handlingType 3): the server
+    relays it and runs `processClient` itself, and every client runs it too, each calling `WeaponHit.process` →
+    `target.Hit(..., bRemote = true)` with the packet's damage. So every machine must agree: roll on the attacker's
+    client (needs the masters' chances, same broadcast as for zombies), whose hook returns true, so the packet
+    carries damage 0; the server's and clients' hooks then cancel any hit on a master whose damage is exactly 0
+    (a real 0-damage hit, e.g. a shove, being cancelled too is fine: user, 2026-11-10). To check: whether the
+    attacker's `HitReactionNetworkAI.calculateHitReactionFromWeapon` (still runs) / the packet's `Fall` field still
+    make the victim stagger or fall on other clients.
   - Dodging animals (42.21 `zombie/ai/states/animals/AnimalAttackState`, Java): on the animal's `AttackConnect`
     anim event, when the target is a player (not in a vehicle, within `adef.attackDist + 0.5`, not invisible or in
     ghost mode, line of sight clear), the server / SP computes `animal.calcDamage()` and calls
@@ -322,8 +349,9 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     "FALLDOWN", amount)` fires, then fractures / wounds are rolled. Plan: when a fall starts with the floor at most
     2 levels below (`getHeightAboveFloor`), hold `lastFallSpeed` just under the damage threshold every update, so
     the landing counts as a light fall (no damage, no knees, nothing dropped); the drop takes ~25% longer (2 levels:
-    ~1.1 s instead of ~0.9 s). Both sides (the server's simulation decides the damage); check in MP that the server
-    runs `updateFalling` for players and that `OnPlayerUpdate` (or an `OnTick` sweep) reaches it.
+    ~1.1 s instead of ~0.9 s). Both sides (the server's simulation decides the damage). Traced 2026-11-10: the server
+    runs `updateFalling` for every player (remote branch of `updateInternal2`, then `IsoGameCharacter.updateInternal`);
+    an `OnTick` sweep reaches it (built).
   - **Exhaustion does not make you trip when vaulting.** `ClimbOverFenceState.enter` (owner only) rolls
     `shouldFallAfterVaultOver` for running / sprinting vaults: sprint 10 + 10 per endurance moodle level + drunk,
     heavy load, pain, traits - Fitness, and on a hit sets the anim variable `ClimbFenceOutcome = "fall"` and the
