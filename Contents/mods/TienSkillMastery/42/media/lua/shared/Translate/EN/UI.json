@@ -2,6 +2,7 @@
     "UI_optionscreen_binding_TienSkillMastery": "Tien's Skill Mastery",
     "UI_optionscreen_binding_TsmThrowAxe": "Throw axe or spear (combat stance)",
     "UI_optionscreen_binding_TsmTendWounds": "Tend wounds (Field Triage)",
+    "UI_optionscreen_binding_TsmDistractionThrow": "Distraction throw (combat stance)",
     "UI_TienSkillMastery_Options": "Tien's Skill Mastery",
     "UI_TienSkillMastery_Option_ThrowOutline": "Throw target outline colour",
     "UI_TienSkillMastery_Option_ThrowOutline_tooltip": "Colour of the outline on the target a thrown axe or spear would reach (Axemanship and Spearcraft signatures).",

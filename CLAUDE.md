@@ -10,15 +10,29 @@ The notes below grew as a log, and v1 sections are marked superseded. This secti
 - **Tests:** `tests/README.md` (`py tests/run_all.py`; `--release` adds the release report). They need `tests/.lupa`, installed
   once per computer. Older notes below mention harness files in a session scratchpad; those are gone.
 
+- **Built, not played, not committed (the 0.4.3 batch, 2026-11-10 / 11):** Freerunning: sprint +15%, run +10%,
+  crouch +5% (client `*_Movement.lua` nudge), Evasion a 25% passive (`shared/*_Evasion.lua`), safe falls in three tiers
+  (1 / 2 / 3 floors at mastery 3 / 6 / 9) that land higher drops as one floor lower (`shared/*_Falls.lua`), Unfazed
+  Runner passing through characters (`client/*_UnfazedRunner.lua`). Stealth: quiet work and quiet swings, -50% at
+  mastery 10 (`shared/*_Stealth.lua`; its sneak speed became Freerunning's crouch speed), signature Distraction Throw
+  (`shared/*_Distraction.lua`, key K). Every one has a test in `tests/` and a step in `docs/test-checklist.md`.
+
 Still to do, in order:
-1. Freerunning: Evasion's dodge and Unfazed Runner are built (2026-11-10, `shared/*_Evasion.lua`,
-   `client/*_UnfazedRunner.lua`, not played); still to do: the vault-trip /
-   tall-wall exhaustion effects (`docs/v2-draft.md`). Phase through is superseded by Unfazed Runner (stagger kept).
-2. Stealth: Lose Them, Quiet Hands, Distraction Throw (how to end a zombie's path to a sound is untraced).
-3. Salvaging needs the user's decision. Suggested: Strip Down (one click uninstalls every part) plus the time and torch
+1. Stealth, before release: pick the metal (can) landing sound of Distraction Throw. Vanilla has no can-drop event;
+   candidates to audition (Debug > Audio > FMOD event player): `LongHandleCanDrop`, `WoodenStickCanDrop`,
+   `LongHandleCanHit`, `BreakMetalItem` (the placeholder in `D.GROUPS`), or ship an own `.ogg` (needs a recording the
+   user may redistribute). Add a throw whoosh at the release (`NoiseMakerThrow` or `MolotovCocktailThrow`, from
+   `DA:release` in Distraction.lua, played like the axe throw's swing sound in Throw.lua's `TA:release`). Then decide whether Stealth leaves Coming Soon.
+2. Stealth, later: Lose Them as a second signature (zombies chasing a crouched master who is out of sight drop the
+   target, `setTarget(nil)` + `isTargetVisible()`; they still walk to where they last saw the master, since
+   `lastTargetSeenX/Y/Z` are fields Lua cannot clear). Unseen (crouched and still, passing zombies do not notice) only
+   after Lose Them works.
+3. Tomahawk and Javelin signatures should produce a sound.
+4. Freerunning: the vault-trip / tall-wall exhaustion effects (`docs/v2-draft.md`; out of Lua's reach as far as traced).
+5. Salvaging needs the user's decision. Suggested: Strip Down (one click uninstalls every part) plus the time and torch
    passives on part scrapping. Other ideas are under "Salvaging's problem" below.
-4. Skill Journal recording and restoring mastery (low priority).
-5. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
+6. Skill Journal recording and restoring mastery (low priority).
+7. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
 
 Releasing: bump `modversion` in `mod.info`, drop "(coming soon)" from `README.md` for anything opened, remove the id from
 `M.COMING_SOON`, run `py scripts/make_workshop.py`, `py tests/run_all.py --release`. Commit, fast-forward master, upload in
@@ -27,7 +41,9 @@ Discussions thread, which the user pastes in; keep `README.md` the full source a
 
 ### The user's standing rules
 
-These apply to all of the user's mods and were kept outside this repo until now.
+These apply to all of the user's mods and were kept outside this repo until now. Their reasons, the reference notes
+(what syncs in MP, what Lua can reach, Kahlua's library, decompiling on this PC, pzopt) and this mod's history in short
+are in `docs/working-rules.md` (2026-11-11, user: keep every memory in the repository).
 
 - **Dedicated server first.** The user's mods run on their dedicated server; single-player-only or host-only behaviour is useless.
   Every plan says how each piece works there: which side changes the world, which call syncs it, and which events fire there.
@@ -36,6 +52,8 @@ These apply to all of the user's mods and were kept outside this repo until now.
   with the server's start time, then debug.
 - **Verify against the implementation.** Docs, headers and these notes can be wrong: read the Lua or decompiled Java before relying
   on a claim, correct the note when it is wrong, and look for a simple cause before building sync workarounds.
+- **Trace what the code can answer.** Never leave engine behaviour as "unknown" or "to check in MP" when a decompile
+  settles it (user, 2026-11-10, about safe falls); keep in-game checks for feel, timing and visuals.
 - **Findings go next to the code:** in the header or a comment of the file that relies on them, plus a short line here.
 - **No over-the-head text as feature feedback** (`HaloTextHelper`), except the vanilla-style level-up halo, which is wanted.
 - **No timers just to notice sandbox option changes.** This mod has no sandbox options for now (user: "I want to control the values").
@@ -115,10 +133,10 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   Ideas offered, none chosen: Strip Down (one click uninstalls every part through vanilla's actions), Reclaimed Parts
   (installed parts sometimes survive scrapping), part scrapping getting the time and torch passives, Scrap Eye (forage
   Junk), Cut Through (torch opens locked doors, not traced).
-- **Coming soon: Stealth, Salvaging** (user, 2026-11-08: unhidden, see Parking; Stealth shows only Sneak Speed and has no
-  signature). Homesteading, Hunting and Angling were on this list too (their signatures not played) until the user
+- **Coming soon: Stealth, Salvaging** (user, 2026-11-08: unhidden, see Parking; Stealth shows no effect
+  since 2026-11-11, when its Sneak Speed became Freerunning's crouch speed, and has no signature). Homesteading, Hunting and Angling were on this list too (their signatures not played) until the user
   opened them on 2026-11-09, still unplayed as far as these notes know; Freerunning (running endurance, safe falls,
-  signatures Evasion and Unfazed Runner, built 2026-11-10 and not played) was opened in 0.4.2 the same day.
+  signatures Evasion and Unfazed Runner, built 2026-11-10 and not played; Evasion a passive since 2026-11-11) was opened in 0.4.2 the same day.
   `M.COMING_SOON` in the core: listed with their effects, but `M.state` gives "soon" (after picked / inactive and
   closed, whatever the members' levels, so nobody levels up to a Locked that never opens), the panel draws a grey
   Coming Soon button that does nothing, and `M.pick` refuses them on the server. Unlike parking, an existing pick
@@ -128,16 +146,17 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   owner: own zombie inside `OnWeaponHitCharacter`, before `hitConsequences`; remote one via `zombieHit` -> server
   amount from its own copy of the mastery, 4-tile check -> `zombieDamage` to `getOwnerPlayer()`), `shared/*_Falls.lua`
   (safe falls: `lastFallSpeed` held one update's step under the no-damage impact speed, at most 90% of it, both
-  sides), `shared/*_Evasion.lua` (Freerunning's Evasion, 2026-11-10: a dodged zombie swing is made toothless,
+  sides; a higher drop held at the landing speed of a drop one floor shorter, 2026-11-11), `shared/*_Evasion.lua` (Freerunning's Evasion, 2026-11-10: a dodged zombie swing is made toothless,
   `setNoTeeth`, on the zombie's owner from "start" to the swing's end; a dodged PvP hit is `setAvoidDamage` from
   `OnWeaponHitCharacter`, rolled on the attacker's game, and every game cancels 0-damage hits on masters; the server
   sends every client the masters' online IDs and chances. Never register a `Hook.WeaponHitCharacter`: Java ignores
   the Lua return and skips every weapon hit while any callback exists), `client/*_UnfazedRunner.lua` (Freerunning's
   Unfazed Runner, 2026-11-10, "Tree Runner" before: from `OnPlayerUpdate`, which fires before the sprint input, the
-  tree trip check and `separate` in `updateInternal2`: `setAllowSprint(false)` near tree / hedge squares and while a
-  solid character is within touching reach, `setLastBump(0)`, a leftover `bumpedChr` cleared, others made not solid
-  during a stagger, so `separate`'s `wasBumped` (the fall) is never true; the stagger still plays. `BumpFall` cannot
-  be cleared after `separate`: the bumped state is entered in `postupdate` with no Lua event between. A tree-scratch
+  tree trip check and `separate` in `updateInternal2`: `setAllowSprint(false)` near tree / hedge squares; while
+  running or sprinting every character within 1.2 tiles is made not solid for that update, so `separate` bumps no
+  one (no stagger, no fall, no break in the sprint; players / animals put back, zombies reset themselves); 0.4.2
+  held the sprint off at contact and let the stagger play, which broke the sprint (user, 2026-11-11). `BumpFall`
+  cannot be cleared after `separate`: the bumped state is entered in `postupdate` with no Lua event between. A tree-scratch
   undo was built and dropped the same day: the user wants the scratches and tears kept),
   `shared/*_WeaponsShared.lua`
   (jams via HandWeapon's class-table `checkJam`; tree damage taken off `IsoTree:setHealth` before vanilla's hit,

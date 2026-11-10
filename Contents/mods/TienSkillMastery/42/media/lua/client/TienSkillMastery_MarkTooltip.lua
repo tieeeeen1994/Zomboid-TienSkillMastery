@@ -1,5 +1,6 @@
 --[[
-Tien's Skill Mastery: maker's marks in item tooltips (user, 2026-11-08). One line per mark an item carries
+Tien's Skill Mastery: maker's marks in item tooltips (user, 2026-11-08), and "Throwable" on what a Stealth master
+can lob with Distraction Throw (2026-11-11). One line per mark an item carries
 ("Maker's marks" in shared/TienSkillMastery_Crafting.lua): the whole item, a hafted tool's head, its handle, with the
 kind (Masterwork, Craftsmanship) and the maker's name (no wear share since 2026-11-08, user). Marks are modData, synced to the
 owner with the item (`syncItemFields`), so the client reads them directly.
@@ -31,6 +32,13 @@ local function markLines(item)
         lines = lines or {}
         lines[#lines + 1] = getText("IGUI_TienSkillMastery_MarkHandle", kindName(md.TSM_HandleMarkKind),
             tostring(md.TSM_HandleMarkBy or "?"))
+    end
+    -- Stealth's Distraction Throw (user, 2026-11-11): "Throwable" on what a master could lob (TienSkillMastery_Distraction.lua).
+    local D = TienSkillMastery and TienSkillMastery.Distraction
+    local player = getSpecificPlayer(0)
+    if D and player and D.canThrow(player, item) then
+        lines = lines or {}
+        lines[#lines + 1] = getText("IGUI_TienSkillMastery_Throwable")
     end
     return lines
 end

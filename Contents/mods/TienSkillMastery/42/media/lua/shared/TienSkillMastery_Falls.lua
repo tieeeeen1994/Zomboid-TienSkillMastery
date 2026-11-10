@@ -1,5 +1,8 @@
 --[[
-Tien's Skill Mastery: Freerunning.SafeFall, no damage from drops of up to 1 floor (mastery 5) or 2 floors (mastery 10).
+Tien's Skill Mastery: Freerunning.SafeFall, no damage from drops of up to 1 floor (mastery 3), 2 floors (mastery 6) or
+3 floors (mastery 9) (three tiers since 2026-11-11, user; was 1 at 5 and 2 at 10), and from the same levels any higher
+drop lands as if it were one floor lower (user, 2026-11-11: "hard landings" merged in, so a 4-floor drop at mastery 9
+hits like a 3-floor one).
 
 42.21 `IsoGameCharacter.updateFalling` (~9165): while falling, `lastFallSpeed` (public get / set) grows by
 5.0010414 x dt per update (dt x 0.16 on a server) and the character drops `lastFallSpeed x dt + 2.5 x dt^2`; on
@@ -10,7 +13,9 @@ lands at ~3.16, a 2-floor one at ~4.47.
 
 So while a master falls and the floor below is within the allowed drop (measured from where the fall started), the
 fall speed is held under the no-damage speed every update: the landing counts as a light, harmless one and the
-drop takes about a quarter longer. Both sides do it: the owner's client (its own copy, which plays the landing) and,
+drop takes about a quarter longer. A longer drop is held at the speed a drop one floor shorter lands with,
+sqrt(2 x 5.001 x (drop - 1)), the middle of the lower tier, so it takes the damage, knees and dropped items of that
+shorter fall (one update's step at 5x fast forward, 0.4, stays inside the tier). Both sides do it: the owner's client (its own copy, which plays the landing) and,
 in multiplayer, the server for every online player (the server's copy decides the damage).
 
 The server does simulate every player's fall (traced 2026-11-10): a server player is remote, so
@@ -29,6 +34,7 @@ local M = TienSkillMastery
 
 local NO_DAMAGE = math.sqrt(2 * 5.0010414 * 0.5)
 local CAP = NO_DAMAGE * 0.9
+local G = 5.0010414
 
 --- The highest speed from which the next update's landing still stays under the no-damage speed.
 local function capNow()
@@ -53,12 +59,16 @@ function M.updateSafeFall(player)
     end
     local allowed = M.val(player, "Freerunning.SafeFall")
     if allowed <= 0 then return end
-    local cap = capNow()
-    if speed <= cap then return end
     local floorZ = player:getZ() - player:getHeightAboveFloor()
-    if startZ - floorZ <= allowed + 0.25 then
-        player:setLastFallSpeed(cap)
+    local drop = startZ - floorZ
+    local cap
+    if drop <= allowed + 0.25 then
+        cap = capNow()
+    else
+        -- Higher than the safe drop: land as from one floor lower.
+        cap = math.sqrt(2 * G * math.max(0, drop - 1))
     end
+    if speed > cap then player:setLastFallSpeed(cap) end
 end
 
 if isServer() then

@@ -77,17 +77,33 @@ Fastest way to get a catch: with `-debug`, right-click a placed trap > **Add Ani
 
 ## 4b. Freerunning (opened in 0.4.2, nothing played)
 
-- [ ] *Evasion*, zombies: let A's own zombies swing at A for a while. About 1 in 7 swings does nothing at all: no wound,
+- [ ] *Evasion* (a passive since 2026-11-11: 25% at mastery 10, 2.5% a level), zombies: let A's own zombies swing at A for a while. About 1 in 4 swings does nothing at all: no wound,
       no flinch, no torn clothing. The rest land as usual. Repeat with a zombie B controls (standing near B) attacking A.
-- [ ] *Evasion*, PvP (PvP on): B hits A with a weapon many times. About 1 in 7 hits does nothing on any screen (no damage
+- [ ] *Evasion*, PvP (PvP on): B hits A with a weapon many times. About 1 in 4 hits does nothing on any screen (no damage
       on A's health panel, no flinch); the others land. A non-master hit by B takes every hit.
 - [ ] *Unfazed Runner*, trees: A sprints into a forest. A drops to a run without tripping, gets scratched / torn now and
       then, and sprints again once out (sprint key held). Bushes behave as vanilla. A non-master still trips.
-- [ ] *Unfazed Runner*, bumps: A sprints into a zombie, into B, and into an animal: a stagger each time, never a fall,
-      also on B's screen. Bump into a second zombie during the stagger: no fall. The drop from sprint to run at contact
-      looks smooth.
+- [ ] *Unfazed Runner*, bumps (changed 2026-11-11): A sprints, then runs, through a zombie, B and an animal: A passes
+      through without slowing, staggering or falling, also on B's screen. After A walks away, A and the animal
+      collide normally again (bumping into them at a walk pushes as vanilla).
 - [ ] *Unfazed Runner* with *Battering Ram* (Street Fighting picked too): zombies are still knocked down when sprinting.
-- [ ] Safe falls: a 1-floor drop at mastery 5 and a 2-floor drop at 10 do no damage, also during fast forward.
+- [ ] Sprinting and running speed (added 2026-11-11): at mastery 10, A sprints about 15%, runs about 10% and moves crouched (walking or running) about 5% faster than a non-master, with
+      no anti-cheat bounce or kick on the server, no sliding through walls, doors or fences; B sees A move smoothly.
+- [ ] Safe falls: a 1-floor drop at mastery 3, a 2-floor drop at 6 and a 3-floor drop at 9 do no damage, also during
+      fast forward. A 3-floor drop at mastery 6 hurts like a 2-floor drop (a hard landing, not the severe one); a 4-floor
+      drop at mastery 9 like a 3-floor one (severe, not lethal).
+
+## 4c. Stealth (built 2026-11-11, nothing played; Coming Soon unless opened)
+
+- [ ] *Quiet work*: with Stealth at 10, barricade or sledgehammer near zombies a little way off: fewer of them come than for a non-master at the same spot. Also on a
+      dedicated server (the noise of most actions is made there).
+- [ ] *Quiet swings*: swing a bat at the air near distant zombies: fewer react than for a non-master. Drop the bat or
+      hand it to B: B's swings with it are as loud as vanilla. Guns are as loud as vanilla.
+- [ ] *Distraction Throw*: hold an empty bottle in combat stance and press K at a spot 10-15 tiles away: it arcs there
+      (B sees the flight), breaks with a glass sound into broken glass, and idle zombies near the spot walk to it. A
+      can and a stone land as items with their sounds. "Throwable" shows in the tooltip of those items only, and only
+      for the master. Bound to Space too (same key as the axe throw): a bottle in hand is lobbed, no axe thrown with it.
+      Pick the metal sound in Debug > Audio > FMOD event player (now `BreakMetalItem`, a placeholder).
 
 ## 5. Homesteading (already pickable, mostly unplayed)
 

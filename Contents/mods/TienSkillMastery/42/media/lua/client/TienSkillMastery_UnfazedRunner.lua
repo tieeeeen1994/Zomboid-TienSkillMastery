@@ -1,8 +1,9 @@
 --[[
 Tien's Skill Mastery: Freerunning's signature Unfazed Runner (user, 2026-11-10; "Tree Runner" until the same day):
 the master never trips. Sprinting into trees or a hedge only turns the sprint into a run (the branches still scratch
-and tear, user), and running or sprinting into a zombie, an animal or another player plays the bump (the stagger)
-but never the fall. Owner's game only: in multiplayer the player's own client moves it and decides both.
+and tear, user), and a running or sprinting master passes straight through zombies, animals and other players, no
+stagger and no break in the sprint (user, 2026-11-11: the stagger and the sprint held off at contact, 0.4.2, broke
+the sprint). Owner's game only: in multiplayer the player's own client moves it and decides both.
 
 Trees (42.21 `IsoPlayer.updateInternal2`): the input is read (~2380: `setSprinting(inputState.sprinting)`, which
 needs `isAllowSprint()`), then (~2712) a player `isInTrees()` (or on a collapsed fence, or slow / injured) who
@@ -21,14 +22,17 @@ state plays the stagger (left.xml / right.xml; it is entered on the `bumped` var
 fall is decided by `wasBumped` = not on the floor and (`getBumpedChr()` already set, or the last bump under 1.5 s
 ago, or `isSprinting()`): then `BumpFall` on a 1 in 1..80 roll (Fitness, Strength, traits, drunk, back pain), and
 always when sprinting. `BumpedState.enter` stores `BumpFall` in the state's network params (other games show the
-fall from them) and its exit costs the knees (`fallenOnKnees`). So `wasBumped` is kept false for every bump:
-`setLastBump(0)` each update (nothing else reads it), sprint held off while a solid character is within touching
-reach, a leftover `bumpedChr` (Street Fighting's Battering Ram sets one to shield a zombie) cleared then, and while
-a stagger plays (`isBumped()` with a `bumpedChr`) every other character in reach is made not solid for that update
-(`isSolidForSeparate`), so walking into a second one cannot turn it into a fall. Zombies set `solid` again in their
-own update; players and animals do not, so this file puts back every one it changed once it is out of reach or
-the stagger is over. Battering Ram runs first (Movement.lua loads before this file), and zombies it made not solid
-are not bumped at all.
+fall from them) and its exit costs the knees (`fallenOnKnees`). The stagger itself blocks the sprint too: the bumped
+state leaves to `run`, not `sprint`. `separate` only looks at objects that are `isSolidForSeparate` (`solid` and not
+on the floor), and a player bumps only while running or sprinting (`WalkSpeed` > 0.2, `runningTime` > 0.5). So while
+the master runs or sprints, every character within PASS is made not solid for that update: no bump, no push apart,
+no stagger, no fall, the sprint goes on (0.4.2 held the sprint off at contact and let the stagger play instead).
+Zombies set `solid` again in their own update; players and animals do not, so this file puts back every one it
+changed once it is out of reach or the master slows to a walk. A stagger started some other way (`isBumped()` with a
+`bumpedChr`) gets the same for everyone else in reach, and `setLastBump(0)` each update keeps a bump after one
+from counting as a repeat (nothing else reads it). Not covered: an animal running into the master in single player
+(its own `separate` can stagger the player it touches). Battering Ram runs first (Movement.lua loads before this
+file) and still knocks down the zombies it reaches.
 ]]
 
 require "TienSkillMastery"
@@ -36,10 +40,10 @@ local M = TienSkillMastery
 
 local ID = "Freerunning.SigUnfazedRunner"
 local AHEAD = 0.5      -- tiles along the facing looked at for a tree square
-local CONTACT = 0.75   -- tiles: a solid character this close can be bumped this update (vanilla contact ~0.5)
+local PASS = 1.2       -- tiles: running or sprinting, every character this close is passed through (contact ~0.5)
 
 local held = setmetatable({}, { __mode = "k" })   -- [player] = true while this file holds sprint off
-local unsolid = {}                                 -- [player or animal] = true while made not solid here
+local unsolidBy = setmetatable({}, { __mode = "k" }) -- [local player] = { [player or animal] = true } made not solid
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Trees
@@ -101,7 +105,7 @@ local function nearby(player, reach)
     return found
 end
 
-local function restoreSolid(keep)
+local function restoreSolid(unsolid, keep)
     local back = {}
     for c in pairs(unsolid) do
         if not keep or not keep[c] then table.insert(back, c) end
@@ -128,18 +132,20 @@ Events.OnPlayerUpdate.Add(function(player)
     if not player or not player:isLocalPlayer() then return end
     if player:isDead() or not M.sig(player, ID) then
         holdSprint(player, false)
-        restoreSolid(nil)
+        if unsolidBy[player] then restoreSolid(unsolidBy[player], nil) end
         return
     end
     -- A bump more than 1.5 s after the last one is not a repeat.
     player:setLastBump(0)
 
-    local near = nearby(player, CONTACT)
+    -- Running or sprinting (Java bumps no one at a walk), or mid-stagger: pass through everyone in reach.
     local stumbling = player:isBumped() and player:getBumpedChr() or nil
+    local moving = player:isRunning() or player:isSprinting()
+    local unsolid = unsolidBy[player] or {}
+    unsolidBy[player] = unsolid
     local keep = {}
-    if stumbling then
-        -- While the stagger plays, nobody else can be bumped into.
-        for _, o in ipairs(near) do
+    if moving or stumbling then
+        for _, o in ipairs(nearby(player, PASS)) do
             if o ~= stumbling and (o:isSolid() or unsolid[o]) then
                 o:setSolid(false)
                 if not instanceof(o, "IsoZombie") then
@@ -149,17 +155,6 @@ Events.OnPlayerUpdate.Add(function(player)
             end
         end
     end
-    restoreSolid(keep)
-
-    local bumping = false
-    if not stumbling then
-        for _, o in ipairs(near) do
-            if o:isSolid() then
-                bumping = true
-                break
-            end
-        end
-        if bumping and player:getBumpedChr() then player:setBumpedChr(nil) end
-    end
-    holdSprint(player, bumping or amongTrees(player))
+    restoreSolid(unsolid, keep)
+    holdSprint(player, amongTrees(player))
 end)

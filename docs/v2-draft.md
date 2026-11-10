@@ -282,18 +282,24 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
   scratches and tears stay: a tree-scratch undo was built and dropped the same day), and bumping into zombies,
   animals or players plays the stagger but never the fall; built in `client/*_UnfazedRunner.lua`, whose header has
   the trace (sprint held off with `setAllowSprint`, bump-repeat timer and leftover bumped character cleared, all
-  before `separate`). Supersedes the trip half of phase through (the stagger stays, by the user's choice). Other ideas checked then: quieter footsteps and less slowdown in
-  trees are Java out of Lua's reach; faster fence / window climbs would need overridden climb AnimSets; no damage from falls of up to 2 levels (stepped, user 2026-11-07: a 1-level drop,
+  before `separate`). Changed 2026-11-11 (user: the stagger and the held sprint broke the sprint, make it continuous):
+  running or sprinting, the master passes through every character in reach (made not solid for the update), i.e.
+  phase through after all. Other ideas checked then: quieter footsteps and less slowdown in
+  trees are Java out of Lua's reach; faster fence / window climbs would need overridden climb AnimSets; no damage from falls of up to 2 levels (three tiers since 2026-11-11, user: 1 floor at mastery 3, 2 at 6, 3 at 9), and
+  from the same levels higher falls land as if one floor lower (merged in 2026-11-11, user; the "hard landings" idea) (stepped, user 2026-11-07: a 1-level drop,
   from the 2nd floor, at mastery 5; a 2-level drop, from the 3rd floor, at mastery 10; none below 5),
   exhaustion no longer adds to the vault trip chance, nor to tall-wall climbing failure (per level, user
   2026-11-07: each mastery level removes 10% of what exhaustion adds, all of it at mastery 10) (all three new,
   user 2026-11-06; traced below under "Freerunning movement effects"); ~~sure-footed~~ (**dropped**, user 2026-11-06:
   evasion's phase through prevents every bump trip; it was 5% a level that a trip from running into a zombie,
   animal or player becomes a stagger). Sprint speed
-  dropped: movement is root motion and Sprinting's speed only feeds the run / sprint blend (v1 notes), out of
-  Lua's reach. Signature **evasion** (user 2026-11-06): a chance to dodge attacks (they do not land), and the master
+  dropped at first (movement is root motion and Sprinting's speed only feeds the run / sprint blend, v1 notes), then
+  built 2026-11-11 (user) as +15% at mastery 10 with the position nudge Swordsmanship's strafe and Stealth's sneak
+  speed use (client `*_Movement.lua`, whose header has the Speed anti-cheat trace: 20 tiles a second on foot), and
+  running +10% and crouched walking / running +5% (taking over Stealth's sneak speed, Stealth to be about noise) at mastery
+  10 the same way (user, same day). Signature **evasion** (user 2026-11-06): a chance to dodge attacks (they do not land), and the master
   phases through anything they run into without the trip animation.
-  - Dodge (**15%** an attack, flat as a signature, user 2026-11-06; built 2026-11-10 the `setNoTeeth` way below,
+  - Dodge (**15%** an attack, flat as a signature, user 2026-11-06; a passive since 2026-11-11, 2.5% a mastery level (25% at 10), user; built 2026-11-10 the `setNoTeeth` way below,
     `shared/*_Evasion.lua`, not played; the server takes only zombies with no `getOwnerPlayer()`, since on a server
     `isRemoteZombie()` = no `authOwner`, the opposite of a client's meaning). First idea: the zombie's `getAttackOutcome()` turns
     "success" at the end of its start anim, before the `AttackCollisionCheck` event that resolves the hit, on the
@@ -344,7 +350,7 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     and wound flags; when they drop and that animal is the attacker (`getAttackedBy` / a hit inside its attack),
     on a 15% roll put everything back (health, new scratches / cuts / bites / fractures). The hit reaction may
     still play; only the damage is dodged.
-  - Phase through (**superseded** 2026-11-10 by Unfazed Runner: the user keeps the stagger, only the fall goes): bumping into a zombie, animal or player while running sets `BumpFall` in
+  - Phase through (built 2026-11-11 as part of Unfazed Runner, after a day of keeping the stagger): bumping into a zombie, animal or player while running sets `BumpFall` in
     `IsoMovingObject.separate` (see "Freerunning movement effects"); public `setBumpFall` / `setBumpType` /
     `setCollidable` exist on the player. Plan: while the master runs or sprints, clear the bump (no trip, no
     stagger) and let them pass through (`setCollidable(false)` while running past characters, if it does not also
@@ -387,7 +393,10 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
   - **Tall walls**: the success / struggle roll (`getClimbingFailChanceInt`, endurance moodle -5 per level) runs
     before `ClimbOverWallState.enter` and is stored with public `setClimbOverWallSuccess / Struggle`; the state then
     sets `ClimbFenceOutcome` "success" / "fail". Same flip approach and the same MP caveat.
-- **Stealth** (**approved**, user 2026-11-06): **lose them** (sneaking and still, unseen for 3 s: chasing zombies give up),
+- **Stealth** (reworked 2026-11-11, user: "simply making it quieter": noise of the master's work -50% and of melee
+  swings -50% at mastery 10, built in `shared/*_Stealth.lua`, whose header has the trace; signature Distraction Throw
+  the same day, `shared/*_Distraction.lua` (held junk lobbed on an arc, 15 tiles, noise and sound by material, glass breaks); sneak speed moved to
+  Freerunning; footsteps out of Lua's reach. The 2026-11-06 plan below is kept for reference.) (**approved**, user 2026-11-06): **lose them** (sneaking and still, unseen for 3 s: chasing zombies give up),
   **quiet hands** (user 2026-11-07, replaces silent kills and widens it: any noise the master makes while
   sneaking, a kill, a door, a window, climbing over a fence or through a window, breaking glass, does not draw
   zombies: those within 16 tiles that start responding to a player sound in the next ~1 s are calmed; the Silent

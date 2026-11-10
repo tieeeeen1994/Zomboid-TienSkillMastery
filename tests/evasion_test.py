@@ -30,6 +30,7 @@ local roll = 0
 function require() end
 function getTimestampMs() return now end
 function ZombRand(n) return roll end
+function ZombRandFloat(a, b) return roll end
 function instanceof(o, c)
     if c == "IsoAnimal" then return false end
     return o.class == c
@@ -99,7 +100,7 @@ local function load_side(which)
     TienSkillMastery = { MODULE = "TSM" }
     -- The client knows only its own mastery (M.val); others come from the server's list.
     TienSkillMastery.val = function(p, id)
-        assert(id == "Freerunning.SigEvasion")
+        assert(id == "Freerunning.Evasion")
         if which == "client" and not p.localPlayer then return 0 end
         return p.master and 15 or 0
     end
@@ -118,13 +119,13 @@ local sv = load_side("server")
 tick(sv, 1000)
 local broadcast = 0
 for _, s in ipairs(sent) do
-    if s.to == "all" and s.command == "evasion" and s.args.list == "3:15" then broadcast = broadcast + 1 end
+    if s.to == "all" and s.command == "evasion" and s.args.list == "3:15.00" then broadcast = broadcast + 1 end
 end
 tick(sv, 1000)
 out[#out + 1] = "serverBroadcastOnce=" .. broadcast
 sent = {}
 sv.command("TSM", "evasionRequest", plain, {})
-out[#out + 1] = "serverAnswers=" .. tostring(sent[1] and sent[1].to == plain and sent[1].args.list == "3:15")
+out[#out + 1] = "serverAnswers=" .. tostring(sent[1] and sent[1].to == plain and sent[1].args.list == "3:15.00")
 
 -- ---- Server: only zombies no client owns.
 local owned = zombie(master, { owner = plain })
@@ -146,7 +147,8 @@ locals = { me }
 local cl = load_side("client")
 tick(cl, 1000)
 out[#out + 1] = "clientAsks=" .. tostring(sent[1] and sent[1].command == "evasionRequest")
-cl.serverCommand("TSM", "evasion", { list = "3:15" })
+cl.serverCommand("TSM", "evasion", { list = "3:15.00,7:1.50" })
+out[#out + 1] = "fractionKept=" .. tostring(TienSkillMastery.Evasion.remote[7] == 1.5)
 tick(cl, 1000)
 
 local mine = zombie(remoteMaster)

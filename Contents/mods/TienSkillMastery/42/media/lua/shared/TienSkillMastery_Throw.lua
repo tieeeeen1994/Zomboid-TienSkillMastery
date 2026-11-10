@@ -268,6 +268,7 @@ local function blocked(a, b, h)
     if not s1 or not s2 then return true end
     return (edgeBlocked(a, s1, h) or edgeBlocked(s1, b, h)) and (edgeBlocked(a, s2, h) or edgeBlocked(s2, b, h))
 end
+Th.blocked = blocked   -- Stealth's Distraction Throw flies its arc through the same test
 
 --- Height above the floor after flying `x` tiles toward a point `d` tiles away at `speed`, aimed at height `aimH`
 --- there (a person's head by default).
@@ -1095,6 +1096,9 @@ end
 --- The throw key pressed: aim, pick the weapon, queue the throw (see the header).
 function Th.throwKey(player, key)
     if not player or player:isDead() or player:getVehicle() or player:getJoypadBind() ~= -1 then return end
+    -- The same key bound to Stealth's Distraction Throw (user, 2026-11-11: separate keys that may be shared): a
+    -- throwable held in hand goes that way, and no axe or spear is thrown on top of it.
+    if M.Distraction and M.Distraction.claims and M.Distraction.claims(player, key) then return end
     if ISTimedActionQueue.hasActionType(player, "TienSkillMasteryThrowAction") then
         holdAttacks(player, key)   -- pressed again mid-throw: no shove (it would also stop the throw)
         return

@@ -1,9 +1,10 @@
-"""Runs the real UnfazedRunner file against mocks, then a Lua port of 42.21's `separate` bump roll on the result: no
-fall for a master (trees and hedges hold sprint, a character in touching reach holds sprint, the bump-repeat timer and
-a leftover bumped character are cleared, others are not solid during a stagger and put back after), vanilla's fall
-for a non-master, nothing changed for remote players, the tutorial's sprint setting left alone.
+"""Runs the real UnfazedRunner file against mocks, then a Lua port of 42.21's `separate` bump roll on the result: a
+running or sprinting master passes through zombies, animals and players (no bump, sprint never held off), trees and
+hedges hold the sprint, characters made not solid are put back when the master walks, vanilla's fall for a
+non-master, nothing changed for remote players, the tutorial's sprint setting left alone.
 
-Breaks: nohold (sprint not held near characters), nolastbump (repeat timer kept), nounsolid (others stay solid)."""
+Breaks: nounsolid (nobody made not solid), norestore (players / animals never put back), nolastbump (repeat timer
+kept)."""
 import sys
 from pathlib import Path
 
@@ -16,8 +17,8 @@ src = (repo / 'Contents/mods/TienSkillMastery/42/media/lua/client/TienSkillMaste
     .read_bytes().decode('utf-8').replace('\r\n', '\n')
 
 m = sys.argv[1] if len(sys.argv) > 1 else ''
-if m == 'nohold':
-    src = src.replace('holdSprint(player, bumping or amongTrees(player))', 'holdSprint(player, amongTrees(player))')
+if m == 'norestore':
+    src = src.replace('        pcall(function() c:setSolid(true) end)\n', '')
 if m == 'nolastbump':
     src = src.replace('player:setLastBump(0)', '')
 if m == 'nounsolid':
@@ -75,7 +76,9 @@ end
 local function player(opts)
     local p = character("IsoPlayer", opts.x or 0.5)
     p.master, p.localPlayer, p.allow = opts.master, opts.localPlayer ~= false, true
-    p.lastBump, p.bumpedChr, p.bumpType, p.sprintKey = 0, nil, "", true
+    p.lastBump, p.bumpedChr, p.bumpType, p.sprintKey, p.running = 0, nil, "", true, true
+    function p.isRunning() return p.running and not (p.sprintKey and p.allow) end
+    function p.isSprinting() return p.running and p.sprintKey and p.allow end
     function p.isLocalPlayer() return p.localPlayer end
     function p.getCurrentSquare() return square(math.floor(p.x)) end
     function p.getForwardDirection() return { getX = function() return 1 end, getY = function() return 0 end } end
@@ -117,39 +120,38 @@ pl.x = 5.7; onUpdate(pl); out[#out + 1] = "hedgeHeld=" .. tostring(not pl.allow)
 kinds = {}
 pl.x = 8.5; onUpdate(pl)
 
--- 2. Sprinting into a zombie, a second bump within 1.5 s, an animal during the stagger: always a stagger.
+-- 2. Sprinting into a zombie, then an animal and a player: passed through, sprint never held off.
 local z = character("IsoZombie", 9.0)
-movers = { pl, z }
-pl.lastBump = now - 500
-pl.roll = 0   -- every vanilla fall roll fails: only wasBumped staying false keeps them up
-onUpdate(pl)
-out[#out + 1] = "sprintHeldAtContact=" .. tostring(not pl.allow)
-out[#out + 1] = "zombieStagger=" .. tostring(separate(pl, z) == "stagger")
 local a = character("IsoAnimal", 9.1)
-movers = { pl, z, a }
-onUpdate(pl)
-out[#out + 1] = "othersUnsolidInStagger=" .. tostring(not a.solid)
-out[#out + 1] = "animalDuringStagger=" .. tostring(separate(pl, a) ~= "fall")
--- The stagger ends: the animal is solid again and a fresh bump on it is a stagger too.
-pl.bumpType, pl.bumpedChr = "", nil
-onUpdate(pl)
-out[#out + 1] = "animalPutBack=" .. tostring(a.solid)
-out[#out + 1] = "animalAfter=" .. tostring(separate(pl, a) == "stagger")
-pl.bumpType, pl.bumpedChr = "", nil
-
--- 3. A leftover bumped character (Battering Ram's shield) is cleared before a bump.
 local other = character("IsoPlayer", 9.2)
-pl.bumpedChr = z
-movers = { pl, other }
+movers = { pl, z, a, other }
+pl.lastBump = now - 500
+pl.roll = 0   -- every vanilla fall roll fails: only passing through keeps them up
 onUpdate(pl)
-out[#out + 1] = "leftoverCleared=" .. tostring(pl.bumpedChr == nil)
-out[#out + 1] = "playerStagger=" .. tostring(separate(pl, other) == "stagger")
+out[#out + 1] = "sprintKept=" .. tostring(pl.allow)
+out[#out + 1] = "zombiePassed=" .. tostring(separate(pl, z) == "none")
+out[#out + 1] = "animalPassed=" .. tostring(separate(pl, a) == "none")
+out[#out + 1] = "playerPassed=" .. tostring(separate(pl, other) == "none")
+
+-- 3. Slowing to a walk: players and animals solid again (zombies reset themselves in their own update).
+pl.running = false
+onUpdate(pl)
+out[#out + 1] = "putBackAtWalk=" .. tostring(a.solid and other.solid)
+pl.running = true
+
+-- 3b. A stagger started some other way: the bump-repeat timer is reset, others in reach are passed through.
+pl.bumpType, pl.bumpedChr = "left", z
+pl.lastBump = now - 100
+onUpdate(pl)
+out[#out + 1] = "lastBumpReset=" .. tostring(pl.lastBump == 0)
+out[#out + 1] = "othersPassedInStagger=" .. tostring(not a.solid and not other.solid)
 pl.bumpType, pl.bumpedChr = "", nil
 
--- 4. Out of reach: sprint given back.
+-- 4. Out of reach: everyone put back.
 movers = { pl }
+pl.x = 12.5
 onUpdate(pl)
-out[#out + 1] = "sprintBackWhenClear=" .. tostring(pl.allow)
+out[#out + 1] = "putBackOutOfReach=" .. tostring(a.solid and other.solid and pl.allow)
 
 -- 5. Not a master: vanilla's sprint trip happens; nothing changed.
 local plain = player({ master = false, x = 8.8 })
@@ -175,17 +177,15 @@ tut.x = 3.5
 onUpdate(tut)
 out[#out + 1] = "othersOffKept=" .. tostring(not tut.allow)
 
--- 8. Mastery lost while something is held: given back.
+-- 8. Mastery lost while passing through: everyone put back.
 local lost = player({ master = true, x = 9.5 })
-local z3 = character("IsoZombie", 9.6)
 local an = character("IsoAnimal", 9.7)
-movers = { lost, z3, an }
+movers = { lost, an }
 onUpdate(lost)
-lost.bumpType, lost.bumpedChr = "left", z3
-onUpdate(lost)
+local was = not an.solid
 lost.master = false
 onUpdate(lost)
-out[#out + 1] = "lostMasteryGivenBack=" .. tostring(lost.allow and an.solid)
+out[#out + 1] = "lostMasteryGivenBack=" .. tostring(was and an.solid and lost.allow)
 
 return table.concat(out, "\n")
 ''')

@@ -404,6 +404,11 @@ def("Conditioning", "Endurance", 10, "less")
 def("Conditioning", "CarryWeight", 5, "flat")
 def("Conditioning", "Decay", 25, "less")
 def("Freerunning", "RunEndurance", 15, "less")
+def("Freerunning", "SprintSpeed", 15, "pct")        -- position nudge while sprinting (client Movement.lua; user, 2026-11-11)
+def("Freerunning", "RunSpeed", 10, "pct")           -- the same while running, not sprinting (user, 2026-11-11)
+def("Freerunning", "CrouchSpeed", 5, "pct")         -- crouched walking and running; was Stealth.SneakSpeed 15% (user, 2026-11-11)
+-- Chance a zombie's or player's attack misses (Evasion.lua; a 15% signature until 2026-11-11, user).
+def("Freerunning", "Evasion", 25, "pts")
 
 -- Crafting
 def("Smithing", "CraftTime", 25, "less")
@@ -479,9 +484,12 @@ def("Knifework", "Ambush", 25, "pct")
 def("Swordsmanship", "StrafeSpeed", 15, "pct")
 def("Conditioning", "Recovery", 10, "pct")
 def("Conditioning", "MuscleStrain", 25, "less")
--- Safe falls: drops of up to 1 floor from mastery 5, 2 floors at 10 (user, 2026-11-07).
-def("Freerunning", "SafeFall", 2, "step", { steps = { { 5, 1 }, { 10, 2 } }, unit = "flat" })
-def("Stealth", "SneakSpeed", 15, "pct")
+-- Safe falls: drops of up to 1 floor from mastery 3, 2 from 6, 3 from 9 (user, 2026-11-11; was 1 at 5, 2 at 10);
+-- higher drops land as if one floor lower (Falls.lua).
+def("Freerunning", "SafeFall", 3, "step", { steps = { { 3, 1 }, { 6, 2 }, { 9, 3 } }, unit = "flat" })
+-- Stealth: quieter (user, 2026-11-11; Stealth.lua). Noise radius of the master's work and of their melee swings.
+def("Stealth", "QuietWork", 50, "less")
+def("Stealth", "QuietSwings", 50, "less")
 def("Smithing", "CharcoalBack", 20, "pts")
 def("Smithing", "OreYield", 15, "pct")
 def("Smithing", "TorchFuel", 20, "pts")
@@ -528,7 +536,7 @@ def("FieldMedicine", "SigNeedlework", 1, "sig")     -- recipes: bandages from ri
 def("Homesteading", "SigFields", 1, "sig")          -- tend / sow a picked area of the field
 def("Homesteading", "SigWhisperer", 1, "sig")       -- -1 stress every 10 game minutes to the animals of the master's pen
 def("StreetFighting", "SigBowlOver", 1, "sig")      -- sprinting into zombies knocks them down
-def("Freerunning", "SigEvasion", 15, "sig")         -- chance (%) a zombie's or player's attack misses (Evasion.lua)
+def("Stealth", "SigDistraction", 1, "sig")       -- the held junk lobbed to make a noise elsewhere (Distraction.lua)
 def("Freerunning", "SigUnfazedRunner", 1, "sig")    -- never trips: trees, zombies, animals, players (client UnfazedRunner.lua)
 def("Axemanship", "SigThrowAxe", 1, "sig")          -- the throw key throws a one-handed axe (spares first)
 def("Spearcraft", "SigThrowSpear", 1, "sig")        -- the throw key throws a spear (spares first)

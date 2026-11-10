@@ -5,9 +5,17 @@ Tien's Skill Mastery: movement speed as a position nudge (owner's client, single
   the anim variable `StrafeSpeed`, which `calculateWalkSpeed` rewrites in single player right before the animator
   runs, with no Lua event in between, and an MP client only gets the server's value every 2 s; Nimble's own input
   caps at level 6. Overriding vanilla's strafe XML was declined (gun mods touch it, remote players would see vanilla).
-- Stealth.SneakSpeed: sneak-walking. The sneak clips scale by `sneakLimpSpeedScale`, which
+- Crouched movement (Freerunning.CrouchSpeed below; Stealth.SneakSpeed until 2026-11-11). The sneak clips scale by `sneakLimpSpeedScale`, which
   `IsoPlayer.updateMovementRates` (~2404) resets every update after `OnPlayerUpdate`, and the animator runs right
   after the cell update with no Lua event between.
+- Freerunning.SprintSpeed (user, 2026-11-11): sprinting. The sprint clips are root motion too, and the Sprinting
+  skill only feeds the run / sprint blend. Speed anti-cheat (42.21 `AntiCheatSpeed`): the server measures each
+  player's distance over about a second (`NetworkCharacterAI.SpeedChecker`, tiles per second) and refuses a player on
+  foot above 20 tiles a second; a sprint is a fraction of that, so 15% more is far under it. Only while
+  `isSprinting()` (Java keeps a player among trees at a run, so no sprint bonus there).
+- Freerunning.RunSpeed (user, 2026-11-11): running (not sprinting), the same nudge, 10% at mastery 10.
+- Freerunning.CrouchSpeed (user, 2026-11-11): crouched (sneaking), walking or running, 5% at mastery 10; a crouched
+  run takes it instead of RunSpeed. It replaced Stealth.SneakSpeed (Stealth is to be about noise instead, user).
 
 Each update the share of last update's displacement is added with `setX` / `setY` (movement is root motion), only
 when the step stays on the same square or goes to an orthogonal neighbour that `isBlockedTo` does not refuse and that
@@ -111,13 +119,13 @@ end)
 local last = {}   -- [player num] = { x, y, z }
 
 local function shareFor(player)
-    if player:getVehicle() or player:isClimbing() or player:isRunning() or player:isSprinting() then return 0 end
+    if player:getVehicle() or player:isClimbing() then return 0 end
+    if player:isSneaking() then return M.val(player, "Freerunning.CrouchSpeed") / 100 end
+    if player:isSprinting() then return M.val(player, "Freerunning.SprintSpeed") / 100 end
+    if player:isRunning() then return M.val(player, "Freerunning.RunSpeed") / 100 end
     local share = 0
     if player:isAiming() and M.weaponMastery(player:getPrimaryHandItem()) == "Swordsmanship" then
         share = M.val(player, "Swordsmanship.StrafeSpeed")
-    end
-    if player:isSneaking() then
-        share = math.max(share, M.val(player, "Stealth.SneakSpeed"))
     end
     return share / 100
 end

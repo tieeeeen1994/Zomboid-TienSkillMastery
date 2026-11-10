@@ -1,6 +1,7 @@
 --[[
-Tien's Skill Mastery: Freerunning's signature, Evasion (user, 2026-11-06 / 2026-11-10): 15% of zombie and player
-attacks on the master miss. Animals are left out (user, 2026-11-10). Traced in the 42.21 Java (decompiled).
+Tien's Skill Mastery: Freerunning's Evasion (user, 2026-11-06 / 2026-11-10): a share of zombie and player attacks on
+the master miss, 2.5% per mastery level (25% at 10; 15% until the user raised it, 2026-11-11). A signature (15% flat) until 2026-11-11, now a passive that grows
+with the level (user). Animals are left out (user, 2026-11-10). Traced in the 42.21 Java (decompiled).
 
 Zombies (`AttackState`, run only by the zombie's owner: a client for the zombies it owns, the server for zombies no
 client owns, single player for all). `enter` sets the attack outcome field to "start" (`getAttackOutcome()` reads
@@ -42,7 +43,7 @@ local M = TienSkillMastery
 local E = {}
 M.Evasion = E
 
-local ID = "Freerunning.SigEvasion"
+local ID = "Freerunning.Evasion"
 local SCAN = 2                  -- tiles round a master searched for zombies (reach 1.0, crawlers 1.3)
 local SWING_TIMEOUT_MS = 3000
 local REFRESH_MS = 1000
@@ -74,7 +75,7 @@ local lastList = ""
 local function listOf(masters)
     local parts = {}
     for _, m in ipairs(masters) do
-        table.insert(parts, string.format("%d:%d", m.player:getOnlineID(), math.floor(m.chance + 0.5)))
+        table.insert(parts, string.format("%d:%.2f", m.player:getOnlineID(), m.chance))
     end
     table.sort(parts)
     return table.concat(parts, ",")
@@ -123,7 +124,7 @@ if isClient() then
     Events.OnServerCommand.Add(function(module, command, args)
         if module ~= M.MODULE or command ~= "evasion" or type(args) ~= "table" then return end
         local remote = {}
-        for id, chance in string.gmatch(tostring(args.list or ""), "(%d+):(%d+)") do
+        for id, chance in string.gmatch(tostring(args.list or ""), "(%d+):([%d%.]+)") do
             remote[tonumber(id)] = math.max(0, math.min(100, tonumber(chance) or 0))
         end
         E.remote = remote
@@ -166,7 +167,7 @@ local function watch(zombie, player, chance, now)
         -- A new swing.
         restore(zombie, s)
         s.at = now
-        if not zombie:isNoTeeth() and ZombRand(100) < chance then
+        if not zombie:isNoTeeth() and ZombRandFloat(0, 100) < chance then
             zombie:setNoTeeth(true)
             s.dodged = true
         end
@@ -247,7 +248,7 @@ Events.OnWeaponHitCharacter.Add(function(wielder, target, weapon, damage)
     local attackerHere = not isServer() and wielder ~= nil and instanceof(wielder, "IsoPlayer")
         and wielder:isLocalPlayer()
     if attackerHere then
-        if ZombRand(100) < chance then target:setAvoidDamage(true) end
+        if ZombRandFloat(0, 100) < chance then target:setAvoidDamage(true) end
     elseif tonumber(damage) == 0 then
         target:setAvoidDamage(true)
     end
