@@ -4,15 +4,16 @@
 
 The notes below grew as a log, and v1 sections are marked superseded. This section is the current state.
 
-- **Version 0.4.1**, on `master` and `v2-draft` (same commit), Workshop item 3836051294, **unlisted by choice**.
-- **Open masteries:** 19 of 22. Coming Soon: Freerunning, Stealth, Salvaging.
+- **Version 0.4.2**, on `master` and `v2-draft` (same commit), Workshop item 3836051294, **unlisted by choice**.
+- **Open masteries:** 20 of 22 (Freerunning opened in 0.4.2, 2026-11-10). Coming Soon: Stealth, Salvaging.
 - **Next:** play `docs/test-checklist.md` on a dedicated server with two players, then fix what it finds.
 - **Tests:** `tests/README.md` (`py tests/run_all.py`; `--release` adds the release report). They need `tests/.lupa`, installed
   once per computer. Older notes below mention harness files in a session scratchpad; those are gone.
 
 Still to do, in order:
-1. Freerunning: exhaustion no longer adding to vault trips and tall-wall failures (traced in `docs/v2-draft.md`), then Evasion
-   (15% dodge, phasing through what you run into; a dodge must happen before the client's hit roll, phasing untraced).
+1. Freerunning: Evasion's dodge and Unfazed Runner are built (2026-11-10, `shared/*_Evasion.lua`,
+   `client/*_UnfazedRunner.lua`, not played); still to do: the vault-trip /
+   tall-wall exhaustion effects (`docs/v2-draft.md`). Phase through is superseded by Unfazed Runner (stagger kept).
 2. Stealth: Lose Them, Quiet Hands, Distraction Throw (how to end a zombie's path to a sound is untraced).
 3. Salvaging needs the user's decision. Suggested: Strip Down (one click uninstalls every part) plus the time and torch
    passives on part scrapping. Other ideas are under "Salvaging's problem" below.
@@ -114,9 +115,10 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   Ideas offered, none chosen: Strip Down (one click uninstalls every part through vanilla's actions), Reclaimed Parts
   (installed parts sometimes survive scrapping), part scrapping getting the time and torch passives, Scrap Eye (forage
   Junk), Cut Through (torch opens locked doors, not traced).
-- **Coming soon: Stealth, Freerunning, Salvaging** (user, 2026-11-08: unhidden, see Parking; Stealth shows only Sneak Speed,
-  Freerunning only running endurance and safe falls, and neither has a signature). Homesteading, Hunting and Angling were on
-  this list too (their signatures not played) until the user opened them on 2026-11-09, still unplayed as far as these notes know.
+- **Coming soon: Stealth, Salvaging** (user, 2026-11-08: unhidden, see Parking; Stealth shows only Sneak Speed and has no
+  signature). Homesteading, Hunting and Angling were on this list too (their signatures not played) until the user
+  opened them on 2026-11-09, still unplayed as far as these notes know; Freerunning (running endurance, safe falls,
+  signatures Evasion and Unfazed Runner, built 2026-11-10 and not played) was opened in 0.4.2 the same day.
   `M.COMING_SOON` in the core: listed with their effects, but `M.state` gives "soon" (after picked / inactive and
   closed, whatever the members' levels, so nobody levels up to a Locked that never opens), the panel draws a grey
   Coming Soon button that does nothing, and `M.pick` refuses them on the server. Unlike parking, an existing pick
@@ -125,7 +127,19 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
 - Phase 2 (same day): the passives that fit existing hooks. Files: `shared/*_Relay.lua` (extra damage on a zombie's
   owner: own zombie inside `OnWeaponHitCharacter`, before `hitConsequences`; remote one via `zombieHit` -> server
   amount from its own copy of the mastery, 4-tile check -> `zombieDamage` to `getOwnerPlayer()`), `shared/*_Falls.lua`
-  (safe falls: `lastFallSpeed` held at 90% of the no-damage impact speed, both sides), `shared/*_WeaponsShared.lua`
+  (safe falls: `lastFallSpeed` held one update's step under the no-damage impact speed, at most 90% of it, both
+  sides), `shared/*_Evasion.lua` (Freerunning's Evasion, 2026-11-10: a dodged zombie swing is made toothless,
+  `setNoTeeth`, on the zombie's owner from "start" to the swing's end; a dodged PvP hit is `setAvoidDamage` from
+  `OnWeaponHitCharacter`, rolled on the attacker's game, and every game cancels 0-damage hits on masters; the server
+  sends every client the masters' online IDs and chances. Never register a `Hook.WeaponHitCharacter`: Java ignores
+  the Lua return and skips every weapon hit while any callback exists), `client/*_UnfazedRunner.lua` (Freerunning's
+  Unfazed Runner, 2026-11-10, "Tree Runner" before: from `OnPlayerUpdate`, which fires before the sprint input, the
+  tree trip check and `separate` in `updateInternal2`: `setAllowSprint(false)` near tree / hedge squares and while a
+  solid character is within touching reach, `setLastBump(0)`, a leftover `bumpedChr` cleared, others made not solid
+  during a stagger, so `separate`'s `wasBumped` (the fall) is never true; the stagger still plays. `BumpFall` cannot
+  be cleared after `separate`: the bumped state is entered in `postupdate` with no Lua event between. A tree-scratch
+  undo was built and dropped the same day: the user wants the scratches and tears kept),
+  `shared/*_WeaponsShared.lua`
   (jams via HandWeapon's class-table `checkJam`; tree damage taken off `IsoTree:setHealth` before vanilla's hit,
   since `getTreeDamage()` includes sharpness and the script has no getter), `shared/*_Repairs.lua` (careful
   repairs; lasting repairs removed 2026-11-08, user; around `FixingManager.fixItem`'s callers; stronger patches via `addPatchForSync` at Tailoring
@@ -428,7 +442,7 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   check owed on a server: vanilla sends the torch during `create` (`sendItemStats`, `syncItemFields`, reliable, and our
   `SyncItemFields` is unordered), so confirm the client ends on the returned uses.
 - **Not built**: only what waits with its Coming Soon mastery (Stealth: lose them, quiet hands, distraction
-  throw; Freerunning: vault / wall rolls, evasion).
+  throw; Freerunning: vault / wall rolls).
 - MP checks owed (from reading only): whether stomp's
   `ItemBodyLocation.SHOES` lookup works from Lua, `OnWeaponHitCharacter` on the attacker for a remote zombie, the
   strafe / sneak nudge feel, Gunworks bursts with the RPM wrap (where combat muscle strain lands in MP: traced 2026-11-08, on the

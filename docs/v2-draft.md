@@ -277,7 +277,13 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     Melee crit -5 L (`calculateCritChance` ~3862): reachable only as part of a reroll, left out. Not reachable:
     zombie grab defense -2 L (`testDefense` ~13155), crawler lunge fall +5 L (~13687), rope climbing speed
     (~16173), vehicle discomfort.
-- **Freerunning** (**approved**, user 2026-11-06): running endurance -15%; no damage from falls of up to 2 levels (stepped, user 2026-11-07: a 1-level drop,
+- **Freerunning** (**approved**, user 2026-11-06): running endurance -15%; second signature **Unfazed Runner** (user,
+  2026-11-10; "Tree Runner" until the same day): never trips. Sprinting into trees or hedges only drops to a run (the
+  scratches and tears stay: a tree-scratch undo was built and dropped the same day), and bumping into zombies,
+  animals or players plays the stagger but never the fall; built in `client/*_UnfazedRunner.lua`, whose header has
+  the trace (sprint held off with `setAllowSprint`, bump-repeat timer and leftover bumped character cleared, all
+  before `separate`). Supersedes the trip half of phase through (the stagger stays, by the user's choice). Other ideas checked then: quieter footsteps and less slowdown in
+  trees are Java out of Lua's reach; faster fence / window climbs would need overridden climb AnimSets; no damage from falls of up to 2 levels (stepped, user 2026-11-07: a 1-level drop,
   from the 2nd floor, at mastery 5; a 2-level drop, from the 3rd floor, at mastery 10; none below 5),
   exhaustion no longer adds to the vault trip chance, nor to tall-wall climbing failure (per level, user
   2026-11-07: each mastery level removes 10% of what exhaustion adds, all of it at mastery 10) (all three new,
@@ -287,7 +293,9 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
   dropped: movement is root motion and Sprinting's speed only feeds the run / sprint blend (v1 notes), out of
   Lua's reach. Signature **evasion** (user 2026-11-06): a chance to dodge attacks (they do not land), and the master
   phases through anything they run into without the trip animation.
-  - Dodge (**15%** an attack, flat as a signature, user 2026-11-06; to trace): the zombie's `getAttackOutcome()` turns
+  - Dodge (**15%** an attack, flat as a signature, user 2026-11-06; built 2026-11-10 the `setNoTeeth` way below,
+    `shared/*_Evasion.lua`, not played; the server takes only zombies with no `getOwnerPlayer()`, since on a server
+    `isRemoteZombie()` = no `authOwner`, the opposite of a client's meaning). First idea: the zombie's `getAttackOutcome()` turns
     "success" at the end of its start anim, before the `AttackCollisionCheck` event that resolves the hit, on the
     zombie's owner (the Deflect trace below; ZomboidFixesB42 `*_ClothingWear.lua` watches the same moment).
     `IsoZombie:setAttackOutcome` is public, so on a roll the owner sets it to a miss there; also public:
@@ -309,20 +317,24 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     (clients get only their own mastery entry today: the server would broadcast masters' evasion). Animals are
     separate (`AnimalAttackState`, server, no gate found): undo plan below; leaving animals out is fine (user,
     2026-11-10).
-  - Dodging other players (user, 2026-11-10: masters dodge PvP hits too). Traced 42.21: `IsoGameCharacter.Hit`
-    (~5856) fires `OnWeaponHitCharacter` and `OnPlayerGetDamage "WEAPONHIT"`, then `LuaHookManager.TriggerHook(
-    "WeaponHitCharacter", wielder, target, weapon, damageSplit)`; a Lua hook returning true (`Hook.WeaponHitCharacter
-    .Add(fn)`, same API as vanilla's `Hook.Attack`) makes `Hit` return 0 before `processHitDamage` and
-    `hitConsequences` (damage, hit reaction). (`setAvoidDamage(true)` is the same skip, one hit, not synced.) `Hit`
-    runs on every machine: the attacker's client (`CombatManager` ~1159, local wielder; its return value is the
-    damage put in the packet via `processClientHit`), then `PlayerHitPlayerPacket` (handlingType 3): the server
-    relays it and runs `processClient` itself, and every client runs it too, each calling `WeaponHit.process` →
-    `target.Hit(..., bRemote = true)` with the packet's damage. So every machine must agree: roll on the attacker's
-    client (needs the masters' chances, same broadcast as for zombies), whose hook returns true, so the packet
-    carries damage 0; the server's and clients' hooks then cancel any hit on a master whose damage is exactly 0
-    (a real 0-damage hit, e.g. a shove, being cancelled too is fine: user, 2026-11-10). To check: whether the
-    attacker's `HitReactionNetworkAI.calculateHitReactionFromWeapon` (still runs) / the packet's `Fall` field still
-    make the victim stagger or fall on other clients.
+  - Dodging other players (user, 2026-11-10: masters dodge PvP hits too). **Built 2026-11-10** (`shared/*_Evasion.lua`,
+    zombies too; not played). Traced 42.21: `IsoGameCharacter.Hit` (~5867) fires `OnWeaponHitCharacter` and
+    `OnPlayerGetDamage "WEAPONHIT"`, then `LuaHookManager.TriggerHook("WeaponHitCharacter", ...)`, then
+    `if (avoidDamage) return 0`, all before `processHitDamage` and `hitConsequences` (damage, hit reaction). The
+    hook is **not** usable: `Event.trigger` ignores what Lua returns and answers true whenever any callback is
+    registered, so one `Hook.WeaponHitCharacter.Add` makes every weapon hit on every character do nothing (vanilla's
+    hooks replace behaviour, e.g. `Hook.Attack`). So the dodge is `target:setAvoidDamage(true)` (public, a one-hit
+    skip read only there, not sent) from `OnWeaponHitCharacter`. `Hit` runs on every machine: the attacker's client
+    (`CombatManager` ~1159, local wielder; its return value is the damage put in the packet via `processClientHit`),
+    then `PlayerHitPlayerPacket` (handlingType 3): the server relays it and runs `processClient` itself, and every
+    client runs it too, each calling `WeaponHit.process` -> `target.Hit(..., bRemote = true)` with the packet's
+    damage. So the attacker's client rolls (needs the masters' chances, same list as for zombies), its `Hit` returns
+    0 and the packet carries damage 0; the server and other clients cancel any hit on a master whose damage is
+    exactly 0 (a real 0-damage hit, e.g. a shove, being cancelled too is fine: user, 2026-11-10). Still runs:
+    `helmetFall` (rolled before `Hit` on the attacker), `calculateHitReactionFromWeapon` after it (the packet's
+    `Fall`: a small push on other clients' copies of the victim), the server's spiked-armor check and attacker XP.
+    The packet's hit reaction is read from the attacker's copy of the victim, which `Hit` left untouched, so no
+    flinch is expected (not checked in game).
   - Dodging animals (42.21 `zombie/ai/states/animals/AnimalAttackState`, Java): on the animal's `AttackConnect`
     anim event, when the target is a player (not in a vehicle, within `adef.attackDist + 0.5`, not invisible or in
     ghost mode, line of sight clear), the server / SP computes `animal.calcDamage()` and calls
@@ -332,7 +344,7 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     and wound flags; when they drop and that animal is the attacker (`getAttackedBy` / a hit inside its attack),
     on a 15% roll put everything back (health, new scratches / cuts / bites / fractures). The hit reaction may
     still play; only the damage is dodged.
-  - Phase through (to trace): bumping into a zombie, animal or player while running sets `BumpFall` in
+  - Phase through (**superseded** 2026-11-10 by Unfazed Runner: the user keeps the stagger, only the fall goes): bumping into a zombie, animal or player while running sets `BumpFall` in
     `IsoMovingObject.separate` (see "Freerunning movement effects"); public `setBumpFall` / `setBumpType` /
     `setCollidable` exist on the player. Plan: while the master runs or sprints, clear the bump (no trip, no
     stagger) and let them pass through (`setCollidable(false)` while running past characters, if it does not also

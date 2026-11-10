@@ -122,10 +122,10 @@ M.parked = {}         -- [id] = mastery, for parked ones
 
 -- Coming soon (user, 2026-11-08): listed with their effects, but not pickable, the Pick button a grey Coming Soon.
 -- Unlike a parked mastery, a pick made before it was listed here stays and keeps working. Remove an id once it is
--- ready: Freerunning and Stealth lack most of their effects; Salvaging is too narrow as it stands. Homesteading opened
--- 2026-11-09, Angling and Hunting the same day (user).
+-- ready: Stealth lacks most of its effects; Salvaging is too narrow as it stands. Homesteading opened 2026-11-09,
+-- Angling and Hunting the same day, Freerunning 2026-11-10 (0.4.2, with Evasion and Unfazed Runner; user).
 M.COMING_SOON = {
-    Freerunning = true, Salvaging = true, Stealth = true,
+    Salvaging = true, Stealth = true,
 }
 
 M.masteries = {}      -- display order
@@ -528,6 +528,8 @@ def("FieldMedicine", "SigNeedlework", 1, "sig")     -- recipes: bandages from ri
 def("Homesteading", "SigFields", 1, "sig")          -- tend / sow a picked area of the field
 def("Homesteading", "SigWhisperer", 1, "sig")       -- -1 stress every 10 game minutes to the animals of the master's pen
 def("StreetFighting", "SigBowlOver", 1, "sig")      -- sprinting into zombies knocks them down
+def("Freerunning", "SigEvasion", 15, "sig")         -- chance (%) a zombie's or player's attack misses (Evasion.lua)
+def("Freerunning", "SigUnfazedRunner", 1, "sig")    -- never trips: trees, zombies, animals, players (client UnfazedRunner.lua)
 def("Axemanship", "SigThrowAxe", 1, "sig")          -- the throw key throws a one-handed axe (spares first)
 def("Spearcraft", "SigThrowSpear", 1, "sig")        -- the throw key throws a spear (spares first)
 -- Phase 3c passives.

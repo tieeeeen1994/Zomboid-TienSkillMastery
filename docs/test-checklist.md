@@ -1,4 +1,4 @@
-# In-game test checklist (version 0.4.1)
+# In-game test checklist (version 0.4.2)
 
 What still has to be seen on a real server before sharing the link. Written 2026-11-09. Everything here is coded and
 passes the mock tests in `tests/`; none of it has been confirmed in game unless a note says so.
@@ -24,7 +24,7 @@ they pass. When one fails, write what you saw under it, then give this file to C
 
 ## 1. Basics
 
-- [ ] Mastery tab shows 22 masteries. **Freerunning, Stealth and Salvaging** have a grey Coming Soon button, and everything else
+- [ ] Mastery tab shows 22 masteries. **Stealth and Salvaging** have a grey Coming Soon button, and everything else
       a Pick button once its skills are at 10.
 - [ ] Pick one: the choice survives leaving and rejoining. The level-up halo and sound play when a level is gained.
 - [ ] Mastery progress is earned from real XP (use the skill for a while) and is not earned by reading a skill book.
@@ -74,6 +74,20 @@ Fastest way to get a catch: with `-debug`, right-click a placed trap > **Add Ani
 - [ ] Catches arrive normally: bait is sometimes kept, the line lasts longer, junk is rarer.
 - [ ] A master checking a fishing net gets more, with no extra break or bait loss.
 - [ ] Foraging turns up worms and insects more often.
+
+## 4b. Freerunning (opened in 0.4.2, nothing played)
+
+- [ ] *Evasion*, zombies: let A's own zombies swing at A for a while. About 1 in 7 swings does nothing at all: no wound,
+      no flinch, no torn clothing. The rest land as usual. Repeat with a zombie B controls (standing near B) attacking A.
+- [ ] *Evasion*, PvP (PvP on): B hits A with a weapon many times. About 1 in 7 hits does nothing on any screen (no damage
+      on A's health panel, no flinch); the others land. A non-master hit by B takes every hit.
+- [ ] *Unfazed Runner*, trees: A sprints into a forest. A drops to a run without tripping, gets scratched / torn now and
+      then, and sprints again once out (sprint key held). Bushes behave as vanilla. A non-master still trips.
+- [ ] *Unfazed Runner*, bumps: A sprints into a zombie, into B, and into an animal: a stagger each time, never a fall,
+      also on B's screen. Bump into a second zombie during the stagger: no fall. The drop from sprint to run at contact
+      looks smooth.
+- [ ] *Unfazed Runner* with *Battering Ram* (Street Fighting picked too): zombies are still knocked down when sprinting.
+- [ ] Safe falls: a 1-floor drop at mastery 5 and a 2-floor drop at 10 do no damage, also during fast forward.
 
 ## 5. Homesteading (already pickable, mostly unplayed)
 

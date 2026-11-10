@@ -57,7 +57,7 @@ effects apply with a weapon of its kind.
   level that a close one-on-one knife stab is a jaw stab (vanilla only jaw-stabs on a critical hit).
 - **Conditioning** (Strength, Fitness): endurance used -10%, endurance recovery +10%, carry weight +5, Strength and
   Fitness decay -25%, muscle strain from everything (fighting, climbing, carrying, farming, exercise) -25%.
-- **Freerunning (coming soon)** (Sprinting, Lightfooted): endurance used running -15%, drop one floor without harm from mastery 5, two at 10.
+- **Freerunning** (Sprinting, Lightfooted): endurance used running -15%, drop one floor without harm from mastery 5, two at 10.
 - **Stealth (coming soon)** (Sneaking, Lightfooted): sneaking speed +15%.
 - **Smithing** (Metalworking, Welding, Maintenance): crafting time -25% and dismantling return +10 on metalworking
   and welding, 20% chance to undo tool wear on forging, metalworking and welding recipes, 20% chance to get back each burnt charcoal and
@@ -94,7 +94,7 @@ Whole-number bonuses (carry weight, condition, extra items) build up as a chance
 
 ## Signature abilities
 
-Each mastery also unlocks a signature ability (a few have two or three; Freerunning and Stealth have none yet), each with its own name, in full from the
+Each mastery also unlocks a signature ability (a few have two or three; Stealth has none yet), each with its own name, in full from the
 moment it is picked (it does not grow with mastery levels).
 
 - **Firearms:** *Quickdraw*: one-handed guns drawn and holstered 4 times faster. *Running Reload*: reloading does
@@ -112,6 +112,10 @@ moment it is picked (it does not grow with mastery levels).
   then the one in your hand), and it flies point first.
 - **Knifework:** *Lunge*: with at most one zombie after you, a stab at a zombie up to 1.5 tiles away (vanilla: 0.6) is a jaw stab, and you lunge in to close the gap.
 - **Conditioning:** *Pack Mule*: the Heavy Load moodle counts one level lower, for everything it does (speed, endurance, health, combat, climbing); just over your max weight there is no moodle at all.
+- **Freerunning:** *Evasion*: 15% of attacks by zombies and players miss you: no damage, no wound, no
+  flinch. Animals still hit. *Unfazed Runner*: you never trip. Sprinting into trees or hedges you run through them
+  (the branches still scratch and tear) and sprint again once clear; running into zombies, animals or players you
+  stagger but never fall.
 - **Smithing:** *Masterwork*: what you forge, and weapons and armor you weld, ignore 15% of their wear, whoever uses them. A forged blade or head keeps the mark when a smithing master assembles it into a weapon (a non-master's weapon is plain); on axes, hammers, picks, scythes and spears it covers the head and its edge, not the wooden handle.
 - **Construction:** *Clean Cuts*: one more plank from every carpentry recipe that makes planks
   (4 from a log, 2 from a large branch). *Clean Breaks*: 12 stones per large stone, not 10;
