@@ -15,11 +15,22 @@ Where 42.21 decides each thing (all on the attacking client; in MP the hit packe
   clamped 10..90 like vanilla. The from-behind extra is not. Vanilla's exclusions are kept (shove, `NoCriticals` tag,
   knife swings, which only crit on close kills), and vanilla's x1.1 combat speed for a crit is applied with it.
   P(crit) = base + reroll x base.
+- Firearm crit (Firearms.Crit, points; user, 2026-11-11: left out while guns felt too strong in 42.21, which turned
+  out to be the 42.21 bug that let every failed hit roll on a zombie do full damage). 42.22 rolls a gun's crit once
+  per trigger pull, in `pressedAttack` (`CombatManager.isCriticalHit` ~3185: `calculateCritChance(closest target)`,
+  plus `ADDITIONAL_CRITICAL_HIT_CHANCE_DEFAULT` from behind, none with `NoCriticals`), before `OnWeaponSwing`. There a
+  shot with a target and no crit becomes one with chance bonus / (100 - base), so P(crit) = base + bonus, base being
+  vanilla's chance for its target: the zombie at the `TargetDist` that `pressedAttack` stored (~3353). When that is
+  not found (a player or animal target), the chance is bonus / 100. Guns of Tien's Gun Critical Hits option (Old /
+  Enhanced) rolls every target after the first again in `OnWeaponHitCharacter`, with `calculateCritChance`, which
+  adds the gun's `getCriticalChance()`; so the gun's crit chance is also raised by the bonus for the shot at
+  `OnWeaponSwingHitPoint`, like the other fields, and those targets get it too. Client only: a hit on a zombie is
+  rolled by the shooter's client in 42.22, hits on players and animals by the server, which this file never reaches.
 - `OnWeaponSwingHitPoint(owner, weapon)` (`CombatManager.attackCollisionCheck` ~670) fires before the hit list
-  (`calculateHitInfoList`: range = `getMaxRange(owner) x getRangeMod(owner)`), the firearm crit roll (`processHit`
-  ~2923 / `hitConsequences`: `calculateCritChance` adds `getCriticalChance()` and `aimingPerkCritModifier x Aiming`),
-  the firearm hit chance (`calculateHitChanceData` ~2641: `hitChance + aimingPerkHitChanceModifier x Aiming`) and
-  the damage roll (~783: `getMinDamage()` .. `getMaxDamage()`). Knockback is `pushBackMod x knockbackMod x
+  (`calculateHitInfoList`: range = `getMaxRange(owner) x getRangeMod(owner)`), the firearm hit chance
+  (`calculateHitChanceData` ~2641: `hitChance + aimingPerkHitChanceModifier x Aiming`) and the damage roll (~783:
+  `getMinDamage()` .. `getMaxDamage()`). The trigger pull's firearm crit (42.22) is rolled before it (see Firearm
+  crit above); only Guns of Tien's per-target rolls come after it. Knockback is `pushBackMod x knockbackMod x
   shovingMod` (HandWeapon ~2492). So those weapon fields are raised on that weapon instance for the swing and put back
   on the next tick, only where nothing else changed them meanwhile (Gunworks also handles this event). The event
   also fires on the server for firearm hits (`fields/hit/Player` ~168); this file is client only and acts for local
@@ -274,8 +285,64 @@ local function updateLunge(player)
     end
 end
 
+--- The zombie a shot was aimed at, as vanilla chose it in `pressedAttack`: the live zombie on this level, in front,
+--- whose centre distance is the `TargetDist` it stored (within 0.15; on the floor too, unlike `swingTarget`).
+local function shotTarget(player)
+    if not hasTarget(player) then return nil end
+    local want = player:getVariableFloat("TargetDist", -1)
+    if not want or want <= 0 then return nil end
+    local list = getCell() and getCell():getZombieList()
+    if not list then return nil end
+    local px, py = player:getX(), player:getY()
+    local fx, fy = player:getForwardDirectionX(), player:getForwardDirectionY()
+    local best, bestDiff = nil, 0.15
+    for i = 0, list:size() - 1 do
+        local z = list:get(i)
+        if z and not z:isDead() and not z:isReanimatedForGrappleOnly() and math.abs(z:getZ() - player:getZ()) < 0.5 then
+            local dx, dy = z:getX() - px, z:getY() - py
+            local diff = math.abs(math.sqrt(dx * dx + dy * dy) - want)
+            if diff < bestDiff and dx * fx + dy * fy > 0 then
+                best, bestDiff = z, diff
+            end
+        end
+    end
+    return best
+end
+
+--- Vanilla's trigger-pull crit chance for this shot (`CombatManager.isCriticalHit`), or nil when its target is unknown.
+local function shotCritChance(player)
+    local target = shotTarget(player)
+    if not target then return nil end
+    local chance = player:calculateCritChance(target)
+    if player:isAttackFromBehind() then
+        local ok, extra = pcall(function()
+            return getCombatConfig():get(CombatConfigKey.ADDITIONAL_CRITICAL_HIT_CHANCE_DEFAULT)
+        end)
+        if ok and type(extra) == "number" then chance = chance + extra end
+    end
+    return math.max(0, math.min(100, chance))
+end
+
+--- Firearms.Crit on the trigger pull: a shot vanilla did not make a crit becomes one with bonus / (100 - base).
+local function firearmCrit(player, weapon)
+    local bonus = M.val(player, "Firearms.Crit")
+    if bonus <= 0 or player:isCriticalHit() or player:isDoShove() or not hasTarget(player) then return end
+    if weapon:hasTag(ItemTag.NO_CRITICALS) then return end
+    local base = shotCritChance(player)
+    local chance = bonus
+    if base then
+        if base >= 100 then return end
+        chance = 100 * bonus / (100 - base)
+    end
+    if ZombRandFloat(0, 100) < chance then
+        player:setCriticalHit(true)
+        player:setCombatSpeed(player:getCombatSpeed() * 1.1)
+    end
+end
+
 local function onFirearmSwing(player, weapon)
     lastShot[player:getPlayerNum()] = getTimestampMs()
+    firearmCrit(player, weapon)
     local rate = M.val(player, "Firearms.FireRate")
     if rate <= 0 then return end
     local f = 1 + rate / 100
@@ -401,6 +468,11 @@ local function onHitPoint(owner, weapon)
         local hit = M.val(owner, "Firearms.HitChance")
         if hit > 0 and aiming > 0 then
             change(entry, "aimHit", weapon:getAimingPerkHitChanceModifier() + hit / aiming)
+        end
+        -- For per-target crit rolls after this event (Guns of Tien's Old / Enhanced); see Firearm crit above.
+        local crit = M.val(owner, "Firearms.Crit")
+        if crit > 0 and not weapon:hasTag(ItemTag.NO_CRITICALS) then
+            change(entry, "crit", weapon:getCriticalChance() + crit)
         end
         local dmg = M.val(owner, "Firearms.Damage")
         if dmg > 0 then

@@ -28,6 +28,8 @@ are at the top of each file). A break should print FAILED.
 | `falls_test.py` | Safe falls on a port of `updateFalling` at 1x and 5x: safe drops harmless, higher drops one floor lower, non-masters vanilla |
 | `stealth_test.py` | Stealth: own-square work noise cut, admin noises and non-masters left alone, a master's melee weapon quieter while held and put back after, guns left alone |
 | `distraction_test.py` | Distraction Throw: what is throwable, only from the hand and for a master, the server's checks, the arc (walls, low fences), glass breaking, landing noise and sound by material |
+| `losethem_test.py` | Stealth's Lose Them and Unseen: the server's list of masters, Lose Them timed on the master's game (crouched, out of sight, 3 s) and applied on the zombie's owner, here or through the server, Unseen dropping only new targets of a crouched and still master and walking them on or away, the cleared "last spotted" |
+| `crit_test.py` | Firearms crit: a trigger pull with a target crits at vanilla's chance plus the bonus, never for non-masters or NoCriticals guns; the gun's crit chance raised for the shot (Guns of Tien's per-target rolls) and put back |
 | `preflight.py` | Release report: Lua compiles, translations and labels, scripts, leftovers, values, mod.info |
 
 Lua 5.5 is stricter than the game's Kahlua in places, and it has things Kahlua lacks, so passing here is not proof the

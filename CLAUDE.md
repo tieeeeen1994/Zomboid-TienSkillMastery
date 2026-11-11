@@ -1,41 +1,44 @@
 # Tien's Skill Mastery — working notes
 
-## Start here (status 2026-11-10)
+## Start here (status 2026-11-11)
 
 The notes below grew as a log, and v1 sections are marked superseded. This section is the current state.
 
-- **Version 0.4.2**, on `master` and `v2-draft` (same commit), Workshop item 3836051294, **unlisted by choice**.
-- **Open masteries:** 20 of 22 (Freerunning opened in 0.4.2, 2026-11-10). Coming Soon: Stealth, Salvaging.
+- **Version 0.4.3**, on `master` (the only branch; `v2-draft` deleted 2026-11-11), Workshop item 3836051294, **unlisted by choice**.
+- **Open masteries:** 21 of 22 (Freerunning opened in 0.4.2, 2026-11-10; Stealth in 0.4.3, 2026-11-11). Coming Soon:
+  Salvaging.
 - **Next:** play `docs/test-checklist.md` on a dedicated server with two players, then fix what it finds.
 - **Tests:** `tests/README.md` (`py tests/run_all.py`; `--release` adds the release report). They need `tests/.lupa`, installed
   once per computer. Older notes below mention harness files in a session scratchpad; those are gone.
 
-- **Built, not played, not committed (the 0.4.3 batch, 2026-11-10 / 11):** Freerunning: sprint +15%, run +10%,
+- **Released in 0.4.3, not played (2026-11-10 / 11):** Freerunning: sprint +15%, run +10%,
   crouch +5% (client `*_Movement.lua` nudge), Evasion a 25% passive (`shared/*_Evasion.lua`), safe falls in three tiers
   (1 / 2 / 3 floors at mastery 3 / 6 / 9) that land higher drops as one floor lower (`shared/*_Falls.lua`), Unfazed
-  Runner passing through characters (`client/*_UnfazedRunner.lua`). Stealth: quiet work and quiet swings, -50% at
-  mastery 10 (`shared/*_Stealth.lua`; its sneak speed became Freerunning's crouch speed), signature Distraction Throw
-  (`shared/*_Distraction.lua`, key K). Every one has a test in `tests/` and a step in `docs/test-checklist.md`.
+  Runner passing through characters (`client/*_UnfazedRunner.lua`). Stealth, opened: quiet work and quiet swings, -50%
+  at mastery 10 (`shared/*_Stealth.lua`; its sneak speed became Freerunning's crouch speed; Construction's own building
+  noise cut was removed so the two no longer stack), signature Distraction Throw (`shared/*_Distraction.lua`, key K),
+  and the signatures Lose Them (crouched and out of a chaser's sight 3 s: it gives up) and Unseen (crouched and still:
+  zombies not already after the master do not notice), both in `shared/*_LoseThem.lua`, whose header has the 42.22
+  trace. Every one has a test in `tests/` and a step in `docs/test-checklist.md`.
 
 Still to do, in order:
-1. Stealth, before release: pick the metal (can) landing sound of Distraction Throw. Vanilla has no can-drop event;
-   candidates to audition (Debug > Audio > FMOD event player): `LongHandleCanDrop`, `WoodenStickCanDrop`,
-   `LongHandleCanHit`, `BreakMetalItem` (the placeholder in `D.GROUPS`), or ship an own `.ogg` (needs a recording the
-   user may redistribute). Add a throw whoosh at the release (`NoiseMakerThrow` or `MolotovCocktailThrow`, from
-   `DA:release` in Distraction.lua, played like the axe throw's swing sound in Throw.lua's `TA:release`). Then decide whether Stealth leaves Coming Soon.
-2. Stealth, later: Lose Them as a second signature (zombies chasing a crouched master who is out of sight drop the
-   target, `setTarget(nil)` + `isTargetVisible()`; they still walk to where they last saw the master, since
-   `lastTargetSeenX/Y/Z` are fields Lua cannot clear). Unseen (crouched and still, passing zombies do not notice) only
-   after Lose Them works.
-3. Tomahawk and Javelin signatures should produce a sound.
-4. Freerunning: the vault-trip / tall-wall exhaustion effects (`docs/v2-draft.md`; out of Lua's reach as far as traced).
-5. Salvaging needs the user's decision. Suggested: Strip Down (one click uninstalls every part) plus the time and torch
+1. Stealth in game: Distraction Throw's sound volumes (chosen 2026-11-11 from offline renders, see "Sounds" below:
+   glass `SmashedBottleBreak`, metal `BreakMetalItem`, stone `StoneDrop`, and the mod's own synthesised can landing
+   and release whoosh, both approved from previews), and Lose Them / Unseen on a server. Engine findings for anyone
+   touching zombie targets: `setTarget(nil)` alone does not stick (for ~15 s after a sighting the zombie re-spots its
+   "last spotted" by force every update); `setUseless(true)` + `spotted(player, true)` + useless back clears both. In
+   multiplayer a zombie only picks up a new target while idle, eating, sitting or turning
+   (`NetworkZombieManager.canSpotted`). pzopt staggers `OnZombieUpdate` handlers (`pzopt/LuaZombie`), so these run
+   from OnTick.
+2. Tomahawk and Javelin signatures should produce a sound.
+3. Freerunning: the vault-trip / tall-wall exhaustion effects (`docs/v2-draft.md`; out of Lua's reach as far as traced).
+4. Salvaging needs the user's decision. Suggested: Strip Down (one click uninstalls every part) plus the time and torch
    passives on part scrapping. Other ideas are under "Salvaging's problem" below.
-6. Skill Journal recording and restoring mastery (low priority).
-7. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
+5. Skill Journal recording and restoring mastery (low priority).
+6. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
 
 Releasing: bump `modversion` in `mod.info`, drop "(coming soon)" from `README.md` for anything opened, remove the id from
-`M.COMING_SOON`, run `py scripts/make_workshop.py`, `py tests/run_all.py --release`. Commit, fast-forward master, upload in
+`M.COMING_SOON`, run `py scripts/make_workshop.py`, `py tests/run_all.py --release`. Commit on master, upload in
 game. The summary goes in `workshop.txt` (Steam caps it at 8000 characters) and the full text in `forum.txt`, the pinned
 Discussions thread, which the user pastes in; keep `README.md` the full source and never trim features to fit.
 
@@ -64,6 +67,21 @@ are in `docs/working-rules.md` (2026-11-11, user: keep every memory in the repos
 
 Windows tools: Python is `py`. The game is at `C:/Program Files (x86)/Steam/steamapps/common/ProjectZomboid`; its `jre64/bin/java.exe`
 runs Vineflower on the jar's Java 25 classes (recipe in ZomboidFixesB42's `CLAUDE.md`, a separate repo).
+
+### Sounds (2026-11-11)
+
+- **Hearing vanilla sounds without the game:** the game's own `fmodstudio.dll` / `fmod.dll` (game folder, version
+  0x00020399) through Python `ctypes` render any event of `media/sound/banks/ZomboidSound*.bank` to a WAV: output type 5
+  (`WAVWRITER_NRT`, the WAV path as `extradriverdata`), Studio initialised with the synchronous-update flag 0x2, and
+  `EventDescription_LoadSampleData` + `System_FlushSampleLoading` before playing (else the first plays come out silent).
+  Script names map to events in `media/scripts/generated/sounds/**` (`event = Path` = `event:/Path`). Found that way:
+  `BreakGlassItem` is near silent (no vanilla code plays it), `LongHandleCanDrop` and `WoodenStickCanDrop` are the same
+  samples, and no vanilla event is a tin can landing.
+- **Own sounds:** `scripts/make_sounds.py` synthesises them (numpy + soundfile, Ogg Vorbis, fixed seeds, nothing to
+  license) into `42/media/sounds/`; `media/scripts/TienSkillMastery_sounds.txt` (module Base, several `clip`s = one
+  picked at random, `GameSound.getRandomClip`) names them. The game's `fmod.dll` `System_CreateSound` loads the files
+  (checked; type 10 = Ogg Vorbis). Used: `TsmDistractionWhoosh` (release), `TsmDistractionCanLand` (cans).
+  The user approved both from the preview WAVs (2026-11-11); keep the current seeds and parameters unless asked.
 
 ## Overview and history
 
@@ -163,8 +181,8 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   since `getTreeDamage()` includes sharpness and the script has no getter), `shared/*_Repairs.lua` (careful
   repairs; lasting repairs removed 2026-11-08, user; around `FixingManager.fixItem`'s callers; stronger patches via `addPatchForSync` at Tailoring
   10 x 1.5, vanilla's condition gain kept in modData `TSM_PatchGain` because the rebuilt patch has none),
-  `client/*_Movement.lua` (strafe / sneak position nudge), `client/*_BuildNoise.lua` (quiet work: `addSound` swapped
-  during `ISBuildAction:update`). Extended: Combat (fire rate: shoot speed variables + recoil-delay drain floored at
+  `client/*_Movement.lua` (strafe / sneak position nudge). (`client/*_BuildNoise.lua`, Construction's building noise,
+  removed 2026-11-11, user: it stacked with Stealth's Quiet Work, which covers building.) Extended: Combat (fire rate: shoot speed variables + recoil-delay drain floored at
   150 ms per shot for `AntiCheatHitWeapon`; Gunworks via its `getWeaponRPM` during `canFire`; Knifework's melee-delay
   drain; stomp via the shoes' `setStompPower`; Executioner finds the close-kill target itself because
   `AttackVars.closeKill` has no getter), Physical (sneak-run endurance, recovery, muscle strain, wear undo over both
@@ -460,8 +478,8 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   Lua's `ISBuildIsoEntity:create` consumes through `buildPanelLogic:performCurrentRecipe()`, so it can be wrapped. In-game
   check owed on a server: vanilla sends the torch during `create` (`sendItemStats`, `syncItemFields`, reliable, and our
   `SyncItemFields` is unordered), so confirm the client ends on the returned uses.
-- **Not built**: only what waits with its Coming Soon mastery (Stealth: lose them, quiet hands, distraction
-  throw; Freerunning: vault / wall rolls).
+- **Not built**: Freerunning's vault / wall rolls. Stealth's distraction throw, lose them and unseen were built
+  2026-11-11; its older quiet hands plan gave way to the noise rework the same day.
 - MP checks owed (from reading only): whether stomp's
   `ItemBodyLocation.SHOES` lookup works from Lua, `OnWeaponHitCharacter` on the attacker for a remote zombie, the
   strafe / sneak nudge feel, Gunworks bursts with the RPM wrap (where combat muscle strain lands in MP: traced 2026-11-08, on the
@@ -600,8 +618,14 @@ it differs, is in "Built hooks" below.
   wear, thump chance 15 + `getMeleeCombatMod`, fend off +3/level; Axe/Blunt/Spear `getDamageMod` 1.1 (3-6) / 1.2 (7+),
   `getRangeMod` 1.2 (7+), `getFatigueMod` 0.8 (8+); Axe `getKnockbackMod` 2.0 (6+). `HandWeapon.getSpeedMod` and
   `getToHitMod` have no callers. Timing (client, `CombatManager.attackCollisionCheck`): `OnWeaponSwingHitPoint` fires
-  first, then `calculateHitInfoList` (range), `processHit` (crit roll), the damage roll; so per-swing weapon instance
-  boosts (min/max damage, max range, crit chance, push-back) work. Swing endurance is charged on the server
+  first, then `calculateHitInfoList` (range), `processHit` (crit roll, 42.21 only), the damage roll; so per-swing
+  weapon instance boosts (min/max damage, max range, push-back) work. 42.22 rolls a firearm crit once per trigger
+  pull in `pressedAttack`, before this event, so a firearm crit field raised here no longer reaches that roll;
+  Guns of Tien's Gun Critical Hits option (Old / Enhanced) re-rolls per target after it and does pick it up for
+  every target after the first. Firearms.Crit (+5 pts at 10, user 2026-11-11, back after being dropped on
+  2026-11-06: guns only felt too strong because of 42.21's damage-chance bug) does both: the trigger pull is topped
+  up in `OnWeaponSwing` (bonus / (100 - vanilla's chance for the `TargetDist` zombie), so P = base + bonus) and the
+  gun's crit chance is raised for the shot at `OnWeaponSwingHitPoint`; `tests/crit_test.py`. Swing endurance is charged on the server
   (`AttackCollisionCheckPacket.processServer` -> `processWeaponEndurance`; `PlayerHitCharacter` ->
   `applyMeleeEnduranceLoss`) with no Lua event in between.
 

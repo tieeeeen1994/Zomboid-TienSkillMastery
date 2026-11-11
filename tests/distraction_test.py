@@ -1,8 +1,8 @@
 """Runs the real Distraction file on a mocked server: what counts as throwable (tags, weight, display category,
 weapons / clothing / bags / books refused), only from the hand and only for a master, the server's checks (item ID,
 15-tile cap), the arc (lands at the aim, stopped by a wall, clears a low fence only while high), and the landing:
-glass breaks into broken glass with no item left, metal and stone land as items, each makes its noise (no source)
-and its sound.
+glass breaks into broken glass with no item left, cans, metal and stone land as items, each makes its noise (no
+source) and its sound.
 
 Breaks: nomaterial (scrap tag without the Material category accepted), nocap (range not capped), noglass (glass lands
 as an item)."""
@@ -160,16 +160,16 @@ out[#out + 1] = "glassFlew=" .. tostring(f ~= nil and math.abs(f.x - 8.5) < 0.01
 now = now + 5000; tickFn()
 out[#out + 1] = "glassBroke=" .. tostring(glassAt[1] == 8 and #worldItems == 0)
 out[#out + 1] = "glassNoise=" .. tostring(noises[1] and noises[1].source == nil and noises[1].r == 20 and noises[1].x == 8)
-out[#out + 1] = "glassSound=" .. tostring(sent[#sent].command == "distractLand" and sent[#sent].args.sound == "BreakGlassItem")
+out[#out + 1] = "glassSound=" .. tostring(sent[#sent].command == "distractLand" and sent[#sent].args.sound == "SmashedBottleBreak")
 
--- Metal can, a wall after x = 4: stopped there, lands as an item, noise 15.
+-- A can, a wall after x = 4: stopped there, lands as an item, noise 15, the mod's own can sound.
 walls[4] = true
 hold(pl, can)
 clientCommand("TSM", "distractThrow", pl, { id = can.id, tx = 9.5, ty = 0.5 })
 now = now + 5000; tickFn()
 local w = worldItems[1]
 out[#out + 1] = "wallStops=" .. tostring(w ~= nil and w.item == can and w.x < 5 and w.x > 4)
-out[#out + 1] = "metal=" .. tostring(noises[2].r == 15 and sent[#sent].args.sound == "BreakMetalItem")
+out[#out + 1] = "can=" .. tostring(noises[2].r == 15 and sent[#sent].args.sound == "TsmDistractionCanLand")
 walls[4] = nil
 
 -- A low fence at x = 6: a far throw clears it (high there); a short throw landing beyond it does not.
@@ -187,6 +187,12 @@ out[#out + 1] = "lowFenceStops=" .. tostring(worldItems[3] and worldItems[3].x <
 fences[6] = nil
 pl.x = 0.5
 
+-- Scrap metal: noise 15, the vanilla metal sound.
+hold(pl, scrap)
+clientCommand("TSM", "distractThrow", pl, { id = scrap.id, tx = 3.5, ty = 0.5 })
+now = now + 5000; tickFn()
+out[#out + 1] = "metal=" .. tostring(noises[#noises].r == 15 and sent[#sent].args.sound == "BreakMetalItem")
+
 -- 15-tile cap.
 local jar = item("Base.EmptyJar", { tags = { "base:glass" }, weight = 0.2 })
 hold(pl, jar)
@@ -199,7 +205,7 @@ return table.concat(out, "\n")
 print(result)
 lines = result.split('\n')
 bad = [l for l in lines if l.endswith('=false')]
-if 'groups=glass,nil,metal,metal,nil,stone,stone,nil,nil,nil' not in lines:
+if 'groups=glass,nil,can,metal,nil,stone,stone,nil,nil,nil' not in lines:
     bad.append('groups')
 if bad:
     print('FAILED:', bad)
