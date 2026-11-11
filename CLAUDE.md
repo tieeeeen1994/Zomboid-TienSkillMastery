@@ -4,7 +4,7 @@
 
 The notes below grew as a log, and v1 sections are marked superseded. This section is the current state.
 
-- **Version 0.4.3**, on `master` and `v2-draft` (same commit), Workshop item 3836051294, **unlisted by choice**.
+- **Version 0.4.3**, on `master` (the only branch; `v2-draft` deleted 2026-11-11), Workshop item 3836051294, **unlisted by choice**.
 - **Open masteries:** 21 of 22 (Freerunning opened in 0.4.2, 2026-11-10; Stealth in 0.4.3, 2026-11-11). Coming Soon:
   Salvaging.
 - **Next:** play `docs/test-checklist.md` on a dedicated server with two players, then fix what it finds.
@@ -38,7 +38,7 @@ Still to do, in order:
 6. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
 
 Releasing: bump `modversion` in `mod.info`, drop "(coming soon)" from `README.md` for anything opened, remove the id from
-`M.COMING_SOON`, run `py scripts/make_workshop.py`, `py tests/run_all.py --release`. Commit, fast-forward master, upload in
+`M.COMING_SOON`, run `py scripts/make_workshop.py`, `py tests/run_all.py --release`. Commit on master, upload in
 game. The summary goes in `workshop.txt` (Steam caps it at 8000 characters) and the full text in `forum.txt`, the pinned
 Discussions thread, which the user pastes in; keep `README.md` the full source and never trim features to fit.
 
