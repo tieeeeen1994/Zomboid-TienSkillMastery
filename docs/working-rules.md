@@ -195,6 +195,6 @@ see `shared/TienSkillMastery_Signatures.lua`) and for the throw (its grenade num
 Started 2026-11-05 as a standalone mod: mastery past skill level 10, earned only by experience, never by reading,
 with prestige after mastery 10; a Skill Journal (workshop 3776641628) that restores it is wanted later, low priority.
 v2 (picked masteries over groups of skills, at most three, permanent) replaced v1; its design and every decision are
-in `docs/v2-draft.md`. 0.4.0 merged to master 2026-11-09; 0.4.1 and 0.4.2 (Freerunning opened) on 2026-11-10; the
-Workshop item is unlisted by choice. What has been played, what is built but unplayed, and what is still to do are
+in `docs/v2-draft.md`. 0.4.0 merged to master 2026-11-09; 0.4.1 and 0.4.2 (Freerunning opened) on 2026-11-10; 0.4.3
+(Stealth opened) on 2026-11-11; the Workshop item is unlisted by choice. What has been played, what is built but unplayed, and what is still to do are
 at the top of `CLAUDE.md`.

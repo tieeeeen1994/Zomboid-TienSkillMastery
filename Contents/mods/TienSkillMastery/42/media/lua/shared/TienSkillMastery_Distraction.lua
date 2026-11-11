@@ -8,9 +8,9 @@ target follows it), and a glass item breaks into broken glass.
 What can be thrown (`D.groupOf`, from the item script, so modded items with the same tags join; user: only what makes
 sense, shown as "Throwable" in a master's tooltips): up to 1.0 weight, never a weapon, clothing, bag or book,
 - glass: tag `base:glass` (bottles full or empty, jars, drinking glasses, glass panes),
-- metal: tag `base:emptycan` / `base:tincan` (cans), or `base:hasmetal` / `base:smeltableironsmall` in the
-  "Material" display category (scrap, chunks, pieces, nails, nuts and bolts; the tags alone also cover ~200 tools,
-  electronics and keepsakes),
+- can: tag `base:emptycan` / `base:tincan`,
+- metal: `base:hasmetal` / `base:smeltableironsmall` in the "Material" display category (scrap, chunks, pieces,
+  nails, nuts and bolts; the tags alone also cover ~200 tools, electronics and keepsakes),
 - stone: tag `base:stone` or `base:flintpiece`, bricks and stone blocks.
 Always the item in hand (primary, else the off hand; user), never from the inventory.
 
@@ -24,13 +24,18 @@ Landing (42.21): glass: `square:addBrokenGlass()` (only on a free square; the se
 item is gone; others: `square:AddWorldInventoryItem` (the server sends it). The noise: the Lua global
 `addSound(nil, x, y, z, radius, volume)` = `WorldSoundManager.addSound(...)`, no source, made on the server and sent
 by it to the clients, which run most zombies. Players hear the group's sound at the spot (`getFreeEmitter` +
-`playSoundImpl`, as the axe throw's hits; the server broadcasts it): vanilla's `BreakGlassItem`, `BreakMetalItem`
-(a placeholder until the user picks a metal sound), and for stones the item's own `DropSound` (`StoneDrop` for
-stones) or `StoneDrop`. Sounds and radii are the table D.GROUPS.
+`playSoundImpl`, as the axe throw's hits; the server broadcasts it). Chosen 2026-11-11 by listening to renders of
+the game's banks (user): vanilla's `SmashedBottleBreak` for glass (`BreakGlassItem`, the first choice, renders
+near silent: no vanilla code plays it), `BreakMetalItem` for metal, for stones the item's own `DropSound` (`StoneDrop`
+for stones) or `StoneDrop`; cans have no fitting vanilla sound (the "Can" events are long-handle weapons dropping), so
+`TsmDistractionCanLand` is the mod's own (media/scripts/TienSkillMastery_sounds.txt, synthesised by
+scripts/make_sounds.py). Sounds and radii are the table D.GROUPS.
 
 The throw is the axe throw's action animation (`TsmThrowAxe`, vanilla's Molotov throw clip with a release event),
-a short client-only action; at the release the client sends `distractThrow { id, tx, ty }`, and the server checks the
-item is still in that player's hand with that ID and throwable, and that the player has the signature.
+a short client-only action; at the release the client plays the mod's own whoosh (`TsmDistractionWhoosh` on the
+character with `playSound`, which an MP client also sends to the players near it, as the axe throw's swing) and sends
+`distractThrow { id, tx, ty }`, and the server checks the item is still in that player's hand with that ID and
+throwable, and that the player has the signature.
 ]]
 
 require "TimedActions/ISBaseTimedAction"
@@ -51,10 +56,12 @@ D.ARC_ROOFED = 0.6    -- highest peak (levels) when the thrower or the aimed squ
 D.MAX_WEIGHT = 1.0
 D.STEP = 0.2
 D.GROUPS = {
-    glass = { sound = "BreakGlassItem", noise = 20, breaks = true },
+    glass = { sound = "SmashedBottleBreak", noise = 20, breaks = true },
+    can = { sound = "TsmDistractionCanLand", noise = 15 },
     metal = { sound = "BreakMetalItem", noise = 15 },
     stone = { sound = "StoneDrop", noise = 10, ownDrop = true },
 }
+D.WHOOSH = "TsmDistractionWhoosh"
 D.EXTRA_STONES = { ["Base.ClayBrick"] = true, ["Base.ClayBrickUnfired"] = true, ["Base.StoneBlock"] = true }
 
 -- ---------------------------------------------------------------------------------------------------------------
@@ -77,7 +84,7 @@ local function scriptGroup(fullType, script)
     if not okW or type(w) ~= "number" or w > D.MAX_WEIGHT then return false end
     local tags = tagSet(script)
     if tags["base:glass"] then return "glass" end
-    if tags["base:emptycan"] or tags["base:tincan"] then return "metal" end
+    if tags["base:emptycan"] or tags["base:tincan"] then return "can" end
     if tags["base:hasmetal"] or tags["base:smeltableironsmall"] then
         local ok, cat = pcall(function() return script:getDisplayCategory() end)
         if ok and cat == "Material" then return "metal" end
@@ -86,7 +93,7 @@ local function scriptGroup(fullType, script)
     return false
 end
 
---- "glass", "metal", "stone", or nil when the item cannot be thrown.
+--- "glass", "can", "metal", "stone", or nil when the item cannot be thrown.
 function D.groupOf(item)
     if not item or not instanceof(item, "InventoryItem") then return nil end
     if instanceof(item, "HandWeapon") or instanceof(item, "Clothing") or instanceof(item, "InventoryContainer")
@@ -350,6 +357,7 @@ end
 function DA:release()
     if self.released then return end
     self.released = true
+    self.character:playSound(D.WHOOSH)
     if isClient() then
         sendClientCommand(self.character, M.MODULE, "distractThrow", { id = self.item:getID(), tx = self.tx, ty = self.ty })
     else

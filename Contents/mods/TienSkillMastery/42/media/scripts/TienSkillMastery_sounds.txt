@@ -1,0 +1,57 @@
+module Base
+{
+    /* Distraction Throw's own sounds (scripts/make_sounds.py synthesises them; a clip is picked at random; module Base as Guns of Tien's sounds). */
+    sound TsmDistractionWhoosh
+    {
+        category = Item,
+        maxInstancesPerEmitter = 2,
+        clip
+        {
+            distanceMax = 12,
+            volume = 0.6,
+            file = media/sounds/tsm_throw_whoosh_01.ogg,
+        }
+        clip
+        {
+            distanceMax = 12,
+            volume = 0.6,
+            file = media/sounds/tsm_throw_whoosh_02.ogg,
+        }
+        clip
+        {
+            distanceMax = 12,
+            volume = 0.6,
+            file = media/sounds/tsm_throw_whoosh_03.ogg,
+        }
+    }
+
+    sound TsmDistractionCanLand
+    {
+        category = Item,
+        maxInstancesPerEmitter = 3,
+        clip
+        {
+            distanceMax = 25,
+            volume = 0.8,
+            file = media/sounds/tsm_can_land_01.ogg,
+        }
+        clip
+        {
+            distanceMax = 25,
+            volume = 0.8,
+            file = media/sounds/tsm_can_land_02.ogg,
+        }
+        clip
+        {
+            distanceMax = 25,
+            volume = 0.8,
+            file = media/sounds/tsm_can_land_03.ogg,
+        }
+        clip
+        {
+            distanceMax = 25,
+            volume = 0.8,
+            file = media/sounds/tsm_can_land_04.ogg,
+        }
+    }
+}

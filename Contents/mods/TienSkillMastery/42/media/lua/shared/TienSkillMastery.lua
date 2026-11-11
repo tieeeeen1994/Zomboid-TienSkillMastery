@@ -122,10 +122,11 @@ M.parked = {}         -- [id] = mastery, for parked ones
 
 -- Coming soon (user, 2026-11-08): listed with their effects, but not pickable, the Pick button a grey Coming Soon.
 -- Unlike a parked mastery, a pick made before it was listed here stays and keeps working. Remove an id once it is
--- ready: Stealth lacks most of its effects; Salvaging is too narrow as it stands. Homesteading opened 2026-11-09,
--- Angling and Hunting the same day, Freerunning 2026-11-10 (0.4.2, with Evasion and Unfazed Runner; user).
+-- ready: Salvaging is too narrow as it stands. Homesteading opened 2026-11-09, Angling and Hunting the same day,
+-- Freerunning 2026-11-10 (0.4.2, with Evasion and Unfazed Runner; user), Stealth 2026-11-11 (0.4.3, with Quiet Work,
+-- Quiet Swings, Distraction Throw, Lose Them and Unseen; user).
 M.COMING_SOON = {
-    Salvaging = true, Stealth = true,
+    Salvaging = true,
 }
 
 M.masteries = {}      -- display order
@@ -366,6 +367,7 @@ end
 -- Combat
 def("Firearms", "Damage", 10, "pct")
 def("Firearms", "HitChance", 5, "pts")
+def("Firearms", "Crit", 5, "pts")            -- crit chance points (user, 2026-11-11; see client/TienSkillMastery_Combat.lua)
 def("Firearms", "Range", 10, "pct")
 def("Firearms", "AimSpeed", 15, "pct")
 def("Firearms", "ReloadSpeed", 15, "pct")
@@ -493,7 +495,7 @@ def("Stealth", "QuietSwings", 50, "less")
 def("Smithing", "CharcoalBack", 20, "pts")
 def("Smithing", "OreYield", 15, "pct")
 def("Smithing", "TorchFuel", 20, "pts")
-def("Construction", "QuietWork", 50, "less")
+-- Construction.QuietWork (building noise -50%) removed 2026-11-11 (user): Stealth.QuietWork covers building noise.
 def("Salvaging", "TorchFuel", 20, "pts")
 -- Craftsman's mark: what a master makes ignores 1.5% of its wear per maker's mastery level, fixed at creation.
 def("Mending", "CarefulRepairs", 15, "pct")
@@ -537,6 +539,8 @@ def("Homesteading", "SigFields", 1, "sig")          -- tend / sow a picked area 
 def("Homesteading", "SigWhisperer", 1, "sig")       -- -1 stress every 10 game minutes to the animals of the master's pen
 def("StreetFighting", "SigBowlOver", 1, "sig")      -- sprinting into zombies knocks them down
 def("Stealth", "SigDistraction", 1, "sig")       -- the held junk lobbed to make a noise elsewhere (Distraction.lua)
+def("Stealth", "SigLoseThem", 3, "sig")          -- seconds crouched out of a chasing zombie's sight before it gives up (LoseThem.lua)
+def("Stealth", "SigUnseen", 1, "sig")            -- crouched and still: zombies not already after the master do not notice (LoseThem.lua)
 def("Freerunning", "SigUnfazedRunner", 1, "sig")    -- never trips: trees, zombies, animals, players (client UnfazedRunner.lua)
 def("Axemanship", "SigThrowAxe", 1, "sig")          -- the throw key throws a one-handed axe (spares first)
 def("Spearcraft", "SigThrowSpear", 1, "sig")        -- the throw key throws a spear (spares first)

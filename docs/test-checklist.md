@@ -1,4 +1,4 @@
-# In-game test checklist (version 0.4.2)
+# In-game test checklist (version 0.4.3)
 
 What still has to be seen on a real server before sharing the link. Written 2026-11-09. Everything here is coded and
 passes the mock tests in `tests/`; none of it has been confirmed in game unless a note says so.
@@ -24,7 +24,7 @@ they pass. When one fails, write what you saw under it, then give this file to C
 
 ## 1. Basics
 
-- [ ] Mastery tab shows 22 masteries. **Stealth and Salvaging** have a grey Coming Soon button, and everything else
+- [ ] Mastery tab shows 22 masteries. **Salvaging** has a grey Coming Soon button, and everything else
       a Pick button once its skills are at 10.
 - [ ] Pick one: the choice survives leaving and rejoining. The level-up halo and sound play when a level is gained.
 - [ ] Mastery progress is earned from real XP (use the skill for a while) and is not earned by reading a skill book.
@@ -93,7 +93,7 @@ Fastest way to get a catch: with `-debug`, right-click a placed trap > **Add Ani
       fast forward. A 3-floor drop at mastery 6 hurts like a 2-floor drop (a hard landing, not the severe one); a 4-floor
       drop at mastery 9 like a 3-floor one (severe, not lethal).
 
-## 4c. Stealth (built 2026-11-11, nothing played; Coming Soon unless opened)
+## 4c. Stealth (built 2026-11-11, opened in 0.4.3, nothing played)
 
 - [ ] *Quiet work*: with Stealth at 10, barricade or sledgehammer near zombies a little way off: fewer of them come than for a non-master at the same spot. Also on a
       dedicated server (the noise of most actions is made there).
@@ -103,7 +103,19 @@ Fastest way to get a catch: with `-debug`, right-click a placed trap > **Add Ani
       (B sees the flight), breaks with a glass sound into broken glass, and idle zombies near the spot walk to it. A
       can and a stone land as items with their sounds. "Throwable" shows in the tooltip of those items only, and only
       for the master. Bound to Space too (same key as the axe throw): a bottle in hand is lobbed, no axe thrown with it.
-      Pick the metal sound in Debug > Audio > FMOD event player (now `BreakMetalItem`, a placeholder).
+      Sounds: a whoosh as it leaves the hand (B hears it too), the bottle smash (`SmashedBottleBreak`), the mod's own
+      can clatter (an empty tin can), `BreakMetalItem` (scrap metal), the stone's drop. Each audible at the spot from a
+      few tiles away, and not too loud or too quiet next to vanilla sounds (volumes in
+      `media/scripts/TienSkillMastery_sounds.txt`).
+- [ ] *Lose Them*: get a few zombies chasing you, crouch and break line of sight (round a building corner, through a
+      door you close). About 3 s after the last one could see you, the chasers stop and stand; standing up resets the
+      clock. On a dedicated server with B nearby, so some chasers are run by B's game: those stop too (the request goes
+      through the server). Watch for a zombie that stops and then starts after you again with no sight of you (would
+      mean its forced tracking came back).
+- [ ] *Unseen*: crouch still in plain view of idle zombies (daylight, facing you): they do not come. One that turns
+      towards you walks off a few tiles instead. Stand up or move: they notice you as usual. Zombies chasing you
+      before you stopped keep coming. Also with B owning the zombies, and B (not a master) standing next to you
+      still gets noticed. Single player: a zombie walking past that keeps you in view may stall in place (known limit).
 
 ## 5. Homesteading (already pickable, mostly unplayed)
 
@@ -153,6 +165,7 @@ These come from reading the code and were never confirmed on a server.
 - [ ] Street Fighting's stomp and shove damage work with something in hand.
 - [ ] *Battering Ram* really stops the sprint trip, including with two zombies at once.
 - [ ] Firearms with Gunworks: bursts and fire rate behave, and there are no anti-cheat kicks. *Running Reload* and *Quickdraw* look right.
+- [ ] Firearms crit: a master's shots crit a little more often (+5 at mastery 10); with Guns of Tien's Gun Critical Hits on Old or Enhanced, shotgun pellets after the first get it too.
 - [ ] *Lunge*: distance and feel at 1.5 tiles, on your own and on B's zombies.
 
 **Field Medicine**

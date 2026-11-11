@@ -71,7 +71,8 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
 
 - **Firearms** (in review): damage +10%, fire rate +10% (new), hit chance +5 pts, range +10%, aim-in speed +15%,
   reload and rack speed +15%, jam chance -25% (new), firearm wear undone 20%. Crit +5 pts dropped, a third damage
-  multiplier. **Approved** (user, 2026-11-06), fire rate covering vanilla and Gunworks guns, bursts included.
+  multiplier (back on 2026-11-11, user: guns felt too strong in 42.21 only because of a bug; built in
+  client/TienSkillMastery_Combat.lua, "Firearm crit"). **Approved** (user, 2026-11-06), fire rate covering vanilla and Gunworks guns, bursts included.
   Signature, two parts (user 2026-11-06; Steady Aim declined): **quickdraw** (drawing and holstering a one-handed
   gun is always fast, whatever the hands held; vanilla's hand rules are unchanged) and **run-and-gun reload**
   (reloading does not stop when the master runs or sprints).

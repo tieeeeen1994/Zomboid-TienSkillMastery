@@ -39,7 +39,7 @@ Each mastery level gives a tenth. Plain numbers without % are percentage points 
 effects apply with a weapon of its kind.
 
 - **Firearms** (Aiming, Reloading): damage +10%, fire rate +10% (Gunworks guns too), jams -25%, hit chance +5,
-  range +10%, aim-in speed +15%, reload and rack speed +15%, 20% chance to undo firearm wear.
+  critical hit chance +5, range +10%, aim-in speed +15%, reload and rack speed +15%, 20% chance to undo firearm wear.
 - **Axemanship** (Axe, Strength): damage +10%, attack speed +5%, 10% chance to reroll a hit that did not crit, reach
   +10%, knockback +20%, endurance used swinging -15%, 20% chance to undo axe wear, damage to trees +20%.
 - **Bludgeoning** (Long Blunt, Strength): damage +10%, attack speed +5%, 5% crit reroll, knockback +15%, endurance
@@ -58,13 +58,13 @@ effects apply with a weapon of its kind.
 - **Conditioning** (Strength, Fitness): endurance used -10%, endurance recovery +10%, carry weight +5, Strength and
   Fitness decay -25%, muscle strain from everything (fighting, climbing, carrying, farming, exercise) -25%.
 - **Freerunning** (Sprinting, Lightfooted): sprinting speed +15%, running speed +10%, crouched walking and running speed +5%, endurance used running -15%, 25% of attacks by zombies and players miss you (no damage, no wound, no flinch; animals still hit), drop one floor without harm from mastery 3, two from 6 and three from 9, and from those levels any higher fall lands as if it were one floor lower.
-- **Stealth (coming soon)** (Sneaking, Lightfooted): noise of your work -50% (building, barricading, digging, clearing glass, bushes and grass, moving furniture, fishing), noise of your melee swings -50%.
+- **Stealth** (Sneaking, Lightfooted): noise of your work -50% (building, barricading, digging, clearing glass, bushes and grass, moving furniture, fishing), noise of your melee swings -50%.
 - **Smithing** (Metalworking, Welding, Maintenance): crafting time -25% and dismantling return +10 on metalworking
   and welding, 20% chance to undo tool wear on forging, metalworking and welding recipes, 20% chance to get back each burnt charcoal and
   each blowtorch use, iron from ore and blooms +15%.
 - **Construction** (Carpentry, Masonry): crafting time -25% and dismantling return +10 on carpentry and masonry,
-  built structure health +20%, unbarricading time -15%, window break chance when picking up -5, building noise
-  -50%, 15% chance to get each build material back.
+  built structure health +20%, unbarricading time -15%, window break chance when picking up -5, 15%
+  chance to get each build material back.
 - **Engineering** (Mechanics, Electrical): crafting time -25% and dismantling return +10 on electrical, part install
   and uninstall time -15%, engine repair +1 condition per part, hotwire success +10, hotwiring time -15%, 25% chance
   of an extra electronics scrap when dismantling electronics, top speed and engine power +15% while you drive.
@@ -112,10 +112,13 @@ moment it is picked (it does not grow with mastery levels).
   then the one in your hand), and it flies point first.
 - **Knifework:** *Lunge*: with at most one zombie after you, a stab at a zombie up to 1.5 tiles away (vanilla: 0.6) is a jaw stab, and you lunge in to close the gap.
 - **Conditioning:** *Pack Mule*: the Heavy Load moodle counts one level lower, for everything it does (speed, endurance, health, combat, climbing); just over your max weight there is no moodle at all.
-- **Stealth (coming soon):** *Distraction Throw*: in combat stance, the distraction key (K, rebindable; it can share a key with the axe throw) lobs the junk
+- **Stealth:** *Distraction Throw*: in combat stance, the distraction key (K, rebindable; it can share a key with the axe throw) lobs the junk
   in your hand up to 15 tiles on a grenade-like arc: bottles, jars and glasses, cans, scrap metal, stones and bricks (a master sees "Throwable" in their
-  tooltips). Where it lands it makes a noise that draws zombies that are not already after someone (glass the loudest, then metal, then stone), and
-  glass breaks into broken glass. Walls, closed doors and windows stop it; it sails over low fences.
+  tooltips). Where it lands it makes a noise that draws zombies that are not already after someone (glass the loudest, then cans and metal, then stone), and
+  glass breaks into broken glass. Walls, closed doors and windows stop it; it sails over low fences. *Lose Them*: while you are
+  crouched, a zombie chasing you that has had no sight of you for 3 seconds gives up and stands where it is. *Unseen*: while you are
+  crouched and still, zombies that were not already after you do not notice you and walk on (zombies already chasing you keep
+  coming).
 - **Freerunning:** *Unfazed Runner*: you never trip. Sprinting into trees or hedges you run through them
   (the branches still scratch and tear) and sprint again once clear; running or sprinting, you pass straight through
   zombies, animals and players without breaking stride.

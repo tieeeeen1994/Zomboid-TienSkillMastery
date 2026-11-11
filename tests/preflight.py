@@ -53,7 +53,7 @@ print('   no label:', missing or 'none')
 print('   weapon loop labels missing:', [n for n in weapon if f'IGUI_TienSkillMastery_Bonus_{n}' not in tr and not any(k.endswith('_' + n) for k in tr)] or 'none')
 print('   signature names missing:', [n for _, n in defs if n.startswith('Sig') and f'IGUI_TienSkillMastery_SigName_{n}' not in tr] or 'none')
 print('   mastery names missing:', [m for m in re.findall(r'M\.mastery\("(\w+)"', core) if f'IGUI_TienSkillMastery_Mastery_{m}' not in tr] or 'none')
-print('   leftovers of removed effects:', [k for k in tr if re.search('ForgedSpears|SpearCondition|spearmaker', k)] or 'none')
+print('   leftovers of removed effects:', [k for k in tr if re.search('ForgedSpears|SpearCondition|spearmaker|Bonus_QuietWork$', k)] or 'none')
 
 print('== scripts and anim xml')
 for p in (mod / '42/media/scripts').rglob('*.txt'):
