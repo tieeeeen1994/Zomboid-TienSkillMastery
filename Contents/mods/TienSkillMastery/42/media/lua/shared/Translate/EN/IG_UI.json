@@ -350,7 +350,7 @@
     "IGUI_TienSkillMastery_Bonus_OreYield": "Iron from ore and blooms",
     "IGUI_TienSkillMastery_Bonus_TorchFuel": "Chance to get each blowtorch use back",
     "IGUI_TienSkillMastery_Bonus_Salvaging_TorchFuel": "Chance to get each blowtorch use back when scrapping cars",
-    "IGUI_TienSkillMastery_Bonus_QuietWork": "Building noise",
+    "IGUI_TienSkillMastery_Bonus_Construction_QuietWork": "Building noise",
     "IGUI_TienSkillMastery_Bonus_CarefulRepairs": "Condition restored by repairs",
     "IGUI_TienSkillMastery_Bonus_StrongerPatches": "Patch protection",
     "IGUI_TienSkillMastery_Bonus_CrashSafety": "Crash injuries to everyone in your car",
