@@ -17,11 +17,17 @@ Tien's Skill Mastery: movement speed as a position nudge (owner's client, single
 - Freerunning.CrouchSpeed (user, 2026-11-11): crouched (sneaking), walking or running, 5% at mastery 10; a crouched
   run takes it instead of RunSpeed. It replaced Stealth.SneakSpeed (Stealth is to be about noise instead, user).
 
-Each update the share of last update's displacement is added with `setX` / `setY` (movement is root motion), only
-when the step stays on the same square or goes to an orthogonal neighbour that `isBlockedTo` does not refuse and that
-`isFree(false)` (diagonal pairs always read unblocked, so diagonal crossings are skipped). The feet slide by the
+Each update the share of this update's root motion is added to the pending next position (`setNextX` / `setNextY`),
+only when the step stays on the same square or goes to an orthogonal neighbour that `isBlockedTo` does not refuse and
+that `isFree(false)` (diagonal pairs always read unblocked, so diagonal crossings are skipped). The feet slide by the
 share; the animation is not sped up. MP: the client owns its position; these speeds are far under the Speed
 anti-cheat, and NoClip only refuses moves up a level. Steps over half a tile (teleports) are ignored.
+Why the next position (42.22, traced 2026-11-12): `IsoPlayer.updateInternal2` runs `doDeferredMovement` (root motion
+→ `moveUnmodded`, which only adds to nextX / nextY) before it fires `OnPlayerUpdate`, and `IsoMovingObject.postupdate`
+later moves x / y to the collision-checked next position. Up to 0.4.3 the nudge called `setX` / `setY`, which also set
+nextX / nextY, so every nudged update threw that update's root motion away and moved only the 5-15% share; the next
+update then measured no displacement and did not nudge. Every other update stood almost still: a stop-start stutter
+("stop dancing", user, 2026-11-12) and slower than without the bonus, for sprint, run, crouch and strafe alike.
 
 Street Fighting's signature, battering ram (phase 3b; named "bowl them over" until 2026-11-08, still `SigBowlOver` and
 relay kind "bowl" in code): sprinting with at most the first endurance moodle (the
@@ -116,8 +122,6 @@ Events.EveryOneMinute.Add(function()
     end
 end)
 
-local last = {}   -- [player num] = { x, y, z }
-
 local function shareFor(player)
     if player:getVehicle() or player:isClimbing() then return 0 end
     if player:isSneaking() then return M.val(player, "Freerunning.CrouchSpeed") / 100 end
@@ -141,22 +145,21 @@ end
 local function onPlayerUpdate(player)
     if not player or not player:isLocalPlayer() then return end
     bowlOver(player)
-    local num = player:getPlayerNum()
+    if not player:isPlayerMoving() then return end
+    -- This update's root motion is already in the next position (see the header); add the share to it and leave x / y
+    -- alone, so postupdate moves the whole step through vanilla's collision.
     local x, y, z = player:getX(), player:getY(), player:getZ()
-    local prev = last[num]
-    last[num] = { x, y, z }
-    if not prev or prev[3] ~= z or not player:isPlayerMoving() then return end
-    local dx, dy = x - prev[1], y - prev[2]
+    local nextX, nextY = player:getNextX(), player:getNextY()
+    local dx, dy = nextX - x, nextY - y
     local step = dx * dx + dy * dy
     if step <= 0.0000001 or step > 0.25 then return end
     local share = shareFor(player)
     if share <= 0 then return end
-    local nx, ny = x + dx * share, y + dy * share
+    local nx, ny = nextX + dx * share, nextY + dy * share
     local from = player:getCurrentSquare()
     local to = getCell():getGridSquare(math.floor(nx), math.floor(ny), math.floor(z))
     if not canStep(from, to) then return end
-    player:setX(nx)
-    player:setY(ny)
-    last[num] = { nx, ny, z }
+    player:setNextX(nx)
+    player:setNextY(ny)
 end
 Events.OnPlayerUpdate.Add(onPlayerUpdate)

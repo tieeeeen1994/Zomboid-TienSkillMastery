@@ -181,7 +181,9 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   since `getTreeDamage()` includes sharpness and the script has no getter), `shared/*_Repairs.lua` (careful
   repairs; lasting repairs removed 2026-11-08, user; around `FixingManager.fixItem`'s callers; stronger patches via `addPatchForSync` at Tailoring
   10 x 1.5, vanilla's condition gain kept in modData `TSM_PatchGain` because the rebuilt patch has none),
-  `client/*_Movement.lua` (strafe / sneak position nudge). (`client/*_BuildNoise.lua`, Construction's building noise,
+  `client/*_Movement.lua` (strafe / sneak / run / sprint position nudge; it must add to `setNextX/Y`, since root motion is
+  already in the next position when `OnPlayerUpdate` fires and `setX` overwrote it: a stop-start stutter until
+  2026-11-12). (`client/*_BuildNoise.lua`, Construction's building noise,
   removed 2026-11-11, user: it stacked with Stealth's Quiet Work, which covers building.) Extended: Combat (fire rate: shoot speed variables + recoil-delay drain floored at
   150 ms per shot for `AntiCheatHitWeapon`; Gunworks via its `getWeaponRPM` during `canFire`; Knifework's melee-delay
   drain; stomp via the shoes' `setStompPower`; Executioner finds the close-kill target itself because
