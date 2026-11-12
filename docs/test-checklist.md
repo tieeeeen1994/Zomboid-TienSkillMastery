@@ -83,9 +83,10 @@ Fastest way to get a catch: with `-debug`, right-click a placed trap > **Add Ani
       on A's health panel, no flinch); the others land. A non-master hit by B takes every hit.
 - [ ] *Unfazed Runner*, trees: A sprints into a forest. A drops to a run without tripping, gets scratched / torn now and
       then, and sprints again once out (sprint key held). Bushes behave as vanilla. A non-master still trips.
-- [ ] *Unfazed Runner*, bumps (changed 2026-11-11): A sprints, then runs, through a zombie, B and an animal: A passes
-      through without slowing, staggering or falling, also on B's screen. After A walks away, A and the animal
-      collide normally again (bumping into them at a walk pushes as vanilla).
+- [ ] *Unfazed Runner*, bumps (changed 2026-11-12): A, with Toggle to Sprint on, sprints into a zombie, B and an
+      animal: A and the one bumped play vanilla's stagger, A never falls, and A sprints on afterwards without pressing
+      the key again (also with Toggle to Sprint off, holding the key). Letting go of the movement keys during the
+      stagger stops A as vanilla. Also on B's screen.
 - [ ] *Unfazed Runner* with *Battering Ram* (Street Fighting picked too): zombies are still knocked down when sprinting.
 - [ ] Sprinting and running speed (added 2026-11-11): at mastery 10, A sprints about 15%, runs about 10% and moves crouched (walking or running) about 5% faster than a non-master, with
       no anti-cheat bounce or kick on the server, no sliding through walls, doors or fences; B sees A move smoothly.

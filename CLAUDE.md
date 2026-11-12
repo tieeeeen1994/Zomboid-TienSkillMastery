@@ -14,7 +14,7 @@ The notes below grew as a log, and v1 sections are marked superseded. This secti
 - **Released in 0.4.3, not played (2026-11-10 / 11):** Freerunning: sprint +15%, run +10%,
   crouch +5% (client `*_Movement.lua` nudge), Evasion a 25% passive (`shared/*_Evasion.lua`), safe falls in three tiers
   (1 / 2 / 3 floors at mastery 3 / 6 / 9) that land higher drops as one floor lower (`shared/*_Falls.lua`), Unfazed
-  Runner passing through characters (`client/*_UnfazedRunner.lua`). Stealth, opened: quiet work and quiet swings, -50%
+  Runner (`client/*_UnfazedRunner.lua`; since 2026-11-12 a stagger without the fall and the sprint toggle put back). Stealth, opened: quiet work and quiet swings, -50%
   at mastery 10 (`shared/*_Stealth.lua`; its sneak speed became Freerunning's crouch speed; Construction's own building
   noise cut was removed so the two no longer stack), signature Distraction Throw (`shared/*_Distraction.lua`, key K),
   and the signatures Lose Them (crouched and out of a chaser's sight 3 s: it gives up) and Unseen (crouched and still:
@@ -170,10 +170,11 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   sends every client the masters' online IDs and chances. Never register a `Hook.WeaponHitCharacter`: Java ignores
   the Lua return and skips every weapon hit while any callback exists), `client/*_UnfazedRunner.lua` (Freerunning's
   Unfazed Runner, 2026-11-10, "Tree Runner" before: from `OnPlayerUpdate`, which fires before the sprint input, the
-  tree trip check and `separate` in `updateInternal2`: `setAllowSprint(false)` near tree / hedge squares; while
-  running or sprinting every character within 1.2 tiles is made not solid for that update, so `separate` bumps no
-  one (no stagger, no fall, no break in the sprint; players / animals put back, zombies reset themselves); 0.4.2
-  held the sprint off at contact and let the stagger play, which broke the sprint (user, 2026-11-11). `BumpFall`
+  tree trip check and `separate` in `updateInternal2`: `setAllowSprint(false)` near tree / hedge squares and for the update a solid character is within touching reach,
+  so `separate`'s bump is a stagger, not a fall; others in reach made not solid while it plays. 0.4.3 passed through
+  characters instead; the user wants the stagger, with the sprint kept (2026-11-12). The sprint used to stop after
+  the stagger because Toggle to Sprint is cleared by `IsoPlayer` (~2425) when the stagger's movement block zeroes the
+  move direction; `setForceSprint` / `setForceRun` put it back after the stagger while a movement key is held. `BumpFall`
   cannot be cleared after `separate`: the bumped state is entered in `postupdate` with no Lua event between. A tree-scratch
   undo was built and dropped the same day: the user wants the scratches and tears kept),
   `shared/*_WeaponsShared.lua`

@@ -457,7 +457,7 @@
     "IGUI_TienSkillMastery_Bonus_SigLoseThem": "While you are crouched, a zombie chasing you that has had no sight of you for 3 seconds gives up the chase",
     "IGUI_TienSkillMastery_Bonus_SigUnseen": "While you are crouched and still, zombies that were not already after you do not notice you and walk on",
     "IGUI_TienSkillMastery_Throwable": "Throwable",
-    "IGUI_TienSkillMastery_Bonus_SigUnfazedRunner": "You never trip: sprinting into trees you run through them, and running or sprinting you pass straight through zombies, animals and players without breaking stride",
+    "IGUI_TienSkillMastery_Bonus_SigUnfazedRunner": "You never trip: sprinting into trees you run through them, and running or sprinting into zombies, animals and players you stagger past them without falling and keep sprinting",
     "IGUI_TienSkillMastery_Bonus_SpareMaterials": "Chance to get each build material back",
     "IGUI_TienSkillMastery_Bonus_TunedEngine": "Top speed and engine power while you drive",
     "IGUI_TienSkillMastery_Bonus_ExtraOutput": "Chance of one more item from simple knapping, carving and clay press recipes",

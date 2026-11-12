@@ -120,8 +120,9 @@ moment it is picked (it does not grow with mastery levels).
   crouched and still, zombies that were not already after you do not notice you and walk on (zombies already chasing you keep
   coming).
 - **Freerunning:** *Unfazed Runner*: you never trip. Sprinting into trees or hedges you run through them
-  (the branches still scratch and tear) and sprint again once clear; running or sprinting, you pass straight through
-  zombies, animals and players without breaking stride.
+  (the branches still scratch and tear) and sprint again once clear; running or sprinting into zombies, animals
+  and players, you stagger past them (they stagger too) but never fall, and keep sprinting afterwards (Toggle to Sprint
+  stays on).
 - **Smithing:** *Masterwork*: what you forge, and weapons and armor you weld, ignore 15% of their wear, whoever uses them. A forged blade or head keeps the mark when a smithing master assembles it into a weapon (a non-master's weapon is plain); on axes, hammers, picks, scythes and spears it covers the head and its edge, not the wooden handle.
 - **Construction:** *Clean Cuts*: one more plank from every carpentry recipe that makes planks
   (4 from a log, 2 from a large branch). *Clean Breaks*: 12 stones per large stone, not 10;

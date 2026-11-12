@@ -24,7 +24,7 @@ are at the top of each file). A break should print FAILED.
 | `partcount_test.py` | Butchering part count: no extra feet or whole birds |
 | `parking_test.py` | Only picked masteries' skills are parked: no XP halo for unpicked level-10 skills, anti-cheat-safe moves |
 | `evasion_test.py` | Evasion: zombie swings made toothless on a dodge and given back, who owns the attack on each side, the server's list of masters, 0-damage player hits |
-| `unfazed_test.py` | Unfazed Runner: sprint held off among trees and hedges (not bushes), zombies, animals and players passed through while running or sprinting (no bump, sprint kept) and put back at a walk, only for masters, never against the tutorial's sprint setting |
+| `unfazed_test.py` | Unfazed Runner: sprint held off among trees and hedges (not bushes), a bump into a zombie, animal or player a stagger and never a fall, nobody else bumped into mid-stagger and put back after, Toggle to Sprint put back after the stagger while a movement key is held (not after a stop, not for hold to sprint, at most 1.5 s), only for masters, never against the tutorial's sprint setting |
 | `falls_test.py` | Safe falls on a port of `updateFalling` at 1x and 5x: safe drops harmless, higher drops one floor lower, non-masters vanilla |
 | `stealth_test.py` | Stealth: own-square work noise cut, admin noises and non-masters left alone, a master's melee weapon quieter while held and put back after, guns left alone |
 | `distraction_test.py` | Distraction Throw: what is throwable, only from the hand and for a master, the server's checks, the arc (walls, low fences), glass breaking, landing noise and sound by material |

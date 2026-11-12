@@ -1,10 +1,11 @@
-"""Runs the real UnfazedRunner file against mocks, then a Lua port of 42.21's `separate` bump roll on the result: a
-running or sprinting master passes through zombies, animals and players (no bump, sprint never held off), trees and
-hedges hold the sprint, characters made not solid are put back when the master walks, vanilla's fall for a
-non-master, nothing changed for remote players, the tutorial's sprint setting left alone.
+"""Runs the real UnfazedRunner file against mocks, then a Lua port of 42.22's `separate` bump roll on the result: a
+sprinting master who bumps into a zombie staggers (and so does the zombie) but never falls, nobody else can be bumped
+into while that stagger plays, Toggle to Sprint / Run is put back after it (vanilla's movement block switched it off)
+while a movement key is held, trees and hedges hold the sprint, vanilla's fall for a non-master, nothing changed for
+remote players, the tutorial's sprint setting left alone.
 
 Breaks: nounsolid (nobody made not solid), norestore (players / animals never put back), nolastbump (repeat timer
-kept)."""
+kept), notoggle (the sprint toggle never put back)."""
 import sys
 from pathlib import Path
 
@@ -21,6 +22,8 @@ if m == 'norestore':
     src = src.replace('        pcall(function() c:setSolid(true) end)\n', '')
 if m == 'nolastbump':
     src = src.replace('player:setLastBump(0)', '')
+if m == 'notoggle':
+    src = src.replace('if r.sprint then player:setForceSprint(true) end', '')
 if m == 'nounsolid':
     src = src.replace('                o:setSolid(false)\n', '')
 
@@ -30,6 +33,7 @@ result = lua.execute(r'''
 local out = {}
 local now = 100000
 function require() end
+function getTimestampMs() return now end
 IsoObjectType = { tree = "tree" }
 
 -- Squares by x only; kinds[x] = "tree", "bush", "hedge" or nil; moving objects per x.
@@ -77,8 +81,15 @@ local function player(opts)
     local p = character("IsoPlayer", opts.x or 0.5)
     p.master, p.localPlayer, p.allow = opts.master, opts.localPlayer ~= false, true
     p.lastBump, p.bumpedChr, p.bumpType, p.sprintKey, p.running = 0, nil, "", true, true
-    function p.isRunning() return p.running and not (p.sprintKey and p.allow) end
-    function p.isSprinting() return p.running and p.sprintKey and p.allow end
+    p.forceSprint, p.forceRun, p.moveKeys = false, false, true
+    local function sprintInput() return p.sprintKey or p.forceSprint end
+    function p.isRunning() return p.running and not (sprintInput() and p.allow) end
+    function p.isSprinting() return p.running and sprintInput() and p.allow end
+    function p.isForceSprint() return p.forceSprint end
+    function p.setForceSprint(_, b) p.forceSprint = b end
+    function p.isForceRun() return p.forceRun end
+    function p.setForceRun(_, b) p.forceRun = b end
+    function p.pressedMovement(_, ignoreBlock) assert(ignoreBlock == true); return p.moveKeys end
     function p.isLocalPlayer() return p.localPlayer end
     function p.getCurrentSquare() return square(math.floor(p.x)) end
     function p.getForwardDirection() return { getX = function() return 1 end, getY = function() return 0 end } end
@@ -94,7 +105,7 @@ end
 -- 42.21 separate()'s bump roll for `p` touching `obj` (contact assumed), with the sprint input applied first.
 local function separate(p, obj)
     if not obj.solid or p.bumpedChr == obj then return "none" end
-    local sprinting = p.sprintKey and p.allow
+    local sprinting = (p.sprintKey or p.forceSprint) and p.allow
     local wasBumped = p.bumpedChr ~= nil or (now - p.lastBump) / 100 < 15 or sprinting
     local fall = wasBumped and (sprinting or p.roll == 0)
     p.lastBump = now
@@ -120,38 +131,91 @@ pl.x = 5.7; onUpdate(pl); out[#out + 1] = "hedgeHeld=" .. tostring(not pl.allow)
 kinds = {}
 pl.x = 8.5; onUpdate(pl)
 
--- 2. Sprinting into a zombie, then an animal and a player: passed through, sprint never held off.
+-- 2. Sprinting into a zombie with an animal and a player close by: sprint held off for the touch, so the bump is a
+--    stagger, never a fall (every vanilla fall roll fails here), and no one else can be bumped into while it plays.
 local z = character("IsoZombie", 9.0)
 local a = character("IsoAnimal", 9.1)
 local other = character("IsoPlayer", 9.2)
 movers = { pl, z, a, other }
 pl.lastBump = now - 500
-pl.roll = 0   -- every vanilla fall roll fails: only passing through keeps them up
+pl.roll = 0
 onUpdate(pl)
-out[#out + 1] = "sprintKept=" .. tostring(pl.allow)
-out[#out + 1] = "zombiePassed=" .. tostring(separate(pl, z) == "none")
-out[#out + 1] = "animalPassed=" .. tostring(separate(pl, a) == "none")
-out[#out + 1] = "playerPassed=" .. tostring(separate(pl, other) == "none")
-
--- 3. Slowing to a walk: players and animals solid again (zombies reset themselves in their own update).
-pl.running = false
-onUpdate(pl)
-out[#out + 1] = "putBackAtWalk=" .. tostring(a.solid and other.solid)
-pl.running = true
-
--- 3b. A stagger started some other way: the bump-repeat timer is reset, others in reach are passed through.
-pl.bumpType, pl.bumpedChr = "left", z
+out[#out + 1] = "sprintHeldAtTouch=" .. tostring(not pl.allow)
+out[#out + 1] = "zombieStaggersNoFall=" .. tostring(separate(pl, z) == "stagger")
 pl.lastBump = now - 100
 onUpdate(pl)
 out[#out + 1] = "lastBumpReset=" .. tostring(pl.lastBump == 0)
 out[#out + 1] = "othersPassedInStagger=" .. tostring(not a.solid and not other.solid)
-pl.bumpType, pl.bumpedChr = "", nil
+out[#out + 1] = "animalNotBumpedInStagger=" .. tostring(separate(pl, a) == "none")
 
--- 4. Out of reach: everyone put back.
+-- 3. Stagger over, nobody in reach: players and animals solid again, sprint allowed again.
+pl.bumpType, pl.bumpedChr = "", nil
 movers = { pl }
 pl.x = 12.5
 onUpdate(pl)
-out[#out + 1] = "putBackOutOfReach=" .. tostring(a.solid and other.solid and pl.allow)
+out[#out + 1] = "putBackAfterStagger=" .. tostring(a.solid and other.solid and pl.allow)
+
+-- 3b. Toggle to Sprint: the stagger's movement block switches the toggle off; after it the toggle is put back while
+--     a movement key is held, then left to the game once the master sprints again.
+local tg = player({ master = true, x = 20.5 })
+tg.sprintKey, tg.forceSprint = false, true
+movers = { tg }
+onUpdate(tg)                                  -- sprinting on the toggle, seen outside a stagger
+tg.bumpType, tg.bumpedChr = "left", z
+onUpdate(tg)                                  -- stagger starts
+tg.forceSprint = false                        -- the game: zero move direction while blocked (IsoPlayer ~2425)
+onUpdate(tg)
+tg.forceSprint = false
+tg.bumpType, tg.bumpedChr = "", nil           -- stagger over
+onUpdate(tg)
+out[#out + 1] = "toggleBackAfterStagger=" .. tostring(tg.forceSprint)
+tg.forceSprint = false                        -- the stagger's last zero direction clears it once more
+onUpdate(tg)
+out[#out + 1] = "toggleBackAgain=" .. tostring(tg.forceSprint)
+for _ = 1, 3 do onUpdate(tg) end              -- sprinting at pace: settled
+tg.forceSprint = false                        -- the player stops later: vanilla ends the toggle, not put back now
+tg.running = false
+onUpdate(tg)
+out[#out + 1] = "settledThenLeftAlone=" .. tostring(not tg.forceSprint)
+
+-- 3c. Movement keys let go during the stagger: the toggle stays off (vanilla stop).
+local st = player({ master = true, x = 24.5 })
+st.sprintKey, st.forceSprint = false, true
+movers = { st }
+onUpdate(st)
+st.bumpType, st.bumpedChr = "left", z
+onUpdate(st)
+st.forceSprint, st.moveKeys = false, false
+onUpdate(st)
+st.bumpType, st.bumpedChr = "", nil
+st.moveKeys = true
+onUpdate(st)
+out[#out + 1] = "stoppedInStaggerStaysOff=" .. tostring(not st.forceSprint)
+
+-- 3d. Hold to sprint (no toggle): nothing switched on.
+local hs = player({ master = true, x = 28.5 })
+movers = { hs }
+onUpdate(hs)
+hs.bumpType, hs.bumpedChr = "left", z
+onUpdate(hs)
+hs.bumpType, hs.bumpedChr = "", nil
+onUpdate(hs)
+out[#out + 1] = "holdToSprintUntouched=" .. tostring(not hs.forceSprint and not hs.forceRun)
+
+-- 3e. Never past RESTORE_MS.
+local to = player({ master = true, x = 32.5 })
+to.sprintKey, to.forceSprint = false, true
+movers = { to }
+onUpdate(to)
+to.bumpType, to.bumpedChr = "left", z
+onUpdate(to)
+to.bumpType, to.bumpedChr, to.forceSprint, to.allow = "", nil, false, true
+to.running = false                            -- never at pace, so never settled
+onUpdate(to)
+now = now + 2000
+to.forceSprint = false
+onUpdate(to)
+out[#out + 1] = "restoreTimesOut=" .. tostring(not to.forceSprint)
 
 -- 5. Not a master: vanilla's sprint trip happens; nothing changed.
 local plain = player({ master = false, x = 8.8 })
@@ -177,10 +241,11 @@ tut.x = 3.5
 onUpdate(tut)
 out[#out + 1] = "othersOffKept=" .. tostring(not tut.allow)
 
--- 8. Mastery lost while passing through: everyone put back.
+-- 8. Mastery lost mid-stagger: everyone put back, sprint allowed.
 local lost = player({ master = true, x = 9.5 })
 local an = character("IsoAnimal", 9.7)
 movers = { lost, an }
+lost.bumpType, lost.bumpedChr = "left", z
 onUpdate(lost)
 local was = not an.solid
 lost.master = false

@@ -1,9 +1,11 @@
 --[[
 Tien's Skill Mastery: Freerunning's signature Unfazed Runner (user, 2026-11-10; "Tree Runner" until the same day):
 the master never trips. Sprinting into trees or a hedge only turns the sprint into a run (the branches still scratch
-and tear, user), and a running or sprinting master passes straight through zombies, animals and other players, no
-stagger and no break in the sprint (user, 2026-11-11: the stagger and the sprint held off at contact, 0.4.2, broke
-the sprint). Owner's game only: in multiplayer the player's own client moves it and decides both.
+and tear, user), and a running or sprinting master who bumps into a zombie, animal or other player plays vanilla's
+stagger (so does the one bumped) but never falls, and keeps sprinting afterwards (user, 2026-11-12). History: 0.4.2
+played the stagger, but the sprint stopped after it; 0.4.3 passed straight through characters instead (no stagger at
+all), which the user did not want either. Owner's game only: in multiplayer the player's own client moves it and
+decides both.
 
 Trees (42.21 `IsoPlayer.updateInternal2`): the input is read (~2380: `setSprinting(inputState.sprinting)`, which
 needs `isAllowSprint()`), then (~2712) a player `isInTrees()` (or on a collapsed fence, or slow / injured) who
@@ -22,17 +24,30 @@ state plays the stagger (left.xml / right.xml; it is entered on the `bumped` var
 fall is decided by `wasBumped` = not on the floor and (`getBumpedChr()` already set, or the last bump under 1.5 s
 ago, or `isSprinting()`): then `BumpFall` on a 1 in 1..80 roll (Fitness, Strength, traits, drunk, back pain), and
 always when sprinting. `BumpedState.enter` stores `BumpFall` in the state's network params (other games show the
-fall from them) and its exit costs the knees (`fallenOnKnees`). The stagger itself blocks the sprint too: the bumped
-state leaves to `run`, not `sprint`. `separate` only looks at objects that are `isSolidForSeparate` (`solid` and not
-on the floor), and a player bumps only while running or sprinting (`WalkSpeed` > 0.2, `runningTime` > 0.5). So while
-the master runs or sprints, every character within PASS is made not solid for that update: no bump, no push apart,
-no stagger, no fall, the sprint goes on (0.4.2 held the sprint off at contact and let the stagger play instead).
-Zombies set `solid` again in their own update; players and animals do not, so this file puts back every one it
-changed once it is out of reach or the master slows to a walk. A stagger started some other way (`isBumped()` with a
-`bumpedChr`) gets the same for everyone else in reach, and `setLastBump(0)` each update keeps a bump after one
-from counting as a repeat (nothing else reads it). Not covered: an animal running into the master in single player
-(its own `separate` can stagger the player it touches). Battering Ram runs first (Movement.lua loads before this
-file) and still knocks down the zombies it reaches.
+fall from them) and its exit costs the knees (`fallenOnKnees`). `separate` only looks at objects that are
+`isSolidForSeparate` (`solid` and not on the floor). So `wasBumped` is kept false for every bump (0.4.2's way):
+`setLastBump(0)` each update (nothing else reads it), sprint held off (`setAllowSprint(false)`) while a solid
+character is within CONTACT, a leftover `bumpedChr` (Battering Ram sets one to shield a zombie) cleared then, and
+while a stagger plays (`isBumped()` with a `bumpedChr`) every other character in reach is made not solid for that
+update, so running into a second one cannot turn it into a fall. Zombies set `solid` again in their own update;
+players and animals do not, so this file puts back every one it changed once it is out of reach or the stagger is
+over. Not covered: an animal running into the master in single player (its own `separate` can stagger the player it
+touches). Battering Ram runs first (Movement.lua loads before this file), and zombies it made not solid are not
+bumped at all.
+
+Why the sprint stopped after a stagger (42.22, traced 2026-11-12; the user plays with Toggle to Sprint,
+`toggleToSprint=true`): with Toggle to Sprint / Run the sprint is the input component's `forceSprint` / `forceRun`
+(`CharacterInputComponent.updateToggleToSprint` flips it on a click of the key; `UpdateInputState` turns it into
+`inputState.sprinting`). `BumpedState` blocks movement while it plays (`setBlockMovement`), no movement direction is
+read (`updateMovementFromInput` returns while blocked), and `IsoPlayer.updateInternal2` (~2425) clears both toggles
+whenever the move direction is zero, the way a stop ends a toggled sprint. So after the stagger the master walked
+until the key was pressed again. Hold to sprint is not affected (the key is read again after the block). The fix:
+the toggles seen outside a stagger are remembered, and after it they are set again (`setForceSprint` / `setForceRun`,
+interface defaults on `IsoPlayer` like `setAllowSprint`) from `OnPlayerUpdate`, which fires before ~2425, until the
+master is moving at that pace for a few updates (the zero direction of the stagger's last update can clear them once
+more), at most RESTORE_MS, and only while a movement key is held (`pressedMovement(true)`, which ignores the block; a
+stop during the stagger ends the toggle as in vanilla). `pressedMovement` also writes the network "pressed movement"
+flag, but the game calls it again right after the event (~2293), so its own value is what is sent.
 ]]
 
 require "TienSkillMastery"
@@ -40,10 +55,14 @@ local M = TienSkillMastery
 
 local ID = "Freerunning.SigUnfazedRunner"
 local AHEAD = 0.5      -- tiles along the facing looked at for a tree square
-local PASS = 1.2       -- tiles: running or sprinting, every character this close is passed through (contact ~0.5)
+local CONTACT = 0.75   -- tiles: a solid character this close can be bumped this update (vanilla contact ~0.5)
+local RESTORE_MS = 1500  -- after a stagger, how long the sprint / run toggle is put back at most
+local SETTLED = 3      -- updates moving at the toggled pace before the toggle is left to the game again
 
 local held = setmetatable({}, { __mode = "k" })   -- [player] = true while this file holds sprint off
 local unsolidBy = setmetatable({}, { __mode = "k" }) -- [local player] = { [player or animal] = true } made not solid
+local toggles = setmetatable({}, { __mode = "k" })   -- [player] = { sprint, run } last seen outside a stagger
+local restore = setmetatable({}, { __mode = "k" })   -- [player] = { sprint, run, untilMs, settled } to put back
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Trees
@@ -128,24 +147,55 @@ local function holdSprint(player, hold)
     end
 end
 
+--- Toggle to Sprint / Run: what the stagger's movement block switched off is switched on again after it (see header).
+local function keepToggles(player)
+    local now = getTimestampMs()
+    if player:isBumped() then
+        local seen = toggles[player]
+        if not restore[player] and seen and (seen.sprint or seen.run) then
+            restore[player] = { sprint = seen.sprint, run = seen.run }
+        end
+        -- Movement keys let go during the stagger: the toggle ends, as it would in vanilla.
+        if restore[player] and not player:pressedMovement(true) then restore[player] = nil end
+        return
+    end
+    local r = restore[player]
+    if r then
+        r.untilMs = r.untilMs or now + RESTORE_MS
+        if now > r.untilMs or not player:pressedMovement(true) then
+            restore[player] = nil
+        else
+            if r.sprint then player:setForceSprint(true) end
+            if r.run then player:setForceRun(true) end
+            local atPace
+            if r.sprint then atPace = player:isSprinting() else atPace = player:isRunning() end
+            if atPace then r.settled = (r.settled or 0) + 1 else r.settled = 0 end
+            if r.settled >= SETTLED then restore[player] = nil end
+        end
+    end
+    toggles[player] = { sprint = player:isForceSprint(), run = player:isForceRun() }
+end
+
 Events.OnPlayerUpdate.Add(function(player)
     if not player or not player:isLocalPlayer() then return end
     if player:isDead() or not M.sig(player, ID) then
         holdSprint(player, false)
         if unsolidBy[player] then restoreSolid(unsolidBy[player], nil) end
+        restore[player] = nil
         return
     end
     -- A bump more than 1.5 s after the last one is not a repeat.
     player:setLastBump(0)
+    keepToggles(player)
 
-    -- Running or sprinting (Java bumps no one at a walk), or mid-stagger: pass through everyone in reach.
+    local near = nearby(player, CONTACT)
     local stumbling = player:isBumped() and player:getBumpedChr() or nil
-    local moving = player:isRunning() or player:isSprinting()
     local unsolid = unsolidBy[player] or {}
     unsolidBy[player] = unsolid
     local keep = {}
-    if moving or stumbling then
-        for _, o in ipairs(nearby(player, PASS)) do
+    if stumbling then
+        -- While the stagger plays, nobody else can be bumped into (a second bump would be a repeat: a fall roll).
+        for _, o in ipairs(near) do
             if o ~= stumbling and (o:isSolid() or unsolid[o]) then
                 o:setSolid(false)
                 if not instanceof(o, "IsoZombie") then
@@ -156,5 +206,18 @@ Events.OnPlayerUpdate.Add(function(player)
         end
     end
     restoreSolid(unsolid, keep)
-    holdSprint(player, amongTrees(player))
+
+    -- About to touch someone: no sprint for this update, so the bump is a plain stagger (vanilla trips every sprint
+    -- bump). The toggle itself is left on, so the sprint comes back once past.
+    local bumping = false
+    if not stumbling then
+        for _, o in ipairs(near) do
+            if o:isSolid() then
+                bumping = true
+                break
+            end
+        end
+        if bumping and player:getBumpedChr() then player:setBumpedChr(nil) end
+    end
+    holdSprint(player, bumping or amongTrees(player))
 end)
