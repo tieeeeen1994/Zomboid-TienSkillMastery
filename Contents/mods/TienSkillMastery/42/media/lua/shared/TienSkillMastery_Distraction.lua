@@ -31,8 +31,10 @@ for stones) or `StoneDrop`; cans have no fitting vanilla sound (the "Can" events
 `TsmDistractionCanLand` is the mod's own (media/scripts/TienSkillMastery_sounds.txt, synthesised by
 scripts/make_sounds.py). Sounds and radii are the table D.GROUPS.
 
-The throw is the axe throw's action animation (`TsmThrowAxe`, vanilla's Molotov throw clip with a release event),
-a short client-only action; at the release the client plays the mod's own whoosh (`TsmDistractionWhoosh` on the
+The throw is its own action animation (`AnimSets/player/actions/TsmThrowDistraction.xml`: vanilla's Molotov throw
+clip at 1.0, so 1.47 s; vanilla throws pipe bombs and Molotovs at 0.8 (`player/ranged/Throw.xml`), the axe throw's
+`TsmThrowAxe` runs at 1.6; user, 2026-11-12), with a release event at 0.3 (~0.44 s in), in a short client-only
+action of 72 units covering the clip; at the release the client plays the mod's own whoosh (`TsmDistractionWhoosh` on the
 character with `playSound`, which an MP client also sends to the players near it, as the axe throw's swing) and sends
 `distractThrow { id, tx, ty }`, and the server checks the item is still in that player's hand with that ID and
 throwable, and that the player has the signature.
@@ -336,7 +338,7 @@ end)
 
 TienSkillMasteryDistractionAction = ISBaseTimedAction:derive("TienSkillMasteryDistractionAction")
 local DA = TienSkillMasteryDistractionAction
-D.THROW_TIME = 45
+D.THROW_TIME = 72    -- the clip at speed 1.0 (the axe throw's 45 covers it at 1.6)
 D.RELEASE_AT = 0.6
 
 function DA:isValid()
@@ -351,7 +353,7 @@ end
 function DA:start()
     -- Shown in the throwing hand (the right one), also when it was held in the off hand.
     self:setOverrideHandModels(self.item, nil)
-    self:setActionAnim("TsmThrowAxe")
+    self:setActionAnim("TsmThrowDistraction")
 end
 
 function DA:release()

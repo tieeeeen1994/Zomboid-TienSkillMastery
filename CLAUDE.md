@@ -16,7 +16,8 @@ The notes below grew as a log, and v1 sections are marked superseded. This secti
   (1 / 2 / 3 floors at mastery 3 / 6 / 9) that land higher drops as one floor lower (`shared/*_Falls.lua`), Unfazed
   Runner (`client/*_UnfazedRunner.lua`; since 2026-11-12 a stagger without the fall and the sprint toggle put back). Stealth, opened: quiet work and quiet swings, -50%
   at mastery 10 (`shared/*_Stealth.lua`; its sneak speed became Freerunning's crouch speed; Construction's own building
-  noise cut was removed so the two no longer stack), signature Distraction Throw (`shared/*_Distraction.lua`, key K),
+  noise cut was removed so the two no longer stack), signature Distraction Throw (`shared/*_Distraction.lua`, key K; since 2026-11-12 its own
+  anim node `TsmThrowDistraction`, the Molotov clip at speed 1.0 (vanilla grenades 0.8, the axe throw 1.6), not played),
   and the signatures Lose Them (crouched and out of a chaser's sight 3 s: it gives up) and Unseen (crouched and still:
   zombies not already after the master do not notice), both in `shared/*_LoseThem.lua`, whose header has the 42.22
   trace. Every one has a test in `tests/` and a step in `docs/test-checklist.md`.

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animNode>
+	<m_Name>TsmThrowDistraction</m_Name>
+	<m_AnimName>Bob_AttackThrowMolotov</m_AnimName>
+	<m_Looped>false</m_Looped>
+	<m_BlendTime>0.20</m_BlendTime>
+	<m_SpeedScale>1.00</m_SpeedScale>
+	<m_Conditions>
+		<m_Name>PerformingAction</m_Name>
+		<m_Type>STRING</m_Type>
+		<m_Value>TsmThrowDistraction</m_Value>
+	</m_Conditions>
+	<m_Events>
+		<m_EventName>TsmThrowRelease</m_EventName>
+		<m_TimePc>0.3</m_TimePc>
+		<m_ParameterValue></m_ParameterValue>
+	</m_Events>
+</animNode>
