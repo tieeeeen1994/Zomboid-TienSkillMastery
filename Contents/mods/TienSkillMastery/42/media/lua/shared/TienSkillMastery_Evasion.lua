@@ -1,6 +1,7 @@
 --[[
 Tien's Skill Mastery: Freerunning's Evasion (user, 2026-11-06 / 2026-11-10): a share of zombie and player attacks on
-the master miss, 2.5% per mastery level (25% at 10; 15% until the user raised it, 2026-11-11). A signature (15% flat) until 2026-11-11, now a passive that grows
+the master miss, 2% per mastery level (20% at 10 since 2026-11-14, user, once the pace fix made mastery 10 reachable;
+25% from 2026-11-11; 15% before). A signature (15% flat) until 2026-11-11, now a passive that grows
 with the level (user). Animals are left out (user, 2026-11-10). Traced in the 42.21 Java (decompiled).
 
 Zombies (`AttackState`, run only by the zombie's owner: a client for the zombies it owns, the server for zombies no

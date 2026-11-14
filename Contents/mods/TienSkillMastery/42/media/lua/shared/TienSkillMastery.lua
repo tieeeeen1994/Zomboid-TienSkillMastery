@@ -192,21 +192,37 @@ M.anyPerkId = anyPerkId
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Progress: points per picked mastery. A gain on a parked level-10 skill adds amount / xp10(skill) x 100 points to
--- every picked, active mastery listing the skill, so one mastery level is about one level-10 step of any member
--- (9000 XP for most skills, 150000 for Strength / Fitness), the v1 pace. Mastery level n costs
+-- every picked, active mastery listing the skill, times the skill's pace (M.PACE below), so one mastery level is
+-- about one level-10 step of any member (9000 XP for most skills; Strength / Fitness 30000 and Sprinting / Nimble
+-- 1800 through their pace, Sneaking / Lightfooted 3000). Mastery level n costs
 -- 100 x MasteryCostBase% x (1 + MasteryCostGrowth% x n) points (100 / 5 by default, user 2026-11-10: +5 a level
 -- from a base of 100, no compounding): mastery 1 = 105, 2 = 110, mastery 10 = 150, 1-10 together = 1275. Past 10
 -- the line continues as prestige (+40, mastery 50 = 350).
 -- ---------------------------------------------------------------------------------------------------------------
 
+-- Pace (2026-11-14, balance pass): a skill's points are multiplied by its pace, so a mastery level takes about as
+-- much play whatever its skills. Most skills earn a few XP per action at 10 (a melee hit 2-3, recipes and finds
+-- several). Strength and Fitness earn per action too (1 per melee hit, 4-8 per exercise rep, `Fitness.java`), but
+-- their level-10 step is 150000 against 9000, which left Conditioning at mastery 1 after ~80000 hits. Sprinting and
+-- Nimble earn only 1 XP per ~20 s of running or aiming on the move (`xpUpdate.onPlayerMove`: `isRandXp(1000, 0.05)`),
+-- Sneaking and Lightfooted 1 XP on a 1 in 1100 roll per unaware zombie per update (`IsoZombie` ~2696; 1-3 with
+-- Nimble for an animal that fails to notice them, `BaseAnimalBehavior` ~1637; nothing else in the 42.22 jar), so
+-- Freerunning and Stealth took ~50 h of running per mastery level. Decay is converted the same way (both
+-- directions use these two functions), so it still costs the same share of a level as before.
+M.PACE = { Strength = 5, Fitness = 5, Sprinting = 5, Nimble = 5, Sneak = 3, Lightfoot = 3 }
+
+function M.paceOf(perk)
+    return M.PACE[M.perkId(perk)] or 1
+end
+
 function M.pointsFor(perk, amount)
     local step = perk:getXpForLevel(10)
     if not step or step <= 0 then return 0 end
-    return amount / step * 100
+    return amount / step * 100 * M.paceOf(perk)
 end
 
 function M.xpForPoints(perk, points)
-    return points * perk:getXpForLevel(10) / 100
+    return points * perk:getXpForLevel(10) / 100 / M.paceOf(perk)
 end
 
 local costCache = {}
@@ -373,11 +389,14 @@ def("Firearms", "WearUndo", 20, "pts")
 
 local MELEE = {
     -- mastery, attack speed, crit reroll (nil = none), reach, knockback, wear undo
-    { "Axemanship", 5, 10, 10, 20, 20 },
-    { "Bludgeoning", 5, 5, nil, 15, 20 },
-    { "Swordsmanship", 5, 5, 10, nil, 20 },
-    { "Spearcraft", 5, 5, 10, nil, 30 },
-    { "StreetFighting", 5, 10, nil, nil, 20 },
+    -- Attack speed 5 until 2026-11-14 (balance): it scales CombatSpeed only, not the melee delay after the swing, so
+    -- +5 was ~+3% attacks (Knifework found the same two-thirds ratio); +10 is ~+7%, felt, and with damage +10% lands
+    -- on the "about 20% at mastery 10" rule.
+    { "Axemanship", 10, 10, 10, 20, 20 },
+    { "Bludgeoning", 10, 5, nil, 15, 20 },
+    { "Swordsmanship", 10, 5, 10, nil, 20 },
+    { "Spearcraft", 10, 5, 10, nil, 30 },
+    { "StreetFighting", 10, 10, nil, nil, 20 },
     -- Knives: speed is their identity (user, 2026-11-06); stabbing knives only crit on close kills.
     { "Knifework", 30, nil, nil, nil, 20 },
 }
@@ -408,7 +427,7 @@ def("Freerunning", "SprintSpeed", 15, "pct")        -- position nudge while spri
 def("Freerunning", "RunSpeed", 10, "pct")           -- the same while running, not sprinting (user, 2026-11-11)
 def("Freerunning", "CrouchSpeed", 5, "pct")         -- crouched walking and running; was Stealth.SneakSpeed 15% (user, 2026-11-11)
 -- Chance a zombie's or player's attack misses (Evasion.lua; a 15% signature until 2026-11-11, user).
-def("Freerunning", "Evasion", 25, "pts")
+def("Freerunning", "Evasion", 20, "pts")   -- 25 until 2026-11-14 (user: with the pace fix Freerunning reaches 10)
 
 -- Crafting
 def("Smithing", "CraftTime", 25, "less")
@@ -416,12 +435,12 @@ def("Smithing", "Dismantle", 10, "pts")
 def("Smithing", "ToolWear", 20, "pts")
 def("Construction", "CraftTime", 25, "less")
 def("Construction", "Dismantle", 10, "pts")
-def("Construction", "StructureHP", 20, "pct")
+def("Construction", "StructureHP", 30, "pct")      -- 20 until 2026-11-14 (balance: the builder's walls are their contribution)
 def("Construction", "Unbarricade", 15, "less")
 def("Construction", "WindowBreak", 5, "ptsoff")
 def("Engineering", "CraftTime", 25, "less")
 def("Engineering", "Dismantle", 10, "pts")
-def("Engineering", "InstallTime", 15, "less")
+def("Engineering", "InstallTime", 25, "less")     -- a master's main job 25% faster, like crafting time (15 until 2026-11-14)
 def("Engineering", "EngineRepair", 1, "int")
 def("Engineering", "Hotwire", 10, "pts")
 def("Engineering", "HotwireTime", 15, "less")
@@ -429,12 +448,12 @@ def("Engineering", "Scrap", 25, "pts")
 def("Handicraft", "CraftTime", 25, "less")
 def("Handicraft", "ToolWear", 20, "pts")
 def("Mending", "CraftTime", 25, "less")
-def("Mending", "PatchTime", 15, "less")
+def("Mending", "PatchTime", 25, "less")          -- 15 until 2026-11-14 (main job)
 def("Mending", "FabricRecovery", 10, "pts")
 def("Mending", "Ripping", 1, "int")
 def("Mending", "Aramid", 1, "int")
-def("FieldMedicine", "TreatTime", 15, "less")
-def("FieldMedicine", "TreatStrength", 15, "pct")
+def("FieldMedicine", "TreatTime", 25, "less")     -- 15 until 2026-11-14 (main job)
+def("FieldMedicine", "TreatStrength", 25, "pct")  -- 15 until 2026-11-14 (the patient should feel the medic's work)
 def("Provisioning", "CraftTime", 25, "less")
 def("Provisioning", "Nutrition", 15, "pct")
 def("Provisioning", "AddTime", 15, "less")
@@ -450,13 +469,12 @@ def("Angling", "Tension", 15, "pct")
 def("Angling", "Bait", 10, "pts")
 def("Angling", "BigFish", 10, "pts")
 def("Angling", "Junk", 20, "less")
-def("Angling", "Trophy", 2, "pts")
+def("Angling", "Trophy", 5, "pts")               -- 2 until 2026-11-14: 5% -> 7% went unnoticed; 10% doubles trophies
 def("Fieldcraft", "Radius", 15, "pct")
 def("Fieldcraft", "Spotting", 20, "less")
 def("Fieldcraft", "Size", 10, "pct")
 def("Homesteading", "Yield", 15, "pct")
 def("Homesteading", "Cure", 15, "pct")
-def("Homesteading", "PlantHealth", 3, "flat")
 def("Homesteading", "BonusYield", 10, "pts")
 def("Homesteading", "Curse", 10, "ptsoff")
 def("Homesteading", "Fertilize", 10, "pts")
@@ -505,11 +523,11 @@ def("Homesteading", "AnimalStress", 15, "less")
 -- Signature abilities (kind "sig": an unlock, on in full from the pick, value = the fixed amount the hook uses).
 -- Phase 3a (2026-11-07).
 def("Conditioning", "SigHeavyLoad", 1, "sig")       -- Heavy Load penalties one moodle level lower
-def("Smithing", "SigMasterwork", 15, "sig")         -- wear ignored (%) by what the master forges
+def("Smithing", "SigMasterwork", 25, "sig")         -- wear ignored (%) by what the master forges (15 until 2026-11-14, user)
 def("Construction", "SigPlanks", 100, "sig")        -- chance (%) of a 4th plank per sawn log (always since 2026-11-08; 50 before)
 def("Construction", "SigStones", 2, "sig")          -- extra stones per broken large stone
 def("Handicraft", "SigDeftHands", 10, "sig")        -- every timed action (%) faster
-def("Handicraft", "SigCraftsmanship", 15, "sig")    -- wear ignored (%) by what the master makes (a "pts" bonus until 2026-11-08)
+def("Handicraft", "SigCraftsmanship", 25, "sig")    -- wear ignored (%) by what the master makes (a "pts" bonus until 2026-11-08; 15 until 2026-11-14, user)
 def("Provisioning", "SigChoiceCuts", 1, "sig")      -- butchered meat 10% more filling, 30% more nutritious (FarmAnimals.lua)
 def("Provisioning", "SigSavoryMeals", 80, "sig")    -- food the master finishes with heat causes (%) less unhappiness
 def("Hunting", "SigSturdyTraps", 1, "sig")          -- traps keep their bait and are never destroyed

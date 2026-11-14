@@ -10,9 +10,11 @@ is known for.
 - **Experience only.** A picked mastery grows from the experience you earn in its skills after you pick it: mastery
   levels 1 to 10, each giving a tenth of its effects, then endless **prestige**. Reading never counts: a skill book's
   multiplier is taken back out, and Skill Journal restores are not counted.
-- **Growing cost.** One mastery level is about one level-10 step of any of its skills (9000 XP for most skills,
-  150000 for Strength and Fitness). Mastery 1 costs 5% more than that step, and each level after it adds another 5%
-  of the step: 105%, 110%, 115% and so on.
+- **Growing cost.** One mastery level is about one level-10 step of any of its skills (9000 XP for most skills).
+  Mastery 1 costs 5% more than that step, and each level after it adds another 5% of the step: 105%, 110%, 115% and
+  so on. Skills that earn XP very slowly count for more, so every mastery levels at about the same pace for someone
+  who plays its part: Strength and Fitness count 5 times (their own step is 150000), Sprinting and Nimble 5 times
+  (1 XP every 20 seconds or so), Sneaking and Lightfooted 3 times.
 - **Shared skills.** A skill can be in several masteries (Strength is in three). Experience in it counts for every
   picked mastery that lists it.
 - **Paused, not lost.** If a skill in a picked mastery drops below 10 (Strength or Fitness decay), the mastery pauses
@@ -40,40 +42,40 @@ effects apply with a weapon of its kind.
 
 - **Firearms** (Aiming, Reloading): damage +10%, fire rate +10% (Gunworks guns too), jams -25%, hit chance +5,
   critical hit chance +5, range +10%, aim-in speed +15%, reload and rack speed +15%, 20% chance to undo firearm wear.
-- **Axemanship** (Axe, Strength): damage +10%, attack speed +5%, 10% chance to reroll a hit that did not crit, reach
+- **Axemanship** (Axe, Strength): damage +10%, attack speed +10%, 10% chance to reroll a hit that did not crit, reach
   +10%, knockback +20%, endurance used swinging -15%, 20% chance to undo axe wear, damage to trees +20%.
-- **Bludgeoning** (Long Blunt, Strength): damage +10%, attack speed +5%, 5% crit reroll, knockback +15%, endurance
+- **Bludgeoning** (Long Blunt, Strength): damage +10%, attack speed +10%, 5% crit reroll, knockback +15%, endurance
   used swinging -15%, 20% chance to undo wear; with the sandbox option to hit several zombies on: +1 target per swing
   from mastery 5, +2 at 10; with it off: reach +5% from mastery 5, +10% at 10.
-- **Swordsmanship** (Long Blade, Nimble): damage +10%, attack speed +5%, 5% crit reroll, reach +10%, endurance used
+- **Swordsmanship** (Long Blade, Nimble): damage +10%, attack speed +10%, 5% crit reroll, reach +10%, endurance used
   swinging -15%, 20% chance to undo wear, strafe speed while aiming +15%.
-- **Spearcraft** (Spear, Carving): damage +10%, attack speed +5%, 5% crit reroll, reach +10%, endurance used swinging
+- **Spearcraft** (Spear, Carving): damage +10%, attack speed +10%, 5% crit reroll, reach +10%, endurance used swinging
   -15%, 30% chance to undo spear wear. Spears you carve or fire-harden have +8% damage and +3% reach, for whoever uses them,
   set by your mastery level when you make them: near a forged spear's numbers at mastery 10, but they stay wooden and wear out as fast as ever.
-- **Street Fighting** (Short Blunt, Fitness): damage +10%, attack speed +5%, 10% crit reroll, endurance used
+- **Street Fighting** (Short Blunt, Fitness): damage +10%, attack speed +10%, 10% crit reroll, endurance used
   swinging -15%, 20% chance to undo wear; with anything in hand: stomp damage +20%, shoves deal 0.25 damage.
 - **Knifework** (Short Blade, Sneaking): damage +10%, attack speed +30%, endurance used swinging -15%, 20% chance
   to undo wear, endurance used running while sneaking -15%, +25% damage to zombies not targeting you, and 10% a
   level that a close one-on-one knife stab is a jaw stab (vanilla only jaw-stabs on a critical hit).
 - **Conditioning** (Strength, Fitness): endurance used -10%, endurance recovery +10%, carry weight +5, Strength and
   Fitness decay -25%, muscle strain from everything (fighting, climbing, carrying, farming, exercise) -25%.
-- **Freerunning** (Sprinting, Lightfooted): sprinting speed +15%, running speed +10%, crouched walking and running speed +5%, endurance used running -15%, 25% of attacks by zombies and players miss you (no damage, no wound, no flinch; animals still hit), drop one floor without harm from mastery 3, two from 6 and three from 9, and from those levels any higher fall lands as if it were one floor lower.
+- **Freerunning** (Sprinting, Lightfooted): sprinting speed +15%, running speed +10%, crouched walking and running speed +5%, endurance used running -15%, 20% of attacks by zombies and players miss you (no damage, no wound, no flinch; animals still hit), drop one floor without harm from mastery 3, two from 6 and three from 9, and from those levels any higher fall lands as if it were one floor lower.
 - **Stealth** (Sneaking, Lightfooted): noise of your work -50% (building, barricading, digging, clearing glass, bushes and grass, moving furniture, fishing), noise of your melee swings -50%.
 - **Smithing** (Metalworking, Welding, Maintenance): crafting time -25% and dismantling return +10 on metalworking
   and welding, 20% chance to undo tool wear on forging, metalworking and welding recipes, 20% chance to get back each burnt charcoal and
   each blowtorch use, iron from ore and blooms +15%.
 - **Construction** (Carpentry, Masonry): crafting time -25% and dismantling return +10 on carpentry and masonry,
-  built structure health +20%, unbarricading time -15%, window break chance when picking up -5, 15%
+  built structure health +30%, unbarricading time -15%, window break chance when picking up -5, 15%
   chance to get each build material back.
 - **Engineering** (Mechanics, Electrical): crafting time -25% and dismantling return +10 on electrical, part install
-  and uninstall time -15%, engine repair +1 condition per part, hotwire success +10, hotwiring time -15%, 25% chance
+  and uninstall time -25%, engine repair +1 condition per part, hotwire success +10, hotwiring time -15%, 25% chance
   of an extra electronics scrap when dismantling electronics, top speed and engine power +15% while you drive.
 - **Handicraft** (Carving, Knapping, Glassmaking, Pottery): crafting time -25% on their recipes, 20% chance to undo
   tool wear on them; 15% chance of one more item from simple knapping, carving and clay press recipes.
-- **Mending** (Tailoring, Maintenance): tailoring crafting time -25%, patching time -15%, fabric recovery chance
+- **Mending** (Tailoring, Maintenance): tailoring crafting time -25%, patching time -25%, fabric recovery chance
   +10, +1 material from ripping clothes, +1 aramid thread use, patches protect 50% more, repairs restore 15% more
   and a failed one costs no condition.
-- **Field Medicine** (First Aid, Tailoring): treatment time -15%, treatment strength +15% (bandages, poultices,
+- **Field Medicine** (First Aid, Tailoring): treatment time -25%, treatment strength +25% (bandages, poultices,
   splints, stitches, bullet removal), disinfecting uses 50% less, stitching hurts 75% less, crash injuries -15% for
   everyone in your car.
 - **Provisioning** (Cooking, Butchering): cooking crafting time -25%, nutrition from added ingredients +15%, time to
@@ -81,10 +83,10 @@ effects apply with a weapon of its kind.
 - **Hunting** (Tracking, Trapping, Butchering): track finding +20%, track inspection time -15%, trap catch chance +5
   on traps you place, meat, sinew and bones from butchering +10%, chance of better cuts +15%.
 - **Angling** (Fishing, Foraging): line tension limit +15%, natural bait kept +10, big fish +10, junk catches -20%,
-  trophy fish +2, worms and insects found more often when foraging, fishing nets catch 25% more.
+  trophy fish +5, worms and insects found more often when foraging, fishing nets catch 25% more.
 - **Fieldcraft** (Foraging, Tracking): search radius +15%, spotting time -20%, found item size +10%, search mode's
   darkness, weather and moving penalties fade (gone at mastery 10).
-- **Homesteading** (Farming, Animal Care): harvest +15%, cure strength +15%, planting health +3, best month bonus
+- **Homesteading** (Farming, Animal Care): harvest +15%, cure strength +15%, best month bonus
   yield chance +10, risk month curse chance -10, fertilizing effect chance +10, back strain -15%, acceptance gained
   by petting and hand feeding +15%, calming +15%, shearing time -15%, milking time -15%, animals near you gain 15% less stress.
 
@@ -122,12 +124,12 @@ moment it is picked (it does not grow with mastery levels).
   (the branches still scratch and tear) and sprint again once clear; running or sprinting into zombies, animals
   and players, you stagger past them (they stagger too) but never fall, and keep sprinting afterwards (Toggle to Sprint
   stays on).
-- **Smithing:** *Masterwork*: what you forge, and weapons and armor you weld, ignore 15% of their wear, whoever uses them. A forged blade or head keeps the mark when a smithing master assembles it into a weapon (a non-master's weapon is plain); on axes, hammers, picks, scythes and spears it covers the head and its edge, not the wooden handle.
+- **Smithing:** *Masterwork*: what you forge, and weapons and armor you weld, ignore 25% of their wear, whoever uses them. A forged blade or head keeps the mark when a smithing master assembles it into a weapon (a non-master's weapon is plain); on axes, hammers, picks, scythes and spears it covers the head and its edge, not the wooden handle.
 - **Construction:** *Clean Cuts*: one more plank from every carpentry recipe that makes planks
   (4 from a log, 2 from a large branch). *Clean Breaks*: 12 stones per large stone, not 10;
   flat stones break into 3.
 - **Handicraft:** *Deft Hands*: every timed action 10% faster, moving items included. *Craftsmanship*: what you carve, knap, blow or fire
-  ignores 15% of its wear, whoever uses it; your handles and heads keep it when a Handicraft master assembles them.
+  ignores 25% of its wear, whoever uses it; your handles and heads keep it when a Handicraft master assembles them.
 - **Engineering:** *Engine Overhaul*: Engine Parts raise a car's engine quality, one point each up to 100 (easier
   starts, less fuel, full power).
 - **Mending:** *Restoration*: right-click a repaired item to bring it back to full condition and clear its repair count,

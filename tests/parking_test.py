@@ -266,6 +266,16 @@ check("conditioningParks", near(raw(b, "Fitness"), total("Fitness") - 240) and n
     raw(b, "Fitness"))
 check("othersAtCap", near(raw(b, "Cooking"), total("Cooking")), raw(b, "Cooking"))
 
+-- 8b. Pace (M.PACE, 2026-11-14): Strength earns x5, so 150 XP = 150 / 150000 x 100 x 5 = 0.5 points; decay of 30 costs
+-- 0.1 the same way and the skill stays parked; a pace-1 skill is unchanged (Angling's 90 Foraging = 1 point, above).
+award(b, "Strength", 150)
+check("paceGain", near(M.getPoints(b, "Conditioning"), 0.5), M.getPoints(b, "Conditioning"))
+award(b, "Strength", -30)
+check("paceDecay", near(M.getPoints(b, "Conditioning"), 0.4), M.getPoints(b, "Conditioning"))
+check("paceDecayParked", near(raw(b, "Strength"), total("Strength") - 240), raw(b, "Strength"))
+check("paceInverse", near(M.xpForPoints(Perks.Strength, M.pointsFor(Perks.Strength, 777)), 777),
+    M.xpForPoints(Perks.Strength, M.pointsFor(Perks.Strength, 777)))
+
 -- 9. Admin skill cheat on a skill no mastery takes: back at the cap afterwards.
 M.adminSkill(b, { perk = "Cooking", op = "remove", amount = 100 })
 M.adminSkill(b, { perk = "Cooking", op = "add", amount = 100 })

@@ -21,8 +21,16 @@ The notes below grew as a log, and v1 sections are marked superseded. This secti
   and the signatures Lose Them (crouched and out of a chaser's sight 3 s: it gives up) and Unseen (crouched and still:
   zombies not already after the master do not notice), both in `shared/*_LoseThem.lua`, whose header has the 42.22
   trace. Every one has a test in `tests/` and a step in `docs/test-checklist.md`.
+- **Balance pass (2026-11-14, user: "balance by what the player feels and what a master contributes"; not released, not
+  played):** `docs/balance-audit.md` has the reasoning. Applied: a per-skill pace `M.PACE` in the core (Strength,
+  Fitness, Sprinting, Nimble x5; Sneaking, Lightfooted x3; Conditioning, Freerunning and Stealth barely levelled before),
+  melee attack speed +10% (was 5; knives stay 30), Construction structure health +30%, Engineering installs, Mending
+  patching and Field Medicine treatment time -25%, treatment strength +25%, Angling trophy +5; then from the user's
+  answers on the proposals: Masterwork and Craftsmanship 25% (were 15), Evasion 20% (was 25), Homesteading's planting
+  health +3 removed (hook and label gone; vanilla's Farming line in the Skills tab stays). Hamstring unchanged.
 
 Still to do, in order:
+0. Release the balance pass (0.4.4; `docs/balance-audit.md`).
 1. Stealth in game: Distraction Throw's sound volumes (chosen 2026-11-11 from offline renders, see "Sounds" below:
    glass `SmashedBottleBreak`, metal `BreakMetalItem`, stone `StoneDrop`, and the mod's own synthesised can landing
    and release whoosh, both approved from previews), and Lose Them / Unseen on a server. Engine findings for anyone
@@ -546,6 +554,8 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   from `PerkFactory.AddPerk` (every vanilla table is multiplied on build): 9000 for most skills (total to 10: 32775),
   150000 for Fitness / Strength. For most skills mastery 1 = 9450 XP, mastery 10 = 13500, 1-10 together = 114750
   (~3.5x the 0-10 climb). Prestige levels continue the line (+40, mastery 50 = 350 points, 31500 XP).
+  Since 2026-11-14 points are also x the skill's pace (`M.PACE`: Strength / Fitness / Sprinting / Nimble 5, Sneaking /
+  Lightfooted 3), so those skills count as a 30000 / 1800 / 3000 XP step; see `docs/balance-audit.md`.
 - **No sandbox options** (user, 2026-11-06: "I want to control the values for now"). `M.option(name, default)` reads
   `M.SETTINGS` (empty) and returns the caller's default, so every value lives in the code: `MasteryCostBase` 100,
   `MasteryCostGrowth` 5, `BonusStrength` 100, one % per skill (perk id) 100, `NimbleStrafe` true.

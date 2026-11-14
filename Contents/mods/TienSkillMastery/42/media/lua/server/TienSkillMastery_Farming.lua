@@ -30,9 +30,8 @@ applied, so that sandbox option does nothing in 42.21.
 Homesteading.Cure: `SPlantGlobalObject:cureMildew/cureFlies/cureAphids/cureSlugs(src, uses, skill)` (~436-498) remove
 `10 + skill` per use (clamped at 0 each use). The wrapper passes a skill that makes that (10 + skill) x (1 + bonus).
 
-Homesteading.PlantHealth: `SPlantGlobalObject:initHealth(skill)` (~736, only called by `seed`) sets health to
-ZombRand(57, 64) + skill (best month), 37..43 + skill (cursed) or `SFarmingSystem:getHealth()` + skill. The wrapper
-adds `M.int` (3 at mastery 10, fraction rolled).
+Homesteading.PlantHealth (+3 starting health, `SPlantGlobalObject:initHealth`) was removed on 2026-11-14 (user):
+vanilla already starts a Farming 10 plant at 67-74, and +3 was never noticed.
 
 Homesteading.BonusYield / Homesteading.Curse: `SPlantGlobalObject:seed(type, skill)` (~715), with PlantGrowingSeasons on:
 not a sow month = cursed; elseif risk month and ZombRand(20) < 11 - skill = cursed (~727); elseif best month and
@@ -209,18 +208,8 @@ for _, name in ipairs({ "cureMildew", "cureFlies", "cureAphids", "cureSlugs" }) 
 end
 
 -- ---------------------------------------------------------------------------------------------------------------
--- Planting: health, curse and bonus yield
+-- Planting: curse and bonus yield
 -- ---------------------------------------------------------------------------------------------------------------
-
-local originalInitHealth = SPlantGlobalObject.initHealth
-function SPlantGlobalObject:initHealth(skill, ...)
-    local results = { originalInitHealth(self, skill, ...) }
-    if current and type(self.health) == "number" then
-        local extra = M.int(current, "Homesteading.PlantHealth")
-        if extra > 0 then self.health = self.health + extra end
-    end
-    return unpack(results)
-end
 
 local originalSeed = SPlantGlobalObject.seed
 function SPlantGlobalObject:seed(typeOfSeed, skill, ...)
