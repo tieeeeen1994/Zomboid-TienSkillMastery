@@ -24,8 +24,7 @@ they pass. When one fails, write what you saw under it, then give this file to C
 
 ## 1. Basics
 
-- [ ] Mastery tab shows 22 masteries. **Salvaging** has a grey Coming Soon button, and everything else
-      a Pick button once its skills are at 10.
+- [ ] Mastery tab shows 21 masteries, each with a Pick button once its skills are at 10 (no Coming Soon).
 - [ ] Pick one: the choice survives leaving and rejoining. The level-up halo and sound play when a level is gained.
 - [ ] Mastery progress is earned from real XP (use the skill for a while) and is not earned by reading a skill book.
 - [ ] (2026-11-10) Foraging at level 10 **without** a mastery that lists it: no "Foraging XP" text over the head. With

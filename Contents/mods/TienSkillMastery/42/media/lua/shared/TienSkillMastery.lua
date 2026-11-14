@@ -115,19 +115,17 @@ M.GROUPS = { "Combat", "Body", "Crafting", "Field" }
 -- Parked masteries (user, 2026-11-07: Stealth and Freerunning, until their missing effects can be built): defined
 -- with their effects and hooks, but not listed, not pickable, earning nothing, effects off. Remove an id here to
 -- bring it back. A pick of one made before it was parked is dropped from the character's picks (its points stay).
--- Salvaging (user, 2026-11-08): hidden for now, too narrow as it stands. All three unhidden the same day (user), now
--- Coming Soon below; none is parked at the moment.
+-- Salvaging (user, 2026-11-08) too; all three were unhidden as Coming Soon the same day. None is parked at the moment.
+-- Salvaging was removed on 2026-11-14 (user: too narrow); its ideas are in docs/v2-draft.md.
 M.PARKED = {}
 M.parked = {}         -- [id] = mastery, for parked ones
 
 -- Coming soon (user, 2026-11-08): listed with their effects, but not pickable, the Pick button a grey Coming Soon.
 -- Unlike a parked mastery, a pick made before it was listed here stays and keeps working. Remove an id once it is
--- ready: Salvaging is too narrow as it stands. Homesteading opened 2026-11-09, Angling and Hunting the same day,
+-- ready. Homesteading opened 2026-11-09, Angling and Hunting the same day,
 -- Freerunning 2026-11-10 (0.4.2, with Evasion and Unfazed Runner; user), Stealth 2026-11-11 (0.4.3, with Quiet Work,
--- Quiet Swings, Distraction Throw, Lose Them and Unseen; user).
-M.COMING_SOON = {
-    Salvaging = true,
-}
+-- Quiet Swings, Distraction Throw, Lose Them and Unseen; user). Salvaging was here until it was removed (2026-11-14).
+M.COMING_SOON = {}
 
 M.masteries = {}      -- display order
 M.masteryById = {}
@@ -149,7 +147,7 @@ function M.mastery(id, group, members)
     return m
 end
 
--- Every vanilla 42.21 skill, 35 skills in 22 masteries (approved 2026-11-06). Perk ids, not display names.
+-- Every vanilla 42.21 skill, 35 skills in 21 masteries (22 approved 2026-11-06; Salvaging removed 2026-11-14). Perk ids, not display names.
 M.mastery("Firearms", "Combat", { "Aiming", "Reloading" })
 M.mastery("Axemanship", "Combat", { "Axe", "Strength" })
 M.mastery("Bludgeoning", "Combat", { "Blunt", "Strength" })
@@ -163,7 +161,6 @@ M.mastery("Stealth", "Body", { "Sneak", "Lightfoot" })
 M.mastery("Smithing", "Crafting", { "Blacksmith", "MetalWelding", "Maintenance" })
 M.mastery("Construction", "Crafting", { "Woodwork", "Masonry" })
 M.mastery("Engineering", "Crafting", { "Mechanics", "Electricity" })
-M.mastery("Salvaging", "Crafting", { "MetalWelding", "Mechanics" })
 M.mastery("Handicraft", "Crafting", { "Carving", "FlintKnapping", "Glassmaking", "Pottery" })
 M.mastery("Mending", "Crafting", { "Tailoring", "Maintenance" })
 M.mastery("FieldMedicine", "Crafting", { "Doctor", "Tailoring" })
@@ -267,8 +264,9 @@ function M.entry(player, create)
         e.picks = e.picks or {}
         e.points = e.points or {}
         e.xp = nil
+        -- Parked masteries are not in masteryById, and neither are removed ones (Salvaging, 2026-11-14).
         for i = #e.picks, 1, -1 do
-            if M.PARKED[e.picks[i]] then table.remove(e.picks, i) end
+            if not M.masteryById[e.picks[i]] then table.remove(e.picks, i) end
         end
     end
     return e
@@ -428,9 +426,6 @@ def("Engineering", "EngineRepair", 1, "int")
 def("Engineering", "Hotwire", 10, "pts")
 def("Engineering", "HotwireTime", 15, "less")
 def("Engineering", "Scrap", 25, "pts")
-def("Salvaging", "BurntCarTime", 15, "less")
-def("Salvaging", "SalvageRoll", 1, "int")
-def("Salvaging", "Salvage", 20, "pct")
 def("Handicraft", "CraftTime", 25, "less")
 def("Handicraft", "ToolWear", 20, "pts")
 def("Mending", "CraftTime", 25, "less")
@@ -496,7 +491,6 @@ def("Smithing", "CharcoalBack", 20, "pts")
 def("Smithing", "OreYield", 15, "pct")
 def("Smithing", "TorchFuel", 20, "pts")
 -- Construction.QuietWork (building noise -50%) removed 2026-11-11 (user): Stealth.QuietWork covers building noise.
-def("Salvaging", "TorchFuel", 20, "pts")
 -- Craftsman's mark: what a master makes ignores 1.5% of its wear per maker's mastery level, fixed at creation.
 def("Mending", "CarefulRepairs", 15, "pct")
 def("Mending", "StrongerPatches", 50, "pct")
@@ -532,7 +526,6 @@ def("Angling", "SigFishFinder", 1, "sig")           -- the aimed water's fish an
 def("Bludgeoning", "SigPushBack", 1, "sig")         -- every swing staggers back the zombies in front it did not hit
 def("Swordsmanship", "SigHamstring", 1, "sig")      -- sneaking and aiming, a long blade hit cripples into a crawler
 def("Engineering", "SigEngineOverhaul", 1, "sig")   -- Engine Parts raise a car's engine quality, +1 each
-def("Salvaging", "SigScrapAnyCar", 1, "sig")        -- scrap any car, and vehicle parts into metal
 def("FieldMedicine", "SigTriage", 1, "sig")         -- "Tend wounds": vanilla treatments queued for every part
 def("FieldMedicine", "SigNeedlework", 1, "sig")     -- recipes: bandages from ripped sheets, suture needles from needle and thread
 def("Homesteading", "SigFields", 1, "sig")          -- tend / sow a picked area of the field

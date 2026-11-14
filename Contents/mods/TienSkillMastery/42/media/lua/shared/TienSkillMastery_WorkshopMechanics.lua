@@ -21,11 +21,6 @@ Engineering.EngineRepair ("int", +1 condition per engine part used at mastery 10
 - ISRepairLightbar:complete ~37: one item, condition + 15 + (L - engine repair level); one roll.
 `VehiclePart.setCondition` sends nothing itself; `transmitPartCondition` sets the update flag on the server and does
 nothing harmful in single player (vanilla calls it on every side).
-
-Salvaging.Salvage ("pct"): ISTakeEngineParts:complete ~31: x = max(20 - (L - engine repair level), 5),
-condForPart = ZombRand(x / 3, x), parts = floor(condition / condForPart), added with
-`getInventory():AddItems('Base.EngineParts', n)` + `sendAddItemsToContainer` (~47). The parts it added (main
-inventory count before / after) are scaled by `M.scaleInt` and the extra added and sent the same way.
 ]]
 
 require "TienSkillMastery"
@@ -84,33 +79,6 @@ if ISRepairLightbar and ISRepairLightbar.complete then
         local results = W.pack(orig(self, ...))
         if results[1] ~= false then
             addCondition(self, M.int(self.character, "Engineering.EngineRepair"))
-        end
-        return W.unpack(results)
-    end
-end
-
--- ---------------------------------------------------------------------------------------------------------------
--- Engine salvage
--- ---------------------------------------------------------------------------------------------------------------
-
-if ISTakeEngineParts and ISTakeEngineParts.complete then
-    local orig = ISTakeEngineParts.complete
-    function ISTakeEngineParts:complete(...)
-        if isClient() or not self.character or M.val(self.character, "Salvaging.Salvage") <= 0 then
-            return orig(self, ...)
-        end
-        local inv = self.character:getInventory()
-        local before = inv:getNumberOfItem("EngineParts", false, false)
-        local results = W.pack(orig(self, ...))
-        if results[1] ~= false then
-            local got = inv:getNumberOfItem("EngineParts", false, false) - before
-            if got > 0 then
-                local extra = M.scaleInt(self.character, "Salvaging.Salvage", got) - got
-                if extra > 0 then
-                    local items = inv:AddItems("Base.EngineParts", extra)
-                    sendAddItemsToContainer(inv, items)
-                end
-            end
         end
         return W.unpack(results)
     end

@@ -3,6 +3,7 @@
 All of it built 2026-11-07 (v0.3.0), except what is parked with Stealth and Freerunning (core, picks, points, tab, v1 hooks moved to masteries; then the passives that fit
 existing hooks). CLAUDE.md "v2 build" lists what is not built yet.
 Stealth and Freerunning were parked (hidden; user, 2026-11-07) until their remaining effects are built, Salvaging too (2026-11-08).
+Salvaging was removed on 2026-11-14 (user: too narrow); its section below is kept as the record, with the ideas offered.
 Those three are now listed but marked Coming Soon, not pickable (user, 2026-11-08; Homesteading, Hunting and Angling were too, until the user opened them on 2026-11-09). v1 (one mastery per skill, bonuses that copy the skill's vanilla effects) is described in CLAUDE.md.
 v2 keeps v1's XP capture and changes what the XP is spent on. **Approved** (user, 2026-11-06): the rules under "The
 idea" and the masteries with their members and names (23 approved, Livestock later dropped: 22). **Not yet approved**: the effects, and everything marked
@@ -585,7 +586,12 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     speed, then `amount = amount - elapsedMinutes x newAmount` and a leak under 70 condition. Wrapper: when
     `vehicle:getDriver()` is a master, give back 15% of the drop the call made (the wrapper only sees the total, so the
     0.01 leak of a worn tank is included).
-- **Salvaging** (**Coming Soon**, user 2026-11-08; too narrow as it stands, see CLAUDE.md) (**approved**, user 2026-11-06; still to review after it: Mending, Field Medicine, Provisioning,
+- **Salvaging** (**removed** 2026-11-14, user; Coming Soon from 2026-11-08, too narrow: every bonus sat on scrapping
+  a car or taking engine parts, and a burnt car already drops ~135 items at Welding 10. Ideas offered then, none
+  chosen: Strip Down (one click uninstalls every part through vanilla's actions), Reclaimed Parts (installed parts
+  sometimes survive scrapping), part scrapping getting the time and torch passives, Scrap Eye (forage Junk), Cut
+  Through (torch opens locked doors, not traced). The code is in git history before that date: `shared/*_Scrap.lua`,
+  `client/*_ScrapMenu.lua`, `shared/*_WorkshopWelding.lua`, the engine salvage hook in `*_WorkshopMechanics.lua`.) (**approved**, user 2026-11-06; still to review after it: Mending, Field Medicine, Provisioning,
   Hunting, Angling, Fieldcraft, Homesteading): burnt-car scrapping time -15%, +1 salvage roll per
   burnt car, engine salvage +20% parts, **torch fuel for scrapping** (new: 20% of the blowtorch uses a burnt car
   takes come back), and the signature ability **scrap any car** (new, user 2026-11-06, below). Dropped: metal window

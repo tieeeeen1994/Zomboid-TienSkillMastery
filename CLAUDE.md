@@ -5,8 +5,8 @@
 The notes below grew as a log, and v1 sections are marked superseded. This section is the current state.
 
 - **Version 0.4.3**, on `master` (the only branch; `v2-draft` deleted 2026-11-11), Workshop item 3836051294, **unlisted by choice**.
-- **Open masteries:** 21 of 22 (Freerunning opened in 0.4.2, 2026-11-10; Stealth in 0.4.3, 2026-11-11). Coming Soon:
-  Salvaging.
+- **Masteries:** 21, all open (Freerunning opened in 0.4.2, 2026-11-10; Stealth in 0.4.3, 2026-11-11). Salvaging, the
+  last Coming Soon, was removed on 2026-11-14 (user: too narrow); its design and ideas are in `docs/v2-draft.md`.
 - **Next:** play `docs/test-checklist.md` on a dedicated server with two players, then fix what it finds.
 - **Tests:** `tests/README.md` (`py tests/run_all.py`; `--release` adds the release report). They need `tests/.lupa`, installed
   once per computer. Older notes below mention harness files in a session scratchpad; those are gone.
@@ -33,10 +33,8 @@ Still to do, in order:
    from OnTick.
 2. Tomahawk and Javelin signatures should produce a sound.
 3. Freerunning: the vault-trip / tall-wall exhaustion effects (`docs/v2-draft.md`; out of Lua's reach as far as traced).
-4. Salvaging needs the user's decision. Suggested: Strip Down (one click uninstalls every part) plus the time and torch
-   passives on part scrapping. Other ideas are under "Salvaging's problem" below.
-5. Skill Journal recording and restoring mastery (low priority).
-6. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
+4. Skill Journal recording and restoring mastery (low priority).
+5. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
 
 Releasing: bump `modversion` in `mod.info`, drop "(coming soon)" from `README.md` for anything opened, remove the id from
 `M.COMING_SOON`, run `py scripts/make_workshop.py`, `py tests/run_all.py --release`. Commit on master, upload in
@@ -116,7 +114,7 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
 
 ## v2 build (from 2026-11-07)
 
-- Core (`shared/TienSkillMastery.lua`): `M.mastery(id, group, members)` for the 22 masteries (ids without spaces:
+- Core (`shared/TienSkillMastery.lua`): `M.mastery(id, group, members)` for the 21 masteries (ids without spaces:
   `StreetFighting`, `FieldMedicine`; names in `IGUI_TienSkillMastery_Mastery_<id>`), `M.def(mastery, name, at10,
   kind, extra)` effects with ids `<Mastery>.<Name>` (kind "step" = `steps = { { level, value } }` + `unit`; `when`
   = a sandbox condition, e.g. Bludgeoning's ExtraTarget with MultiHitZombies on, its Reach with it off). Maps:
@@ -146,13 +144,13 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   effects read 0 (`M.enabled`), and a pick of it in saved data is dropped on read (points kept). Stealth and Freerunning
   (user, 2026-11-07, until their missing effects are built) and Salvaging were parked this way until 2026-11-08, when
   the user unhid them as Coming Soon (below). Picks dropped while parked do not come back.
-- **Salvaging's problem** (user, 2026-11-08: too narrow; every bonus sits on scrapping a car or taking
-  engine parts, and a burnt car already drops ~135 items at Welding 10). Its effects, Scrapper and
-  hooks are all there. Splitting them across Smithing and Engineering was tried and reverted the same day.
-  Ideas offered, none chosen: Strip Down (one click uninstalls every part through vanilla's actions), Reclaimed Parts
-  (installed parts sometimes survive scrapping), part scrapping getting the time and torch passives, Scrap Eye (forage
-  Junk), Cut Through (torch opens locked doors, not traced).
-- **Coming soon: Stealth, Salvaging** (user, 2026-11-08: unhidden, see Parking; Stealth shows no effect
+- **Salvaging removed** (user, 2026-11-14). Too narrow (user, 2026-11-08): every bonus sat on scrapping a car or
+  taking engine parts, and a burnt car already drops ~135 items at Welding 10; splitting it across Smithing and
+  Engineering was tried and reverted the same day. Welding stays in Smithing and Mechanics in Engineering. Nobody could
+  hold a pick (parked, then Coming Soon), and `M.entry` now drops any pick whose id is not in `M.masteryById`. Removed:
+  `shared/*_Scrap.lua`, `client/*_ScrapMenu.lua`, `shared/*_WorkshopWelding.lua`, the engine salvage hook in
+  `shared/*_WorkshopMechanics.lua`, its translations. What it was and the ideas offered are in `docs/v2-draft.md`.
+- **Coming soon: none now** (Stealth and Salvaging were, from 2026-11-08: unhidden, see Parking; Stealth shows no effect
   since 2026-11-11, when its Sneak Speed became Freerunning's crouch speed, and has no signature). Homesteading, Hunting and Angling were on this list too (their signatures not played) until the user
   opened them on 2026-11-09, still unplayed as far as these notes know; Freerunning (running endurance, safe falls,
   signatures Evasion and Unfazed Runner, built 2026-11-10 and not played; Evasion a passive since 2026-11-11) was opened in 0.4.2 the same day.
@@ -253,8 +251,8 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   the hit packet carries it) knocks it down in that hit; the relay's later act only knocks down one not yet falling. `shared/*_EngineOverhaul.lua` +
   `client/*_EngineOverhaulMenu.lua` (quality +1 per Engine Parts, power by vanilla's spawn formula, never lowered,
   vanilla spawn loudness then `updatePartStats`, `transmitEngine`). `shared/*_Scrap.lua` + `client/*_ScrapMenu.lua`
-  (any car through vanilla's ISRemoveBurntVehicle with a server re-check of the signature and guards; part items by
-  type pattern, `M.SCRAP_PARTS` yield table). Fourth harness file `tests4.lua` (17 checks: part table, guards, the
+  (removed with Salvaging, 2026-11-14: any car through vanilla's ISRemoveBurntVehicle with a server re-check of the
+  signature and guards; part items by type pattern, `M.SCRAP_PARTS` yield table). Fourth harness file `tests4.lua` (17 checks: part table, guards, the
   wrapped complete, push back's endurance).
 - Phase 3b, second part: `shared/*_Triage.lua` + `client/*_TriageMenu.lua` (plan rules in `M.Triage.plan`: since 2026-11-09 the goal is the fewest actions that stop health loss, chosen by `T.actions` from the wounds and supplies: stitch with a suture needle, else bandage for now, and every later triage looks again, on bandaged parts too; a fracture alone only a splint; a stitch gets no bandage (user: infection can wait, the point is to stop health loss now and avoid death); another
   player's plan from the server, which also borrows the doctor's missing supplies from the patient and gives the
@@ -461,7 +459,7 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   `fishingNet.checkTrap` for the bonus share of the hours, at most 5, so no break roll and no extra bait).
 - **Open questions for the user** (2026-11-09):
   - Settled 2026-11-10: the server runs `updateFalling` for every player (header of `shared/*_Falls.lua`, which now
-    also keeps the cap one update's step under the threshold, for fast forward). Salvaging still needs a design decision.
+    also keeps the cap one update's step under the threshold, for fast forward). Salvaging was removed (2026-11-14).
 - **Carved spears** (user, 2026-11-09, not played): `Spearcraft.CarvedDamage` +8% and `CarvedReach` +3% replaced
   `SpearCondition`, a +2 that did nothing (Carving 10, a member skill, already fills carved and fire-hardened spears). Any
   spear from a recipe listing Carving (vanilla: CarveSpear, FireHardenSpear; stone, bone, knife and other bound, wired or taped

@@ -22,7 +22,7 @@ is known for.
   Prestige past 10) and plays vanilla's level-up sound.
 - **Mastery belongs to the character.** It is gone when the character dies.
 - **Mastery tab** next to Skills in the character window, laid out like the Skills tab: the masteries by group, each
-  with its skills (green once at 10), a Pick button when it is ready (a grey Coming Soon on those not open yet), ten boxes once picked (hover for the points).
+  with its skills (green once at 10), a Pick button when it is ready, ten boxes once picked (hover for the points).
   Click a mastery to see its effects now and at mastery 10. Long lines here and in the Skills tab's effect lists wrap;
   set the length in Options > Mods.
 - **What your skills do.** Click a skill's name in the vanilla Skills tab to see what its current level gives in
@@ -68,7 +68,6 @@ effects apply with a weapon of its kind.
 - **Engineering** (Mechanics, Electrical): crafting time -25% and dismantling return +10 on electrical, part install
   and uninstall time -15%, engine repair +1 condition per part, hotwire success +10, hotwiring time -15%, 25% chance
   of an extra electronics scrap when dismantling electronics, top speed and engine power +15% while you drive.
-- **Salvaging (coming soon)** (Welding, Mechanics): burnt car salvage time -15%, +1 burnt car salvage roll, engine parts salvaged +20%, 20% chance to get each blowtorch use back when scrapping cars.
 - **Handicraft** (Carving, Knapping, Glassmaking, Pottery): crafting time -25% on their recipes, 20% chance to undo
   tool wear on them; 15% chance of one more item from simple knapping, carving and clay press recipes.
 - **Mending** (Tailoring, Maintenance): tailoring crafting time -25%, patching time -15%, fabric recovery chance
@@ -131,7 +130,6 @@ moment it is picked (it does not grow with mastery levels).
   ignores 15% of its wear, whoever uses it; your handles and heads keep it when a Handicraft master assembles them.
 - **Engineering:** *Engine Overhaul*: Engine Parts raise a car's engine quality, one point each up to 100 (easier
   starts, less fuel, full power).
-- **Salvaging (coming soon):** *Scrapper*: scrap any car, and scrap vehicle parts into metal.
 - **Mending:** *Restoration*: right-click a repaired item to bring it back to full condition and clear its repair count,
   for three times the price of a repair (zip ties, tape, glue, epoxy: whatever repairs it and you are carrying).
 - **Field Medicine:** *Field Triage*: the wound key (comma, rebindable) tends you and everyone next to you. It queues the fewest treatments that stop health loss: glass and bullets out,
