@@ -21,16 +21,22 @@ The notes below grew as a log, and v1 sections are marked superseded. This secti
   and the signatures Lose Them (crouched and out of a chaser's sight 3 s: it gives up) and Unseen (crouched and still:
   zombies not already after the master do not notice), both in `shared/*_LoseThem.lua`, whose header has the 42.22
   trace. Every one has a test in `tests/` and a step in `docs/test-checklist.md`.
-- **Balance pass (2026-11-14, user: "balance by what the player feels and what a master contributes"; not released, not
-  played):** `docs/balance-audit.md` has the reasoning. Applied: a per-skill pace `M.PACE` in the core (Strength,
+- **Balance pass (2026-11-14, user: "balance by what the player feels and what a master contributes"; uploaded and
+  played on the dedicated server, works, user 2026-11-20; `mod.info` still says 0.4.3):** `docs/balance-audit.md` has the reasoning. Applied: a per-skill pace `M.PACE` in the core (Strength,
   Fitness, Sprinting, Nimble x5; Sneaking, Lightfooted x3; Conditioning, Freerunning and Stealth barely levelled before),
   melee attack speed +10% (was 5; knives stay 30), Construction structure health +30%, Engineering installs, Mending
   patching and Field Medicine treatment time -25%, treatment strength +25%, Angling trophy +5; then from the user's
   answers on the proposals: Masterwork and Craftsmanship 25% (were 15), Evasion 20% (was 25), Homesteading's planting
   health +3 removed (hook and label gone; vanilla's Farming line in the Skills tab stays). Hamstring unchanged.
 
+- **Triage stitch fix (2026-11-20, not played):** in MP only the first of several stitches ran: the server's item
+  removal (needle used up) reaches the client before the action's Done, the client's still-running `ISStitch` fails
+  `isValid` and its `stop` reset the queue. Splints from plank + sheet had the same race. Triage now moves on instead
+  (`client/*_TriageMenu.lua` header). That file still has **temporary `[TienSkillMastery] triage:` logging**: remove it
+  once a retest stitches every wound.
+
 Still to do, in order:
-0. Release the balance pass (0.4.4; `docs/balance-audit.md`).
+0. Bump `modversion` past 0.4.3 at the next upload (the balance pass went up without a bump).
 1. Stealth in game: Distraction Throw's sound volumes (chosen 2026-11-11 from offline renders, see "Sounds" below:
    glass `SmashedBottleBreak`, metal `BreakMetalItem`, stone `StoneDrop`, and the mod's own synthesised can landing
    and release whoosh, both approved from previews), and Lose Them / Unseen on a server. Engine findings for anyone
@@ -42,7 +48,19 @@ Still to do, in order:
 2. Tomahawk and Javelin signatures should produce a sound.
 3. Freerunning: the vault-trip / tall-wall exhaustion effects (`docs/v2-draft.md`; out of Lua's reach as far as traced).
 4. Skill Journal recording and restoring mastery (low priority).
-5. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
+5. Running Reload animation (user asked 2026-11-20 whether it is possible; not decided to build, scope open: vanilla
+   guns first, or Gunworks / GoM guns from the start). Now the reload's progress keeps going while running, but the
+   arms play the plain run and the clip restarts on slowing down. Route, traced in 42.22.2 (details in the header of
+   `shared/*_Signatures.lua`): `run` / `sprint` enter the `maskingright` substate whenever `RightHandMask` is not
+   empty; its nodes are upper-body layers (pelvis weight 0). Set `RightHandMask` from Lua every update while a
+   master's reload runs on the move (the game clears it when hand models are rebuilt), and add `AnimSets/player/
+   maskingright` nodes for that value: insert / eject magazine, load rounds, rack, copied from vanilla's `actions`
+   reload nodes with their sound and model-swap events, written out in full (no `x_extends`: Linux). Open points:
+   Gunworks guns use their own reload nodes; other players' clients take the mask from the held item, so they need
+   the variable set on the master too (the Evasion broadcast already sends masters' IDs); the clip runs on its own
+   clock while the reload is timed, so it will not match the round going in; how a reload clip looks over a sprint
+   can only be judged in game.
+6. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
 
 Releasing: bump `modversion` in `mod.info`, drop "(coming soon)" from `README.md` for anything opened, remove the id from
 `M.COMING_SOON`, run `py scripts/make_workshop.py`, `py tests/run_all.py --release`. Commit on master, upload in

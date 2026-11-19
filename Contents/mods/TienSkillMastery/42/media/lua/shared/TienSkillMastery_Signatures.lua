@@ -23,6 +23,13 @@ sides: Gunworks lost its rack phase and reload step and looped (rack, rack, relo
   that clip's events (`loadFinished` at its end, `InsertBullet`...), so it started over. Action groups cannot be
   modded: `ActionGroup.load` (42.21) reads only `ZomboidFileSystem.getMediaFile("actiongroups/...")`, the game's own
   folder (an attempt to add run / sprint transitions from the mod was never loaded).
+  A way to show a reload while running (traced 2026-11-20, 42.22.2, not built): `run` and `sprint` do enter the
+  `maskingright` / `maskingleft` substates (`actiongroups/player/run|sprint/to_maskingright.xml`: `RightHandMask`
+  not empty), whose nodes are upper-body layers over the running legs (`m_SubStateBoneWeights`, `Bip01_Pelvis` 0;
+  vanilla's bag / torch / umbrella holds). AnimSet nodes can be added from a mod, and the variable is settable:
+  `IsoGameCharacter.getPrimaryHandMask` returns the value set through `setVariable("RightHandMask", v)` before the
+  held item's tag mask; `ModelManager.DoCharacterModelEquipped` clears it when hand models are rebuilt, so set it
+  every update. Remote copies compute it from the held item, so other players would need it set on their side too.
   So in single player a master's reload is driven by time instead, the way an MP server drives it: after `start`,
   the action's own `serverStart` runs with `emulateAnimEvent` / `emulateAnimEventOnce` (server globals that take the
   Java net action) swapped for Lua timers on the same real-time clock, and `self.netAction` is a stand-in whose

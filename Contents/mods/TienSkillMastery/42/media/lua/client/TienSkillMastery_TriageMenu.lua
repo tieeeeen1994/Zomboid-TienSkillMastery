@@ -31,6 +31,13 @@ queue and Java treats an action by whether it has started (`IsoGameCharacter` ~9
   `start`, later). A stop for any other reason (the player cancels) still ends the whole queue.
 - Begun but not started (turning to face the patient): an invalid action is dropped by Java without `stop`, and the
   queue's `tick` then calls it bugged and resets, so `isValid` stays true until it has started and takes the way above.
+Used up before the Done (MP, found 2026-11-20 from a logged test: 2 deep wounds, 4 loose suture needles, only the first
+stitched): the server's `ISStitch:complete` uses the needle up (`UseAndSync`), `ISSplint:complete` removes the plank and
+sheet, and that item removal (unordered) can reach the client before the `NetTimedActionPacket` Done (ordered). The
+client's copy, still running, then fails vanilla's `isValid` (`containsID`), stops, and `stop` resets the queue: the
+treatment counted, everything after it was lost. Vanilla's bandage is immune (its client `isValid` reads the
+`itemWasPresent` snapshot). So for every patient, the doctor included, a started stitch or splint whose item has left
+the doctor's inventory takes the "running" way above and the next treatment starts.
 While a
 treatment is asked for or running, further requests are ignored, so a second press does not restart the bar. When the
 queue is done or cancelled, the patients' unused supplies are given back. With nothing that can be treated (no wounds, or
@@ -94,36 +101,98 @@ local function skipIfGone(action, isGone)
     end
 end
 
+-- TEMPORARY (2026-11-20): logs each treatment's life to console.txt, to find why a second stitch in one press is
+-- dropped (4 loose suture needles, 2 deep wounds, only 1 stitched; a second press stitched the other). Remove once found.
+local function log(text) print("[TienSkillMastery] triage: " .. text) end
+
+local function describe(action)
+    local item = action.item or action.bandage or action.plank
+    local part = action.bodyPart and tostring(action.bodyPart:getType()) or "?"
+    return string.format("%s %s item=%s", tostring(action.Type), part, item and tostring(item:getID()) or "nil")
+end
+
+local function track(action)
+    local name = describe(action)
+    local begin, isValid, stop, perform = action.begin, action.isValid, action.stop, action.perform
+    action.begin = function(self, ...)
+        local queue = ISTimedActionQueue.getTimedActionQueue(self.character)
+        log("begin " .. name .. " (queue " .. tostring(#queue.queue) .. ")")
+        return begin(self, ...)
+    end
+    action.isValid = function(self, ...)
+        local ok = isValid(self, ...)
+        if not ok and not self.tsmLoggedInvalid then
+            self.tsmLoggedInvalid = true
+            local id = self.item and self.item:getID()
+            log("isValid false " .. name .. " started=" .. tostring(self:isStarted())
+                .. " hasItem=" .. tostring(id and self.character:getInventory():containsID(id))
+                .. " moved=" .. tostring(ISHealthPanel.DidPatientMove(self.character, self.otherPlayer,
+                    self.bandagedPlayerX, self.bandagedPlayerY)))
+        end
+        return ok
+    end
+    action.stop = function(self, ...)
+        log("stop " .. name)
+        return stop(self, ...)
+    end
+    action.perform = function(self, ...)
+        log("perform " .. name)
+        return perform(self, ...)
+    end
+end
+
+-- What each treatment's server `complete` uses up, by field (see the header: used up before the Done).
+local CONSUMED = { ISStitch = { "item" }, ISSplint = { "rippedSheet", "plank" } }
+
+--- MP: a running treatment whose used-up item has left the doctor's inventory, i.e. the server has completed it.
+local function usedUp(action)
+    local fields = CONSUMED[action.Type]
+    if not fields or not isClient() or not action:isStarted() then return false end
+    local inv = action.character:getInventory()
+    for _, field in ipairs(fields) do
+        local item = action[field]
+        if item and not inv:containsID(item:getID()) then return true end
+    end
+    return false
+end
+
 --- Queues a treatment that goes on while its patient stays close and is skipped once they are gone (see the header).
 local function addTreatment(action, doctor, patient)
+    log("queue " .. describe(action))
+    local isGone = nil
     if patient ~= doctor then
-        local function isGone()
+        isGone = function()
             return patientLeft(patient) or (not doctor:isDriving() and not T.closeEnough(doctor, patient))
         end
         skipIfGone(action, isGone)
-        local vanillaIsValid, vanillaStop = action.isValid, action.stop
-        action.isValid = function(self)
-            if isGone() then
-                if not self:isStarted() then return true end
-                self.patientGone = true
-                return false
-            end
-            if not doctor:isDriving() then
-                self.bandagedPlayerX, self.bandagedPlayerY = patient:getX(), patient:getY()
-            end
-            return vanillaIsValid(self)
-        end
-        action.stop = function(self)
-            if not self.patientGone then return vanillaStop(self) end
-            local queue = ISTimedActionQueue.getTimedActionQueue(self.character)
-            queue.resetQueue = function(q)
-                q.resetQueue = nil
-                q:onCompleted(self)
-            end
-            vanillaStop(self)
-            queue.resetQueue = nil
-        end
     end
+    local vanillaIsValid, vanillaStop = action.isValid, action.stop
+    action.isValid = function(self)
+        if isGone and isGone() then
+            if not self:isStarted() then return true end
+            self.tsmMoveOn = true
+            return false
+        end
+        if usedUp(self) then
+            self.tsmMoveOn = true
+            return false
+        end
+        if isGone and not doctor:isDriving() then
+            self.bandagedPlayerX, self.bandagedPlayerY = patient:getX(), patient:getY()
+        end
+        return vanillaIsValid(self)
+    end
+    action.stop = function(self)
+        if not self.tsmMoveOn then return vanillaStop(self) end
+        local queue = ISTimedActionQueue.getTimedActionQueue(self.character)
+        queue.resetQueue = function(q)
+            q.resetQueue = nil
+            q:onCompleted(self)
+        end
+        vanillaStop(self)
+        queue.resetQueue = nil
+    end
+    track(action)
     ISTimedActionQueue.add(action)
 end
 
@@ -206,11 +275,18 @@ local function queueSteps(doctor, steps, moved)
         end
         return false
     end
+    log(string.format("plan: %d steps, %d items carried, server plan=%s", #steps, #items, tostring(isClient()
+        and #moved > 0)))
     for _, s in ipairs(steps) do
         local patient = s.patient
         local part = partOf(patient, s.part)
         local has = { tweezers = tweezers ~= nil, suture = available(patient, T.isSuture),
             bandage = available(patient, T.isBandage) }
+        local flags = {}
+        for k in pairs(s.w or {}) do flags[#flags + 1] = k end
+        log(string.format("step %s part=%s wounds=%s suture=%s bandage=%s -> %s", tostring(patient:getUsername()),
+            tostring(part and part:getType()), table.concat(flags, ","), tostring(has.suture), tostring(has.bandage),
+            table.concat(T.actions(s.w, has), ",")))
         for _, act in ipairs(T.actions(s.w, has)) do
             if act == "unbandage" then
                 if ready(patient) then
@@ -332,6 +408,7 @@ Events.OnTick.Add(function()
         else
             running.idleSince = running.idleSince or now
             if now - running.idleSince > 1000 then
+                log("queue idle, triage over")
                 local r = running
                 running = nil
                 giveBack(r.doctor, r.moved)
