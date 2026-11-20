@@ -70,4 +70,4 @@ description=[/list]
 description=
 description=Every mastery's effects and every signature ability in full: see the pinned thread in the Discussions tab, or click a mastery in the in-game Mastery tab.
 tags=Build 42;Misc;Multiplayer
-visibility=unlisted
+visibility=public
