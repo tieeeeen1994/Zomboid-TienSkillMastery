@@ -4,7 +4,7 @@
 
 The notes below grew as a log, and v1 sections are marked superseded. This section is the current state.
 
-- **Version 0.4.3**, on `master` (the only branch; `v2-draft` deleted 2026-11-11), Workshop item 3836051294, **unlisted by choice**.
+- **Version 0.4.4** (2026-11-20: the balance pass, the triage stitch fix and the running reload animation), on `master` (the only branch; `v2-draft` deleted 2026-11-11), Workshop item 3836051294, **unlisted by choice**.
 - **Masteries:** 21, all open (Freerunning opened in 0.4.2, 2026-11-10; Stealth in 0.4.3, 2026-11-11). Salvaging, the
   last Coming Soon, was removed on 2026-11-14 (user: too narrow); its design and ideas are in `docs/v2-draft.md`.
 - **Next:** play `docs/test-checklist.md` on a dedicated server with two players, then fix what it finds.
@@ -36,7 +36,6 @@ The notes below grew as a log, and v1 sections are marked superseded. This secti
   once a retest stitches every wound.
 
 Still to do, in order:
-0. Bump `modversion` past 0.4.3 at the next upload (the balance pass went up without a bump).
 1. Stealth in game: Distraction Throw's sound volumes (chosen 2026-11-11 from offline renders, see "Sounds" below:
    glass `SmashedBottleBreak`, metal `BreakMetalItem`, stone `StoneDrop`, and the mod's own synthesised can landing
    and release whoosh, both approved from previews), and Lose Them / Unseen on a server. Engine findings for anyone
@@ -48,18 +47,16 @@ Still to do, in order:
 2. Tomahawk and Javelin signatures should produce a sound.
 3. Freerunning: the vault-trip / tall-wall exhaustion effects (`docs/v2-draft.md`; out of Lua's reach as far as traced).
 4. Skill Journal recording and restoring mastery (low priority).
-5. Running Reload animation (user asked 2026-11-20 whether it is possible; not decided to build, scope open: vanilla
-   guns first, or Gunworks / GoM guns from the start). Now the reload's progress keeps going while running, but the
-   arms play the plain run and the clip restarts on slowing down. Route, traced in 42.22.2 (details in the header of
-   `shared/*_Signatures.lua`): `run` / `sprint` enter the `maskingright` substate whenever `RightHandMask` is not
-   empty; its nodes are upper-body layers (pelvis weight 0). Set `RightHandMask` from Lua every update while a
-   master's reload runs on the move (the game clears it when hand models are rebuilt), and add `AnimSets/player/
-   maskingright` nodes for that value: insert / eject magazine, load rounds, rack, copied from vanilla's `actions`
-   reload nodes with their sound and model-swap events, written out in full (no `x_extends`: Linux). Open points:
-   Gunworks guns use their own reload nodes; other players' clients take the mask from the held item, so they need
-   the variable set on the master too (the Evasion broadcast already sends masters' IDs); the clip runs on its own
-   clock while the reload is timed, so it will not match the round going in; how a reload clip looks over a sprint
-   can only be judged in game.
+5. Running Reload animation, **built and played 2026-11-20: the clips over the run look right (user: "they actually
+   look perfect")** (user: vanilla + Gunworks + Guns of Marz from the start,
+   kept up to date by a script). `shared/*_RunReload.lua` (header has the 42.22.2 trace) sets `RightHandMask =
+   TsmRunReload` on a master reloading in the `run` / `sprint` state, own and remote (server list
+   `runReloadMasters`); `scripts/make_run_reload.py` writes 226 nodes (34 vanilla, 3 Gunworks, 189 GoM) into
+   `AnimSets/player/maskingright/TsmRunReload/`, resolved in full with the mask condition. **Re-run the script and
+   commit whenever the game, Gunworks or Guns of Marz change their reload animations** (it reads the Steam install
+   and the subscribed Workshop items; `tests/runreload_test.py` checks the output). Still to check on the dedicated
+   server: other players seeing it, sounds not doubled at a change of gait. Known: the clip
+   starts over at each change of gait and runs on its own clock against the timed reload.
 6. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
 
 Releasing: bump `modversion` in `mod.info`, drop "(coming soon)" from `README.md` for anything opened, remove the id from
@@ -90,7 +87,7 @@ are in `docs/working-rules.md` (2026-11-11, user: keep every memory in the repos
 - **Workshop preview text** states only what plays, no real-world trivia.
 - Lua sees a Java class's methods and static fields only: instance fields read as nil, so look for getters.
 
-Windows tools: Python is `py`. The game is at `C:/Program Files (x86)/Steam/steamapps/common/ProjectZomboid`; its `jre64/bin/java.exe`
+Windows tools: Python is `py` (since 2026-11-20 only `python` is on the PATH: `python -I scripts/...`). The game is at `C:/Program Files (x86)/Steam/steamapps/common/ProjectZomboid`; its `jre64/bin/java.exe`
 runs Vineflower on the jar's Java 25 classes (recipe in ZomboidFixesB42's `CLAUDE.md`, a separate repo).
 
 ### Sounds (2026-11-11)
@@ -253,8 +250,8 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   modded** (`ActionGroup.load` reads only `ZomboidFileSystem.getMediaFile`, the game folder; mod files there are
   never read). So in single player a master's reload is driven by time like an MP server: after `start`, the
   action's own `serverStart` runs with `emulateAnimEvent(Once)` swapped for Lua timers (real ms), `netAction` is a
-  stand-in, the timers fire `animEvent`, and the animation's copies of those events are ignored. The clip still
-  cannot play while running; restore
+  stand-in, the timers fire `animEvent`, and the animation's copies of those events are ignored. The clip plays
+  while running since 2026-11-20 (`shared/*_RunReload.lua`, the maskingright copies); restore
   (`shared/*_RestoreAction.lua` + `client/*_Restore.lua`, `FixingManager.useFixer` of the first fixer, then
   `setHaveBeenRepaired(0)`); the lunge (Combat: knife min **and** max range raised to the reach, 1.5 tiles, while 0-1
   chasers; vanilla values kept per hand item and put back, and on `OnSave` because `HandWeapon.save` writes a max

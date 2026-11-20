@@ -45,7 +45,7 @@ Whole-number bonuses (carry weight, condition, extra items) build up as a chance
 [h2]Signature abilities[/h2]
 Each mastery also unlocks a signature ability (a few have two or three), each with its own name, in full from the moment it is picked (it does not grow with mastery levels).
 [list]
-[*][b]Firearms:[/b] [i]Quickdraw[/i]: one-handed guns drawn and holstered 4 times faster. [i]Running Reload[/i]: reloading does not stop when you run.
+[*][b]Firearms:[/b] [i]Quickdraw[/i]: one-handed guns drawn and holstered 4 times faster. [i]Running Reload[/i]: reloading does not stop when you run, and your arms keep reloading while you run (vanilla, Gunworks and Guns of Marz guns).
 [*][b]Bludgeoning:[/b] [i]Wild Swing[/i]: every swing with a long blunt weapon also staggers back the zombies in front of you that it did not hit, for a little endurance each.
 [*][b]Swordsmanship:[/b] [i]Hamstring[/i]: sneaking and aiming with a long blade, every hit leaves the zombie crawling.
 [*][b]Street Fighting:[/b] [i]Battering Ram[/i]: sprinting into a zombie knocks it down instead of tripping you, for a little endurance each. The first endurance moodle is a warning; from the second you stumble again.

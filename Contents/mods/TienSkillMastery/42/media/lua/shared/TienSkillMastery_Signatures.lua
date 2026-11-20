@@ -23,20 +23,15 @@ sides: Gunworks lost its rack phase and reload step and looped (rack, rack, relo
   that clip's events (`loadFinished` at its end, `InsertBullet`...), so it started over. Action groups cannot be
   modded: `ActionGroup.load` (42.21) reads only `ZomboidFileSystem.getMediaFile("actiongroups/...")`, the game's own
   folder (an attempt to add run / sprint transitions from the mod was never loaded).
-  A way to show a reload while running (traced 2026-11-20, 42.22.2, not built): `run` and `sprint` do enter the
-  `maskingright` / `maskingleft` substates (`actiongroups/player/run|sprint/to_maskingright.xml`: `RightHandMask`
-  not empty), whose nodes are upper-body layers over the running legs (`m_SubStateBoneWeights`, `Bip01_Pelvis` 0;
-  vanilla's bag / torch / umbrella holds). AnimSet nodes can be added from a mod, and the variable is settable:
-  `IsoGameCharacter.getPrimaryHandMask` returns the value set through `setVariable("RightHandMask", v)` before the
-  held item's tag mask; `ModelManager.DoCharacterModelEquipped` clears it when hand models are rebuilt, so set it
-  every update. Remote copies compute it from the held item, so other players would need it set on their side too.
+  The animation while running is shown through the `maskingright` substate, which `run` and `sprint` do enter
+  (2026-11-20): TienSkillMastery_RunReload.lua and scripts/make_run_reload.py.
   So in single player a master's reload is driven by time instead, the way an MP server drives it: after `start`,
   the action's own `serverStart` runs with `emulateAnimEvent` / `emulateAnimEventOnce` (server globals that take the
   Java net action) swapped for Lua timers on the same real-time clock, and `self.netAction` is a stand-in whose
   `forceComplete` ends the action. The timers fire the action's `animEvent` (periodic ones repeat), and the real
   animation's copies of those event names are ignored; sounds and model swaps still come from the animation. So the
-  reload keeps its pace through running, walking and standing; the clip itself still cannot play while running and
-  starts over afterwards. An MP server already does this, so MP clients are left alone. `serverStart`'s side effects
+  reload keeps its pace through running, walking and standing; the clip itself starts over at each change of gait
+  (the walking and the running copy are separate nodes). An MP server already does this, so MP clients are left alone. `serverStart`'s side effects
   repeat `start`'s (`initVars` sets the reload speed again; ISRackFirearm ejects spent rounds again, by then none).
 - Firearms.SigQuickdraw: `ISEquipWeaponAction` / `ISUnequipAction`: the caller passes the time (`maxTimeInit`); from a
   hotbar slot `animSpeed` = maxTime / `adjustMaxTime(maxTime)`, and with maxTime -1 the action ends on the anim
