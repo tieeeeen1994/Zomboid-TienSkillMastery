@@ -3,9 +3,10 @@
     py scripts/effect_labels.py
 
 Keys are <perk>_<name> as registered in shared/TienSkillMastery_SkillEffects*.lua ("Melee" and "Craft" are shared
-labels). No percent sign in labels: the game's Translator formats every string at load.
+labels). A percent sign in a label is written %% (the game's Translator formats every string at load).
 """
 import json
+import re
 import os
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -15,17 +16,17 @@ PATH = os.path.join(REPO, "Contents", "mods", "TienSkillMastery", "42", "media",
 E = {
     "Fitness": {"AttackSpeed": "Attack speed", "EnduranceRegen": "Endurance regeneration",
                 "RunEndurance": "Endurance used running and sprinting", "SwingEndurance": "Endurance used per swing",
-                "FallDamage": "Fall damage", "FallInjury": "Injury roll after a fall",
+                "FallDamage": "Fall damage", "FallInjury": "Chance of a fracture or deep wound after a fall",
                 "FendOff": "Chance to fend off a zombie in front", "LungeFall": "Chance to fall when a crawler lunges",
-                "Climbing": "Climbing check", "FenceFall": "Chance to fall vaulting a fence",
+                "Climbing": "Chance to fail climbing over a wall", "FenceFall": "Chance to fall vaulting a fence",
                 "WindowEscape": "Escaping a grabbing zombie through a window",
-                "Bump": "Staying up when bumping into someone", "WindowEffort": "Effort opening windows",
+                "Bump": "Chance to fall bumping into someone again while running (sprinting: always)", "WindowEffort": "Effort opening windows",
                 "Rope": "Rope climbing uses the higher of Fitness and Strength"},
     "Strength": {"Capacity": "Carrying capacity before traits", "Damage": "Melee damage",
                  "Shove": "Shove and knockback strength", "ShoveKnockdown": "Shove knockdown chance",
                  "Stomp": "Stomp damage", "Strain": "Muscle strain from fighting",
-                 "FendOff": "Chance to fend off a zombie in front", "Climbing": "Climbing check",
-                 "Bump": "Staying up when bumping into someone", "ForceWindow": "Forcing a locked window open",
+                 "FendOff": "Chance to fend off a zombie in front", "Climbing": "Chance to fail climbing over a wall",
+                 "Bump": "Chance to fall bumping into someone again while running (sprinting: always)", "ForceWindow": "Forcing a locked window open",
                  "DoorDamage": "Weapon damage to doors", "Recoil": "Firearm recoil delay",
                  "PickUpAnimal": "Heaviest animal you can pick up", "Dismantle": "Dismantling time",
                  "Sledgehammer": "Sledgehammer and pickaxe time", "Reeling": "Reeling strength when fishing",
@@ -34,23 +35,23 @@ E = {
     "Lightfoot": {"Footsteps": "Footstep noise", "SneakSound": "Steps zombies can hear while sneaking",
                   "Animals": "Chance animals notice you"},
     "Nimble": {"StrafeSpeed": "Strafe speed while aiming", "Footsteps": "Footstep noise", "FallDamage": "Fall damage",
-               "FallInjury": "Injury roll after a fall", "KneeFall": "Tearing clothes when falling on your knees",
-               "LungeFall": "Chance to fall when a crawler lunges", "Climbing": "Climbing check",
+               "FallInjury": "Chance of a fracture or deep wound after a fall", "KneeFall": "Tearing clothes when falling on your knees",
+               "LungeFall": "Chance to fall when a crawler lunges", "Climbing": "Chance to fail climbing over a wall",
                "MovePenalty": "Firearm penalty for moving", "Animals": "Chance animals notice you"},
     "Sneak": {"Spotted": "Chance zombies spot you while sneaking", "Footsteps": "Footstep noise while sneaking",
               "Animals": "Chance animals notice you"},
     "Melee": {"WithWeapon": "With a weapon of this skill:", "Damage": "Damage", "AttackSpeed": "Attack speed", "Crit": "Critical hit chance",
               "FendOff": "Chance to fend off a zombie in front", "Thump": "Chance a zombie attack does no harm",
-              "Wear": "Added to the weapon wear roll", "HeavyDamage": "Extra damage", "Reach": "Longer reach",
+              "Wear": "Chance a hit lowers the weapon's condition", "HeavyDamage": "Extra damage", "Reach": "Longer reach",
               "SwingEndurance": "Less endurance per swing", "AxeKnockback": "Double knockback",
               "JawStuck": "Knife stuck in a zombie's jaw", "KnifeKillSafe": "Safe from the zombie during a knife kill"},
-    "Maintenance": {"Wear": "Added to the weapon wear roll"},
+    "Maintenance": {"Wear": "Chance a hit lowers the weapon's condition"},
     "Aiming": {"HitChance": "Hit chance", "Crit": "Critical hit chance", "Range": "Range in tiles",
                "AimIn": "Aim-in speed", "SightBand": "Wider sight range band", "Recoil": "Recoil delay",
-               "Wind": "Wind penalty", "MovePenalty": "Penalty for moving", "Unjam": "Jam clearing",
+               "Wind": "Wind penalty", "MovePenalty": "Penalty for moving", "Unjam": "Chance a jam clearing attempt fails",
                "PvpCrit": "Critical hits on players", "WildAnimals": "Time for a shot wild animal to drop"},
     "Reloading": {"ReloadSpeed": "Reload speed", "RackSpeed": "Rack speed", "RackAim": "Aim lost when racking"},
-    "Craft": {"CraftTime": "Crafting: 5 percent faster per level above a recipe's requirement",
+    "Craft": {"CraftTime": "Crafting: 5%% faster per level above a recipe's requirement",
               "AutoLearn": "Some recipes are learned automatically at set levels",
               "Dismantle": "Dismantling: chance to get each material back",
               "BreakFurniture": "Chance to break furniture when picking it up",
@@ -119,7 +120,7 @@ E = {
                    "HookTime": "Hooking, unhooking and beheading time", "MeatTime": "Meat and leather time",
                    "Blood": "Most blood spilled"},
 }
-NOTES = {"Gun": "with the gun in hand",
+NOTES = {"Gun": "with the gun in hand", "WeaponInHand": "with the melee weapon in your hand",
          "PlusBase": "plus the material's own chance", "TimesBase": "x the structure's own bonus",
          "TimesRod": "x the rod", "Mechanics2": "needs Mechanics 2", "Electrical1": "needs Electrical 1",
          "CarLevel": "above the car's level", "Placed": "on traps you place", "PlusLevel": "of your level in extra crops"}
@@ -127,10 +128,10 @@ NOTES = {"Gun": "with the gun in hand",
 t = json.load(open(PATH, encoding="utf-8"))
 for perk, d in E.items():
     for k, v in d.items():
-        assert "%" not in v, v
+        assert not re.search(r"(?<!%)%(?!%)", v), v   # a lone % breaks the Translator; write %%
         t[f"IGUI_TienSkillMastery_Effect_{perk}_{k}"] = v
 for k, v in NOTES.items():
     t[f"IGUI_TienSkillMastery_EffectNote_{k}"] = v
-with open(PATH, "w", encoding="utf-8", newline="\n") as f:
+with open(PATH, "w", encoding="utf-8", newline="\r\n") as f:   # the repo's working tree is CRLF
     json.dump(t, f, indent=4, ensure_ascii=False)
 print(len(t), "keys")

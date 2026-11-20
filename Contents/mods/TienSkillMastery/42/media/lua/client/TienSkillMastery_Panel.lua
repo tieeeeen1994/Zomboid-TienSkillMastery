@@ -44,15 +44,21 @@ end
 local function bonusValueText(d, v)
     local n = fmt(v)
     local kind = d.kind == "step" and d.unit or d.kind
-    if kind == "pct" then return "+" .. n .. "%" end
-    if kind == "less" then return "-" .. n .. "%" end
-    if kind == "ptsoff" then return "-" .. n end
+    -- Every percent shows its % (user, 2026-11-20): "pct" / "less" are percent of the vanilla amount, "pts" / "ptsoff"
+    -- percentage points on a chance (the label names the chance). Plain numbers are amounts: weight, damage, floors,
+    -- condition, extra items, foraging points.
+    if kind == "pct" or kind == "pts" then return "+" .. n .. "%" end
+    if kind == "less" or kind == "ptsoff" then return "-" .. n .. "%" end
     return "+" .. n
 end
 
 local function bonusLabel(d)
-    return getTextOrNull("IGUI_TienSkillMastery_Bonus_" .. d.mastery .. "_" .. d.name)
-        or getTextOrNull("IGUI_TienSkillMastery_Bonus_" .. d.name) or d.name
+    local key = "IGUI_TienSkillMastery_Bonus_" .. d.mastery .. "_" .. d.name
+    if not getTextOrNull(key) then key = "IGUI_TienSkillMastery_Bonus_" .. d.name end
+    if not getTextOrNull(key) then return d.name end
+    -- A signature with an amount names it as %1: its sandbox option's value (since 2026-11-20).
+    if d.kind == "sig" and d.unit then return getText(key, fmt(M.valueAt(d, M.BONUS_LEVELS))) end
+    return getText(key)
 end
 
 local function masteryName(id)
@@ -229,9 +235,10 @@ function TienSkillMasteryPanel:render()
     self.rows, self.catRows, self.pickButtons = {}, {}, {}
 
     local picked = #M.picks(player)
-    local intro = getText("IGUI_TienSkillMastery_Intro", string.format("%d", M.MAX_PICKS))
+    local maxPicks = M.maxPicks()
+    local intro = getText("IGUI_TienSkillMastery_Intro", string.format("%d", maxPicks))
     local intro2 = getText("IGUI_TienSkillMastery_Intro2")
-    local slots = getText("IGUI_TienSkillMastery_Slots", string.format("%d", picked), string.format("%d", M.MAX_PICKS))
+    local slots = getText("IGUI_TienSkillMastery_Slots", string.format("%d", picked), string.format("%d", maxPicks))
     for _, line in ipairs({ intro, intro2 }) do
         for i, part in ipairs(M.wrapText(line)) do
             local px = PAD + (i > 1 and M.WRAP_INDENT or 0)
@@ -328,7 +335,7 @@ function TienSkillMasteryPanel:render()
                                     .. getText(now > 0 and "IGUI_TienSkillMastery_SigOn" or "IGUI_TienSkillMastery_SigOff") .. ")"
                                 if now > 0 then cr, cg, cb = TAR[1], TAR[2], TAR[3] else cr, cg, cb = 0.5, 0.5, 0.5 end
                             else
-                                local max = M.valueAt(d, M.BONUS_LEVELS) * M.scale(d.mastery)
+                                local max = M.valueAt(d, M.BONUS_LEVELS)
                                 line = bonusLabel(d) .. ": " .. bonusValueText(d, now) .. "   ("
                                     .. getText("IGUI_TienSkillMastery_AtMax", bonusValueText(d, max)) .. ")"
                                 local g2 = now > 0 and 0.85 or 0.5
@@ -405,7 +412,7 @@ function TienSkillMasteryPanel:askPick(masteryId)
     -- string and drawn on its own line below.
     local lines = {
         getText("IGUI_TienSkillMastery_PickConfirm", masteryName(masteryId), string.format("%d", slot),
-            string.format("%d", M.MAX_PICKS)),
+            string.format("%d", M.maxPicks())),
         getText("IGUI_TienSkillMastery_PickConfirm2"),
         getText("IGUI_TienSkillMastery_PickConfirm3"),
     }

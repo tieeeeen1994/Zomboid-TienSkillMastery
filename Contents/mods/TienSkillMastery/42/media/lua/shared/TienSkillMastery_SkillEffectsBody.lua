@@ -16,7 +16,9 @@ Strength: carrying capacity = maxWeightBase 8 x getWeightMod (IGC ~4683: 0.8 .. 
 melee damage x getHittingMod (IGC ~4553: 0.75 .. 1.25; CombatManager ~961); shove and knockback x getShovingMod (IGC
 ~4578; HandWeapon ~2492, IGC ~6154); shove knockdown chance 35 + 2 / level (IsoPlayer.calculateCritChance ~3848);
 stomp damage +0.2 / level (CombatManager ~1039); muscle strain from fighting x (15 - L) / 10 (IGC ~16296..16370);
-fending off +2 / level; climbing +2 / level; staying up when bumping +1 / level; forcing a locked window: 4 / 6 / 10 / 20
+fending off +2 / level; climbing +2 / level; staying up when bumping +1 / level (climbing, bumping and weapon wear are
+1-in-N rolls, shown as what the level changes in percent and the chance now: see climbFail, bumpFall and
+wearChance below); forcing a locked window: 4 / 6 / 10 / 20
 in 100 from levels 2 / 4 / 6 / 8 (OpenWindowState ~182); door damage with a weapon x 0.5 .. 1.7 (IsoDoor ~1279, level 5
 = 1.0); firearm recoil delay x (1 - (2 L - 10) / 40) (HandWeapon.getRecoilDelay ~1296); heaviest animal you can pick up
 40 + 7 L (IsoAnimal ~3172); dismantling 200 - 10 L (ISDismantleAction ~102, ISMoveableSpriteProps ~4308), sledgehammer
@@ -79,6 +81,77 @@ local NIMBLE = { 1.0, 1.1, 1.14, 1.18, 1.22, 1.26, 1.3, 1.34, 1.38, 1.42, 1.5 }
 local SNEAK = { 0.95, 0.9, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4 }
 local MELEE_MOD = { -5, -2, 0, 1, 2, 3, 4, 5, 5, 6, 7 }
 
+-- "1 in N" rolls (user, 2026-11-20: percentages, not N; then "what this level changes, with the chance now"): each
+-- line is format "delta", returning (chance at the shown level - chance at level 0 of the shown skill, chance at the
+-- shown level), from the player's own skills, traits, moodles and weapon (42.22.2 traced). The tab prints
+-- "-5.2% (now 3.3%)". A negative change is good: these are chances of something going wrong.
+local function has(p, trait)
+    local ok, r = pcall(function() return p:hasTrait(CharacterTrait[trait]) end)
+    return ok and r == true
+end
+
+local function delta(at, L)
+    local now = at(L)
+    if now == nil then return nil end
+    return now - at(0), now
+end
+
+-- Wall climbing (ClimbOverWallState ~316): fails 1 in N, N = getClimbingFailChanceInt() (Fitness, Strength and
+-- Nimble 2 each, moodles, traits); N <= 0 succeeds only on Rand(100) <= max(1, Strength) and never under a heavy
+-- load; sandbox Easy Climbing never fails. The struggle roll (1 in N / 2) is not shown.
+local function climbFail(perk)
+    return function(L, p)
+        if not p then return nil end
+        local cur = p:getPerkLevel(Perks[perk])
+        local function at(level)
+            if SandboxVars and SandboxVars.EasyClimbing == true then return 0 end
+            local n = math.floor(p:getClimbingFailChanceFloat() + 2 * (level - cur))
+            if n > 0 then return 100 / n end
+            if p:getMoodles():getMoodleLevel(MoodleType.HEAVY_LOAD) > 0 then return 100 end
+            local str = perk == "Strength" and level or p:getPerkLevel(Perks.Strength)
+            return 100 - (math.max(1, str) + 1)
+        end
+        return delta(at, L)
+    end
+end
+
+-- Bumping into someone while running (IsoMovingObject ~1255): only a bump within 1.5 s of the last one rolls (the
+-- sprint always falls), 1 in N, N = 10 - 3 x bumps in a row + Fitness + Strength - 2 x drunk, traits, lower back
+-- pain above 20 (minus (pain - 20) / 20), 1..80; shown for the second bump in a row.
+local function bumpFall(perk)
+    return function(L, p)
+        if not p then return nil end
+        local cur = p:getPerkLevel(Perks[perk])
+        local function at(level)
+            local n = 7 + p:getPerkLevel(Perks.Fitness) + p:getPerkLevel(Perks.Strength) + (level - cur)
+            n = n - p:getMoodles():getMoodleLevel(MoodleType.DRUNK) * 2
+            if has(p, "CLUMSY") then n = n - 5 end
+            if has(p, "GRACEFUL") then n = n + 5 end
+            if has(p, "VERY_UNDERWEIGHT") or has(p, "OBESE") then n = n - 8 end
+            if has(p, "UNDERWEIGHT") or has(p, "OVERWEIGHT") then n = n - 4 end
+            local ok, pain = pcall(function()
+                return p:getBodyDamage():getBodyPart(BodyPartType.Torso_Lower):getAdditionalPain(true)
+            end)
+            if ok and type(pain) == "number" and pain > 20 then n = math.floor(n - (pain - 20) / 20) end
+            return 100 / math.max(1, math.min(80, n))
+        end
+        return delta(at, L)
+    end
+end
+
+-- Weapon wear on a hit (CombatManager.processMaintenanceCheck ~518, InventoryItem.damageCheck ~4555): condition
+-- lost 1 in (the weapon's ConditionLowerChance + Maintenance + weapon skill / 2), for the melee weapon in hand.
+-- Not counted: charge attacks (ConditionLowerChance / 1.5), trees (an axe doubles it), the head-condition and
+-- sharpness rolls.
+local function meleeInHand(p)
+    local w = p and p:getPrimaryHandItem()
+    if w and instanceof(w, "HandWeapon") and not w:isRanged() then return w end
+    return nil
+end
+local function wearChance(maintenance, weaponLevel, w)
+    return 100 / math.max(1, w:getConditionLowerChance() + maintenance + math.floor(weaponLevel / 2))
+end
+
 M.addSkillEffects("Fitness", {
     { name = "AttackSpeed", format = "pct", value = function(L) return 2 * L end },
     { name = "EnduranceRegen", format = "mult", value = tbl(RECOVERY) },
@@ -88,10 +161,10 @@ M.addSkillEffects("Fitness", {
     { name = "FallInjury", format = "pts", value = function(L) if L > 4 then return -(L - 4) * 1.5 end end },
     { name = "FendOff", format = "pts", value = function(L) return 2 * L end },
     { name = "LungeFall", format = "pts", value = function(L) return -2 * L end },
-    { name = "Climbing", format = "pts", value = function(L) return 2 * L end },
+    { name = "Climbing", format = "delta", value = climbFail("Fitness") },
     { name = "FenceFall", format = "pts", value = function(L) return -L end },
     { name = "WindowEscape", format = "chance", value = function(L) return (1 - 1 / (5 + L)) * 100 end },
-    { name = "Bump", format = "pts", value = function(L) return L end },
+    { name = "Bump", format = "delta", value = bumpFall("Fitness") },
     { name = "WindowEffort", format = "pct", value = rel(WINDOW_EFFORT, 0.011) },
     { name = "Rope", unlock = 0 },
 })
@@ -104,8 +177,8 @@ M.addSkillEffects("Strength", {
     { name = "Stomp", format = "pct", value = function(L) return 20 * L end },
     { name = "Strain", format = "mult", value = function(L) return (15 - L) / 10 end },
     { name = "FendOff", format = "pts", value = function(L) return 2 * L end },
-    { name = "Climbing", format = "pts", value = function(L) return 2 * L end },
-    { name = "Bump", format = "pts", value = function(L) return L end },
+    { name = "Climbing", format = "delta", value = climbFail("Strength") },
+    { name = "Bump", format = "delta", value = bumpFall("Strength") },
     { name = "ForceWindow", format = "chance", value = function(L)
         if L > 7 then return 20 elseif L > 5 then return 10 elseif L > 3 then return 6 elseif L > 1 then return 4 end
         return 0
@@ -136,7 +209,7 @@ M.addSkillEffects("Nimble", {
     { name = "FallInjury", format = "pts", value = function(L) return -1.5 * L end },
     { name = "KneeFall", format = "chance", value = function(L) return 100 / (4 + L) end },
     { name = "LungeFall", format = "pts", value = function(L) return -L end },
-    { name = "Climbing", format = "pts", value = function(L) return 2 * L end },
+    { name = "Climbing", format = "delta", value = climbFail("Nimble") },
     { name = "MovePenalty", format = "pct", value = function(L) return -2.5 * L end },
     { name = "Animals", format = "mult", value = function(L) return 0.5 / ((L + 2) * 0.25) end },
 })
@@ -155,7 +228,12 @@ local function melee(perkId, extra)
         { name = "Crit", format = "pts", value = function(L) return 3 * L end },
         { name = "FendOff", format = "pts", value = function(L) return 3 * L end },
         { name = "Thump", format = "chance", value = function(L) return 16 + MELEE_MOD[math.min(10, L) + 1] end },
-        { name = "Wear", format = "num", value = function(L) return math.floor(L / 2) end },
+        { name = "Wear", format = "delta", note = "IGUI_TienSkillMastery_EffectNote_WeaponInHand", value = function(L, p)
+            local w = meleeInHand(p)
+            if not w then return nil end
+            local m = p:getPerkLevel(Perks.Maintenance)
+            return delta(function(level) return wearChance(m, level, w) end, L)
+        end },
     }
     for _, e in ipairs(extra or {}) do table.insert(list, e) end
     for _, e in ipairs(list) do e.labelPerk = "Melee" end
@@ -186,7 +264,12 @@ melee("SmallBlade", {
 })
 
 M.addSkillEffects("Maintenance", {
-    { name = "Wear", format = "num", value = function(L) return L end },
+    { name = "Wear", format = "delta", note = "IGUI_TienSkillMastery_EffectNote_WeaponInHand", value = function(L, p)
+        local w = meleeInHand(p)
+        if not w then return nil end
+        local wl = p:getWeaponLevel()
+        return delta(function(level) return wearChance(level, wl, w) end, L)
+    end },
 })
 
 M.addSkillEffects("Aiming", {

@@ -36,7 +36,8 @@ sides: Gunworks lost its rack phase and reload step and looped (rack, rack, relo
 - Firearms.SigQuickdraw: `ISEquipWeaponAction` / `ISUnequipAction`: the caller passes the time (`maxTimeInit`); from a
   hotbar slot `animSpeed` = maxTime / `adjustMaxTime(maxTime)`, and with maxTime -1 the action ends on the anim
   event. For a one-handed firearm (`isRanged()`, not `isTwoHandWeapon()` / `isRequiresEquippedBothHands()`) held by
-  a master: the time / 4 (at least 1) and animSpeed x 4, so an anim-timed draw reaches its event 4x sooner.
+  a master: the time / 4 (at least 1) and animSpeed x 4, so an anim-timed draw reaches its event 4x sooner
+  (4 = the signature's amount, a sandbox option since 2026-11-20).
   Whatever was in hand goes away as fast (user, 2026-11-07): the hotbar puts a held hotbar item away with its own
   `ISUnequipAction(chr, primary, 20)` queued right before the draw (`ISHotbar:equipItem`), so an unequip of anything
   whose next few queued actions include a quickdraw draw by the same character is quickened the same way.
@@ -73,15 +74,19 @@ local RELOAD = { ISReloadWeaponAction = true, ISInsertMagazine = true, ISEjectMa
     ISLoadBulletsInMagazine = true, ISRackFirearm = true, ISUnloadBulletsFromFirearm = true,
     ISUnloadBulletsFromMagazine = true }
 local EQUIP = { ISEquipWeaponAction = true, ISUnequipAction = true }
-local QUICK = 4
 
 local function quickdrawApplies(character, item)
     return character and item and instanceof(item, "HandWeapon") and item:isRanged() and not item:isTwoHandWeapon()
         and not item:isRequiresEquippedBothHands() and M.sig(character, "Firearms.SigQuickdraw")
 end
 
-local function quickTime(t)
-    if type(t) == "number" and t > 1 then return math.max(1, math.floor(t / QUICK)) end
+--- The draw's speed-up, the signature's amount (4 by default, a sandbox option; at least 1).
+local function quickFactor(character)
+    return math.max(1, M.val(character, "Firearms.SigQuickdraw"))
+end
+
+local function quickTime(t, quick)
+    if type(t) == "number" and t > 1 then return math.max(1, math.floor(t / quick)) end
     return t
 end
 
@@ -122,9 +127,10 @@ if ISBaseTimedAction and ISBaseTimedAction.create and not ISBaseTimedAction.__ts
         elseif EQUIP[t] and not self.tsmQuick and (quickdrawApplies(self.character, self.item)
             or (t == "ISUnequipAction" and drawFollows(self))) then
             self.tsmQuick = true
-            self.maxTime = quickTime(self.maxTime)
-            self.maxTimeInit = quickTime(self.maxTimeInit)
-            self.animSpeed = (self.animSpeed or 1) * QUICK
+            local quick = quickFactor(self.character)
+            self.maxTime = quickTime(self.maxTime, quick)
+            self.maxTimeInit = quickTime(self.maxTimeInit, quick)
+            self.animSpeed = (self.animSpeed or 1) * quick
         end
         -- Single player: progress by time (see the header; started after `start`).
         if runReload and not isClient() and not isServer() and type(self.serverStart) == "function" then

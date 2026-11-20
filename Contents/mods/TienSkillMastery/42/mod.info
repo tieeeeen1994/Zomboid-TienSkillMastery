@@ -1,6 +1,6 @@
 name=Tien's Skill Mastery
 id=TienSkillMastery
-description=Skills stay vanilla; on top come masteries, named groups of skills (Firearms, Construction, Hunting...) with effects of their own. Pick up to three once every skill in them is at level 10; a picked mastery grows from experience to mastery 10, then prestige. Mastery tab next to Skills, vanilla-style level-ups, and click any skill in the Skills tab to see what its level gives. Works on dedicated servers.
+description=Skills stay vanilla; on top come masteries, named groups of skills (Firearms, Construction, Hunting...) with effects of their own. Pick up to three (a sandbox option) once every skill in them is at level 10; a picked mastery grows from experience to mastery 10, then prestige. Mastery tab next to Skills, vanilla-style level-ups, and click any skill in the Skills tab to see what its level gives. Works on dedicated servers.
 author=Tien
 poster=poster.png
 icon=icon.png

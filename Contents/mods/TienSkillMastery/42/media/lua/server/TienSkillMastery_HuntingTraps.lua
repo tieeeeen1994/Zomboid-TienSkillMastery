@@ -6,7 +6,8 @@ TrapSystem.lua ~29, from the server's `TrapBO:create`); a placer with the Huntin
 the object's modData. The server's `STrapGlobalObject` reads its state from that modData (`stateFromIsoObject` ->
 `fromModData`) and keeps it with `toModData`, which only copy vanilla's fields, so both are wrapped to carry
 `tsmTrap` and `tsmDouble`. The mark belongs to the trap: it works with its placer offline (traps are checked hourly,
-long after placement) and even if the pick is later removed.
+long after placement) and even if the pick is later removed. Each of the three below reads its sandbox option when
+it acts (`M.amount`, since 2026-11-20), so an admin can turn one off or change its amount for every marked trap.
 
 - Sturdy traps (Hunting.SigSturdyTraps): `checkDestroy(square)` (~160, every hour) takes the bait 1 in
   (trap strength + 10) and destroys an unloaded trap 1 in 40 x 1 in trap strength; skipped for a marked trap.
@@ -32,7 +33,7 @@ if TrapSystem and TrapSystem.initObjectModData then
     local vanillaInit = TrapSystem.initObjectModData
     TrapSystem.initObjectModData = function(isoObject, trapDef, north, player, ...)
         local r = pack(vanillaInit(isoObject, trapDef, north, player, ...))
-        if player and isoObject and M.sig(player, "Hunting.SigSturdyTraps") then
+        if player and isoObject and M.hasSignature(player, "Hunting") then
             isoObject:getModData().tsmTrap = true
         end
         return unpack(r, 1, r.n)
@@ -64,7 +65,7 @@ end
 if T.checkDestroy then
     local vanilla = T.checkDestroy
     function T:checkDestroy(...)
-        if self.tsmTrap then return end
+        if self.tsmTrap and M.amount("Hunting.SigSturdyTraps") > 0 then return end
         return vanilla(self, ...)
     end
 end
@@ -73,8 +74,8 @@ if T.addAliveAnimal then
     local vanilla = T.addAliveAnimal
     function T:addAliveAnimal(...)
         if self.tsmTrap and type(self.animalAliveHour) == "number" then
-            local factor = 4
-            self.animalAliveHour = math.floor(self.animalAliveHour / factor)
+            local factor = M.amount("Hunting.SigLiveCatch")
+            if factor > 1 then self.animalAliveHour = math.floor(self.animalAliveHour / factor) end
         end
         return vanilla(self, ...)
     end
@@ -84,7 +85,7 @@ if T.setAnimal then
     local vanilla = T.setAnimal
     function T:setAnimal(animal, ...)
         local r = pack(vanilla(self, animal, ...))
-        if self.tsmTrap and self.animal and self.animal.type and ZombRandFloat(0, 100) < 25 then
+        if self.tsmTrap and self.animal and self.animal.type and ZombRandFloat(0, 100) < M.amount("Hunting.SigDoubleCatch") then
             self.tsmDouble = true
         end
         return unpack(r, 1, r.n)

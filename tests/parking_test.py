@@ -276,12 +276,48 @@ check("paceDecayParked", near(raw(b, "Strength"), total("Strength") - 240), raw(
 check("paceInverse", near(M.xpForPoints(Perks.Strength, M.pointsFor(Perks.Strength, 777)), 777),
     M.xpForPoints(Perks.Strength, M.pointsFor(Perks.Strength, 777)))
 
+-- 8c. Contribution options (`<Mastery>_Skill_<perk>`, 2026-11-20): Strength x10 for Conditioning doubles both the gain
+-- and the decay's points; at 0 Conditioning takes nothing from Strength, which goes back to vanilla's cap.
+SandboxVars = { TienSkillMastery = { Conditioning_Skill_Strength = 10 } }
+award(b, "Strength", 150)
+check("contributionGain", near(M.getPoints(b, "Conditioning"), 1.4), M.getPoints(b, "Conditioning"))
+award(b, "Strength", -30)
+check("contributionDecay", near(M.getPoints(b, "Conditioning"), 1.2), M.getPoints(b, "Conditioning"))
+check("contributionDecayParked", near(raw(b, "Strength"), total("Strength") - 240), raw(b, "Strength"))
+SandboxVars.TienSkillMastery.Conditioning_Skill_Strength = 0
+award(b, "Strength", 150)
+check("contributionZeroNoPoints", near(M.getPoints(b, "Conditioning"), 1.2), M.getPoints(b, "Conditioning"))
+check("contributionZeroUnparked", near(raw(b, "Strength"), total("Strength")), raw(b, "Strength"))
+SandboxVars = nil
+pass()
+check("contributionBackParked", near(raw(b, "Strength"), total("Strength") - 240), raw(b, "Strength"))
+
 -- 9. Admin skill cheat on a skill no mastery takes: back at the cap afterwards.
 M.adminSkill(b, { perk = "Cooking", op = "remove", amount = 100 })
 M.adminSkill(b, { perk = "Cooking", op = "add", amount = 100 })
 check("adminSkillAtCap", near(raw(b, "Cooking"), total("Cooking")), raw(b, "Cooking"))
 M.adminSkill(b, { perk = "Strength", op = "add", amount = 10 })
 check("adminSkillParkedMember", near(raw(b, "Strength"), total("Strength") - 240), raw(b, "Strength"))
+
+-- 10. Masteries per character (sandbox option MaxMasteries, 2026-11-20). B has every skill at 10 and one pick.
+SandboxVars = nil
+check("maxPicksDefault", M.maxPicks() == 3, M.maxPicks())
+SandboxVars = { TienSkillMastery = { MaxMasteries = 1 } }
+check("maxPicksOption", M.maxPicks() == 1, M.maxPicks())
+check("closedAtOne", M.state(b, "Axemanship") == "closed", M.state(b, "Axemanship"))
+check("pickRefusedAtOne", not M.pick(b, "Axemanship"), "picked past the limit")
+SandboxVars.TienSkillMastery.MaxMasteries = 2
+check("openAtTwo", M.state(b, "Axemanship") == "available", M.state(b, "Axemanship"))
+check("pickAtTwo", M.pick(b, "Axemanship"), "pick refused")
+SandboxVars.TienSkillMastery.MaxMasteries = 1
+check("loweredKeepsPicks", #M.picks(b) == 2 and M.state(b, "Axemanship") == "picked", #M.picks(b))
+check("loweredClosesOthers", M.state(b, "Cooking") == "closed" or M.state(b, "Firearms") == "closed",
+    M.state(b, "Firearms"))
+SandboxVars.TienSkillMastery.MaxMasteries = 99
+check("maxPicksClamped", M.maxPicks() == #M.masteries, M.maxPicks())
+SandboxVars.TienSkillMastery.MaxMasteries = 0
+check("maxPicksAtLeastOne", M.maxPicks() == 1, M.maxPicks())
+SandboxVars = nil
 
 return table.concat(out, "\n")
 ''')

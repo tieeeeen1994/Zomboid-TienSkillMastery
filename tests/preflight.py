@@ -34,11 +34,14 @@ for f, s in files.items():
 print('   failures:', bad)
 
 print('== translations')
-for name in ['IG_UI', 'UI', 'Recipes']:
+for name in ['IG_UI', 'UI', 'Recipes', 'Sandbox']:
     p = root / f'shared/Translate/EN/{name}.json'
     d = json.loads(p.read_text(encoding='utf-8'))
     pct = [k for k, v in d.items() if re.search(r'(?<!%)%(?![%\d])', str(v).replace('%%', ''))]
     print(f'   {name}: {len(d)} keys, lone % in: {pct or "none"}')
+sb = json.loads((root / 'shared/Translate/EN/Sandbox.json').read_text(encoding='utf-8'))
+opts = re.findall(r'translation = (\w+)', (root.parent / 'sandbox-options.txt').read_text(encoding='utf-8'))
+print('   sandbox options:', len(opts), 'missing labels:', [o for o in opts if 'Sandbox_' + o not in sb or 'Sandbox_' + o + '_tooltip' not in sb] or 'none')
 tr = json.loads((root / 'shared/Translate/EN/IG_UI.json').read_text(encoding='utf-8'))
 ui = json.loads((root / 'shared/Translate/EN/UI.json').read_text(encoding='utf-8'))
 used = set(re.findall(r'"(IGUI_TienSkillMastery_[A-Za-z0-9_]+)"', joined))
@@ -74,7 +77,8 @@ for f, s in sorted(files.items(), key=lambda x: x[0].name):
         if re.search(r'\bprint\(', code) and not re.search(r'\[TienSkillMastery\]', code):
             print(f'   bare print {f.name}:{i}: {code.strip()[:90]}')
 print('   prints with the mod tag:', len(re.findall(r'print\(.*\[TienSkillMastery\]', joined)))
-print('   M.SETTINGS:', re.findall(r'M\.SETTINGS\s*=\s*[^\n]*', core))
+print('   sandbox options:', len(re.findall(r'^option ', (mod / '42/media/sandbox-options.txt').read_text(encoding='utf-8'),
+                                              re.M)) if (mod / '42/media/sandbox-options.txt').exists() else 'none')
 
 print('== numbers: effect values at mastery 10')
 start = core.index('M.WEAPON_MASTERY') if 'M.WEAPON_MASTERY' in core else 0
@@ -87,6 +91,14 @@ for m, n, v in re.findall(r'^\s*def\(\s*"(\w+)"\s*,\s*"(\w+)"\s*,\s*([\d.]+)', c
     if m in ('Axemanship', 'Bludgeoning', 'Swordsmanship', 'Spearcraft', 'StreetFighting', 'Knifework'):
         print(f'     {m}.{n} {v}')
 print('== mod.info'); print((mod / '42/mod.info').read_text())
+version = re.search(r'^modversion=(.+)$', (mod / '42/mod.info').read_text(), re.M).group(1).strip()
+cn = repo / 'changenotes.txt'
+cn_text = cn.read_text(encoding='utf-8') if cn.exists() else ''
+cn_first = cn_text.strip().splitlines()[0].strip() if cn_text.strip() else ''
+print('== changenotes.txt (Workshop change note, every release):',
+      'OK, ' + version if cn_first == version else 'MISSING or first line %r is not modversion %s' % (cn_first, version))
+if '[' in cn_text and re.search(r'\[/?(b|i|h\d|list|\*)\]', cn_text):
+    print('   BBCode found: change notes are plain text')
 w = (repo / 'workshop.txt').read_text(encoding='utf-8')
 print('== workshop.txt header/footer:', [l for l in w.splitlines() if not l.startswith('description')])
 for p in [mod / '42/poster.png', mod / '42/icon.png', repo / 'preview.png']:

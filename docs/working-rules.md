@@ -90,7 +90,11 @@ being switched counts as polling. Why: a needless performance cost for something
 an `Events.EveryTenMinutes.Add(apply)` in a race car patch). When per-player work is needed after a restart and the
 server has no join event, the client asks once after joining (repeating until answered).
 
-This mod has no sandbox options for now (user: "I want to control the values").
+This mod had no sandbox options until 2026-11-20 (user: "I want to control the values"); the first, Masteries Per
+Character, came at the user's request. The same day every effect value became one (user: "sandbox options for each
+mastery value so everything is flexible"): the defs in the core are the defaults, `scripts/make_options.py` writes
+the options from them, and `tests/options_test.py` fails when the file and the defs disagree. Also the same day, at
+the user's request: the mastery cost's base and growth, and how much each skill counts towards each mastery.
 
 ### TODO lists hold open work only (all mods)
 

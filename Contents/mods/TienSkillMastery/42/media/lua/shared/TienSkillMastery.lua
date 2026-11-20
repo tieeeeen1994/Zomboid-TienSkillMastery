@@ -48,19 +48,10 @@ M.PARK_MARGIN = 240
 -- XP is a Java float: at Strength / Fitness totals (~325000) values land only within 1/32, so park checks allow 0.1.
 M.EPS = 0.1
 
--- ---------------------------------------------------------------------------------------------------------------
--- Settings (no sandbox options for now)
--- ---------------------------------------------------------------------------------------------------------------
-
---- Every tunable value. No sandbox options for now (user, 2026-11-06: values stay in the author's hands); the
---- defaults passed by each caller are the values. scripts/make_options.py can bring the options back.
-M.SETTINGS = {}
-
-function M.option(name, default)
-    local v = M.SETTINGS[name]
-    if v == nil then return default end
-    return v
-end
+-- Settings: every number an admin can change is a sandbox option (2026-11-20): effect values ("Effects" below),
+-- Masteries Per Character (`M.maxPicks`), the mastery cost (`M.costSettings`) and each skill's contribution
+-- (`M.contribution`). The old in-code settings table (overall bonus strength, a % per mastery) was removed the same
+-- day at the user's request.
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Perks
@@ -104,12 +95,23 @@ end
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Masteries (v2, docs/v2-draft.md): a mastery is a named group of at least two vanilla skills. It becomes pickable
--- once every member is at 10; a character holds at most MAX_PICKS, picks are permanent (an admin can remove one),
+-- once every member is at 10; a character holds at most `M.maxPicks()`, picks are permanent (an admin can remove one),
 -- and once all are taken every other mastery is closed. A picked mastery whose member drops below 10 is inactive:
 -- no effects, no progress, progress and slot kept.
 -- ---------------------------------------------------------------------------------------------------------------
 
-M.MAX_PICKS = 3
+M.MAX_PICKS = 3       -- default of the MaxMasteries sandbox option
+
+--- How many masteries a character can hold (user, 2026-11-20): sandbox option `TienSkillMastery.MaxMasteries`
+--- (media/sandbox-options.txt), 1 .. the number of masteries, `M.MAX_PICKS` until the option is known. Read live:
+--- `SandboxVars` exist once the world loads (a client holds the server's), and every caller already runs anyway.
+--- Lowering it never takes picks away; a character over the new number keeps them and simply cannot pick more.
+function M.maxPicks()
+    local vars = SandboxVars and SandboxVars.TienSkillMastery
+    local n = vars and tonumber(vars.MaxMasteries)
+    if not n then return M.MAX_PICKS end
+    return math.max(1, math.min(math.max(1, #M.masteries), math.floor(n)))
+end
 M.GROUPS = { "Combat", "Body", "Crafting", "Field" }
 
 -- Parked masteries (user, 2026-11-07: Stealth and Freerunning, until their missing effects can be built): defined
@@ -215,23 +217,58 @@ function M.paceOf(perk)
     return M.PACE[M.perkId(perk)] or 1
 end
 
-function M.pointsFor(perk, amount)
+--- How much one skill's experience counts towards one mastery (user, 2026-11-20: "the contribution strength of each
+--- skill per mastery should also be editable"): sandbox option `<Mastery>_Skill_<perk id>`, a multiplier on the
+--- skill's level-10 step, default the skill's pace (`M.PACE`, 1 for most). Read live. 0 = the skill feeds that mastery
+--- nothing and pays none of its decay (the server then treats the mastery as not taking the skill).
+function M.contributionKey(masteryId, perk)
+    return masteryId .. "_Skill_" .. M.perkId(perk)
+end
+
+function M.contribution(masteryId, perk)
+    local vars = SandboxVars and SandboxVars.TienSkillMastery
+    local v = vars and tonumber(vars[M.contributionKey(masteryId, perk)])
+    if v == nil then return M.paceOf(perk) end
+    return math.max(0, v)
+end
+
+--- Points for `amount` XP of `perk`: towards `masteryId` (its contribution), or at the skill's pace without one.
+function M.pointsFor(perk, amount, masteryId)
     local step = perk:getXpForLevel(10)
     if not step or step <= 0 then return 0 end
-    return amount / step * 100 * M.paceOf(perk)
+    local factor = masteryId and M.contribution(masteryId, perk) or M.paceOf(perk)
+    return amount / step * 100 * factor
 end
 
-function M.xpForPoints(perk, points)
-    return points * perk:getXpForLevel(10) / 100 / M.paceOf(perk)
+function M.xpForPoints(perk, points, masteryId)
+    local factor = masteryId and M.contribution(masteryId, perk) or M.paceOf(perk)
+    if factor <= 0 then return 0 end
+    return points * perk:getXpForLevel(10) / 100 / factor
 end
 
-local costCache = {}
+--- Cost settings (user, 2026-11-20): sandbox options `MasteryCostBase` (% of the step, 1-1000) and
+--- `MasteryCostGrowth` (% of the step added per level, 0-100), `M.COST_BASE` / `M.COST_GROWTH` until the options are
+--- known. Read live. Only points are stored, and the level is worked out from them at the current cost, so a change
+--- moves every character's mastery levels at once (cheaper = higher); no points are lost either way.
+M.COST_BASE = 100
+M.COST_GROWTH = 5
+
+function M.costSettings()
+    local vars = SandboxVars and SandboxVars.TienSkillMastery
+    local base = vars and tonumber(vars.MasteryCostBase) or M.COST_BASE
+    local growth = vars and tonumber(vars.MasteryCostGrowth) or M.COST_GROWTH
+    return math.max(1, base), math.max(0, growth)
+end
+
+local costCache, cacheBase, cacheGrowth = {}, nil, nil
 function M.costFor(n)
+    local base, growth = M.costSettings()
+    if base ~= cacheBase or growth ~= cacheGrowth then
+        costCache, cacheBase, cacheGrowth = {}, base, growth
+    end
     local c = costCache[n]
     if c then return c end
-    local base = math.max(1, tonumber(M.option("MasteryCostBase", 100)) or 100) / 100
-    local growth = math.max(0, tonumber(M.option("MasteryCostGrowth", 5)) or 5) / 100
-    c = math.max(1, math.floor(100 * base * (1 + growth * n) * 10 + 0.5) / 10)
+    c = math.max(1, math.floor(100 * base / 100 * (1 + growth / 100 * n) * 10 + 0.5) / 10)
     costCache[n] = c
     return c
 end
@@ -334,7 +371,7 @@ function M.state(player, masteryId)
     if M.isPicked(player, masteryId) then
         return M.membersAt10(player, masteryId) and "picked" or "inactive"
     end
-    if #M.picks(player) >= M.MAX_PICKS then return "closed" end
+    if #M.picks(player) >= M.maxPicks() then return "closed" end
     if M.COMING_SOON[masteryId] then return "soon" end
     return M.membersAt10(player, masteryId) and "available" or "locked"
 end
@@ -358,15 +395,36 @@ end
 -- percentage points on a chance, "ptsoff" = percentage points off a chance, "int" = whole extra items / condition
 -- (fraction rolled), "flat" = flat amount, "step" = { { level, value }, ... } with `unit` for display.
 -- Each effect belongs to one mastery only, so skills overlap but effects never stack.
+--
+-- Every value below is only the default of its sandbox option (user, 2026-11-20: "sandbox options for each mastery
+-- value so everything is flexible"): `TienSkillMastery.<Mastery>_<Name>` (`d.opt`), the amount at mastery 10 or a
+-- signature's fixed amount, 0 = off; a signature without a `unit` is a plain unlock with an on / off option; a step
+-- effect has `<opt>_Step<i>Level` and `<opt>_Step<i>` per step. `scripts/make_options.py` writes
+-- media/sandbox-options.txt and Translate/EN/Sandbox.json from these definitions: run it after adding, removing or
+-- changing a def. Read live through `M.at10` / `M.valueAt` (`SandboxVars` exist once the world loads, a client
+-- holds the server's), so a change applies at once; the defaults here apply until the options are known.
 -- ---------------------------------------------------------------------------------------------------------------
 
 M.defs = {}
 
+local function sandboxValue(key)
+    local vars = SandboxVars and SandboxVars.TienSkillMastery
+    if vars == nil then return nil end
+    return vars[key]
+end
+
 local function def(masteryId, name, at10, kind, extra)
     local id = masteryId .. "." .. name
-    local d = { id = id, mastery = masteryId, name = name, at10 = at10, kind = kind, parked = M.PARKED[masteryId] }
+    local d = { id = id, mastery = masteryId, name = name, at10 = at10, kind = kind, parked = M.PARKED[masteryId],
+        opt = masteryId .. "_" .. name }
     if extra then
         for k, v in pairs(extra) do d[k] = v end
+    end
+    if d.steps then
+        d.stepKeys = {}
+        for i = 1, #d.steps do
+            d.stepKeys[i] = { d.opt .. "_Step" .. i .. "Level", d.opt .. "_Step" .. i }
+        end
     end
     M.defs[id] = d
     table.insert((M.masteryById[masteryId] or M.parked[masteryId]).defs, d)
@@ -517,28 +575,29 @@ def("FieldMedicine", "Disinfectant", 50, "pct")
 def("FieldMedicine", "StitchPain", 75, "less")
 def("Provisioning", "LastingFood", 25, "pct")
 -- Keen eyes: share of the darkness, weather and moving penalties ignored in search mode.
-def("Fieldcraft", "KeenEyes", 100, "pct")
+def("Fieldcraft", "KeenEyes", 100, "pct", { max = 100 })
 def("Homesteading", "AnimalStress", 15, "less")
 
 -- Signature abilities (kind "sig": an unlock, on in full from the pick, value = the fixed amount the hook uses).
+-- Those with a `unit` take their amount from a sandbox option (its label shows it as %1); the rest are on / off.
 -- Phase 3a (2026-11-07).
 def("Conditioning", "SigHeavyLoad", 1, "sig")       -- Heavy Load penalties one moodle level lower
-def("Smithing", "SigMasterwork", 25, "sig")         -- wear ignored (%) by what the master forges (15 until 2026-11-14, user)
-def("Construction", "SigPlanks", 100, "sig")        -- chance (%) of a 4th plank per sawn log (always since 2026-11-08; 50 before)
-def("Construction", "SigStones", 2, "sig")          -- extra stones per broken large stone
-def("Handicraft", "SigDeftHands", 10, "sig")        -- every timed action (%) faster
-def("Handicraft", "SigCraftsmanship", 25, "sig")    -- wear ignored (%) by what the master makes (a "pts" bonus until 2026-11-08; 15 until 2026-11-14, user)
+def("Smithing", "SigMasterwork", 25, "sig", { unit = "pct", max = 100 })  -- wear ignored (%) by what the master forges (15 until 2026-11-14, user)
+def("Construction", "SigPlanks", 100, "sig", { unit = "pct", max = 100 }) -- chance (%) of one more plank (always since 2026-11-08; 50 before)
+def("Construction", "SigStones", 2, "sig", { unit = "flat", max = 20 })   -- extra stones per broken large stone
+def("Handicraft", "SigDeftHands", 10, "sig", { unit = "pct", max = 95 })  -- every timed action (%) faster
+def("Handicraft", "SigCraftsmanship", 25, "sig", { unit = "pct", max = 100 }) -- wear ignored (%) by what the master makes (a "pts" bonus until 2026-11-08; 15 until 2026-11-14, user)
 def("Provisioning", "SigChoiceCuts", 1, "sig")      -- butchered meat 10% more filling, 30% more nutritious (FarmAnimals.lua)
-def("Provisioning", "SigSavoryMeals", 80, "sig")    -- food the master finishes with heat causes (%) less unhappiness
+def("Provisioning", "SigSavoryMeals", 80, "sig", { unit = "pct", max = 100 }) -- food the master finishes with heat causes (%) less unhappiness
 def("Hunting", "SigSturdyTraps", 1, "sig")          -- traps keep their bait and are never destroyed
-def("Hunting", "SigLiveCatch", 4, "sig")            -- live catches last x times longer in the trap
-def("Hunting", "SigDoubleCatch", 25, "sig")         -- chance (%) a trap holds two
+def("Hunting", "SigLiveCatch", 4, "sig", { unit = "times", max = 100 })   -- live catches last x times longer in the trap
+def("Hunting", "SigDoubleCatch", 25, "sig", { unit = "pct", max = 100 })  -- chance (%) a trap holds two
 def("Fieldcraft", "SigForageFighting", 1, "sig")    -- search mode not switched off by zombies or running
 def("Fieldcraft", "SigZombieSense", 1, "sig")       -- zombies in the forage circle shown in search mode
-def("Firearms", "SigQuickdraw", 4, "sig")           -- one-handed gun drawn / holstered x times faster
+def("Firearms", "SigQuickdraw", 4, "sig", { unit = "times", max = 20 })   -- one-handed gun drawn / holstered x times faster
 def("Firearms", "SigRunReload", 1, "sig")           -- reloading does not stop when running
 def("Mending", "SigRestore", 1, "sig")              -- reset an item's repair count with its first fixer
-def("Knifework", "SigLunge", 1.5, "sig")            -- jaw-stab reach (tiles; vanilla 0.61), closed with a lunge
+def("Knifework", "SigLunge", 1.5, "sig", { unit = "tiles", max = 3 })     -- jaw-stab reach (tiles; vanilla 0.61), closed with a lunge
 def("Angling", "SigFishFinder", 1, "sig")           -- the aimed water's fish and trash shown
 -- Phase 3b.
 def("Bludgeoning", "SigPushBack", 1, "sig")         -- every swing staggers back the zombies in front it did not hit
@@ -550,7 +609,7 @@ def("Homesteading", "SigFields", 1, "sig")          -- tend / sow a picked area 
 def("Homesteading", "SigWhisperer", 1, "sig")       -- -1 stress every 10 game minutes to the animals of the master's pen
 def("StreetFighting", "SigBowlOver", 1, "sig")      -- sprinting into zombies knocks them down
 def("Stealth", "SigDistraction", 1, "sig")       -- the held junk lobbed to make a noise elsewhere (Distraction.lua)
-def("Stealth", "SigLoseThem", 3, "sig")          -- seconds crouched out of a chasing zombie's sight before it gives up (LoseThem.lua)
+def("Stealth", "SigLoseThem", 3, "sig", { unit = "seconds", max = 60 }) -- seconds crouched out of a chasing zombie's sight before it gives up (LoseThem.lua)
 def("Stealth", "SigUnseen", 1, "sig")            -- crouched and still: zombies not already after the master do not notice (LoseThem.lua)
 def("Freerunning", "SigUnfazedRunner", 1, "sig")    -- never trips: trees, zombies, animals, players (client UnfazedRunner.lua)
 def("Axemanship", "SigThrowAxe", 1, "sig")          -- the throw key throws a one-handed axe (spares first)
@@ -562,32 +621,61 @@ def("Handicraft", "ExtraOutput", 15, "pts")         -- one more output on vetted
 def("Angling", "BaitDigger", 25, "flat")            -- foraging specialisation points for worms and insects
 def("Angling", "BigHaul", 25, "pct")                -- fishing net catch hours
 
---- Bonus strength (setting, percent) for a mastery, times the global one.
-function M.scale(masteryId)
-    local global = tonumber(M.option("BonusStrength", 100)) or 100
-    local own = tonumber(M.option(masteryId, 100)) or 100
-    return math.max(0, global) / 100 * math.max(0, own) / 100
-end
-
---- False when the effect hangs on a setting that is off, or does not apply under the current sandbox.
+--- False when the effect is parked, switched off in the sandbox, or does not apply under the current sandbox.
 function M.enabled(d)
     if d.parked then return false end
-    if d.option and M.option(d.option, true) ~= true then return false end
     if d.when and not d.when() then return false end
+    -- Switched off in the sandbox (an on / off signature off, or an amount of 0): not listed in the Mastery tab either.
+    if M.isFlag(d) then
+        if sandboxValue(d.opt) == false then return false end
+    elseif d.kind ~= "step" and M.at10(d) <= 0 then
+        return false
+    end
     return true
 end
 
---- The effect's value at a mastery level (before scaling).
+--- True for a signature that is a plain unlock (an on / off sandbox option), not an amount.
+function M.isFlag(d)
+    return d.kind == "sig" and d.unit == nil
+end
+
+--- The effect's amount at mastery 10, or a signature's fixed amount, as its sandbox option sets it (0 = off).
+function M.at10(d)
+    if M.isFlag(d) then return d.at10 end
+    local v = tonumber(sandboxValue(d.opt))
+    if v == nil then return d.at10 end
+    return math.max(0, v)
+end
+
+--- Step `i` of a step effect as its sandbox options set it: the mastery level it starts at, and its value.
+function M.stepAt(d, i)
+    local s, keys = d.steps[i], d.stepKeys[i]
+    local level = tonumber(sandboxValue(keys[1])) or s[1]
+    local value = tonumber(sandboxValue(keys[2])) or s[2]
+    return math.max(1, math.min(M.BONUS_LEVELS, math.floor(level + 0.5))), math.max(0, value)
+end
+
+--- The effect's value at a mastery level (before scaling). A step effect takes the step with the highest starting
+--- level reached, so steps set out of order in the sandbox still make sense.
 function M.valueAt(d, level)
-    if d.kind == "sig" then return d.at10 end
+    if d.kind == "sig" then return M.at10(d) end
     if d.kind == "step" then
-        local v = 0
-        for _, s in ipairs(d.steps) do
-            if level >= s[1] then v = s[2] end
+        local v, from = 0, 0
+        for i = 1, #d.steps do
+            local at, value = M.stepAt(d, i)
+            if level >= at and at >= from then v, from = value, at end
         end
         return v
     end
-    return d.at10 * level / M.BONUS_LEVELS
+    return M.at10(d) * level / M.BONUS_LEVELS
+end
+
+--- The amount effect `id` has for any master now (a signature's amount, a passive's at mastery 10), 0 when off.
+--- For hooks with no player at hand, such as a master's trap checked while its placer is offline.
+function M.amount(id)
+    local d = M.defs[id]
+    if not d or not M.enabled(d) then return 0 end
+    return M.valueAt(d, M.BONUS_LEVELS)
 end
 
 --- The effect amount for this player now. 0 when unknown, off, or the mastery is not active.
@@ -596,11 +684,11 @@ function M.val(player, id)
     if not d or not player or not M.enabled(d) then return 0 end
     if d.kind == "sig" then
         -- Signatures: in full from the pick (mastery 0), never scaled by level (user, 2026-11-06).
-        return M.hasSignature(player, d.mastery) and d.at10 or 0
+        return M.hasSignature(player, d.mastery) and M.at10(d) or 0
     end
     local level = M.level(player, d.mastery)
     if level <= 0 then return 0 end
-    return M.valueAt(d, level) * M.scale(d.mastery)
+    return M.valueAt(d, level)
 end
 
 --- Picked and every member at 10: what a signature ability needs.

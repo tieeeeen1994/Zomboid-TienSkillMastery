@@ -1,0 +1,27 @@
+0.4.4
+
+Masteries Per Character (new sandbox option)
+- How many masteries one character can pick is now a sandbox option, on its own page Tien's Skill Mastery: 1 to 21, default 3
+- Raising it opens the new slots at once, also for characters who already filled theirs
+- Lowering it never takes a mastery away: a character who already has more keeps them all and cannot pick another
+
+Every value is a sandbox option
+- Every mastery effect can now be changed in the sandbox options, on four new pages (Skill Mastery: Combat, Body, Crafting and Field): the amount each effect gives at mastery 10, the amount of each signature (Quickdraw's speed, Lunge's reach, Lose Them's seconds and the like), the mastery levels where Safe Falls and Bludgeoning's steps start and what they give, and an on / off switch for every other signature
+- 0 or off takes an effect away, and it is no longer listed in the Mastery tab. Changes apply at once, no restart needed
+- The defaults are the values you had before
+- Mastery cost is a sandbox option too: the base (100% of a skill's level-10 step) and what each level adds (5%). Progress is kept, so a change moves everyone's mastery levels at once
+- How much each skill counts towards each of its masteries is an option as well (Strength and Fitness count 5 times by default, Sprinting and Nimble 5, Sneaking and Lightfooted 3, every other skill once). 0 means that skill no longer feeds that mastery
+
+Clearer numbers
+- Every percentage now shows its % sign, in the Mastery tab, in the Skills tab and in the description: hit chance +5%, dismantling return chance +10%, trap catch chance +5% and the like. On a chance the % is added to the chance itself
+- In the Skills tab, wall climbing, bumping into someone and weapon wear now show in percent how much your level lowers the chance, and the chance you have now (worked out from your skills, traits and moodles, and the weapon in your hand), and fall injuries and jam clearing name the chance they change
+
+Milking
+- A stressed animal now breaks off milking only as often as its stress, your Animal Care and its trust in you say, as shearing always did. The game made it fail every time for anyone below Animal Care 8, spilling the milk
+
+Firearms: Running Reload
+- Your arms now keep reloading while you run or sprint, instead of playing the plain run animation. Works with vanilla guns, Gunworks guns and Guns of Marz guns
+- Other players see the reload on the run too
+
+Field Medicine: Field Triage
+- In multiplayer, a triage with several stitches now does them all. Before, only the first stitch was done and the rest of the triage stopped. Splints made from a plank and a sheet had the same problem

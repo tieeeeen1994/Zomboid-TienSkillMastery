@@ -25,6 +25,10 @@ they pass. When one fails, write what you saw under it, then give this file to C
 ## 1. Basics
 
 - [ ] Mastery tab shows 21 masteries, each with a Pick button once its skills are at 10 (no Coming Soon).
+- [ ] Sandbox option *Masteries Per Character* (page Tien's Skill Mastery): the Mastery tab's "Pick up to N" and "Masteries picked: x of N" follow it, and a character with N picks sees every other mastery closed. Raising it reopens them; lowering it below a character's picks keeps all of them.
+- [ ] Effect sandbox options (pages Skill Mastery: Combat, Body, Crafting, Field): the pages list every effect with readable labels. On the dedicated server, change one passive (Firearms damage 10 -> 30), one signature amount (Quickdraw 4 -> 8) and switch one signature off (Running Reload) from the admin's sandbox window: the Mastery tab shows the new numbers and the signature is gone, on both clients without a restart, and the game plays the new values.
+- [ ] (single player, `-debug`) Change Firearms damage in the debug menu's sandbox window and Apply: the Mastery tab shows the new number at once, without reloading the world.
+- [ ] Cost and contribution options: set *Mastery Cost Base* to 50 on the server; a picked mastery's level in the Mastery tab goes up at once and its tooltip's cost halves; back to 100 puts the level back. Set *Conditioning: Strength experience* to 0: Strength XP no longer moves Conditioning, and Strength at 10 shows vanilla's cap again.
 - [ ] Pick one: the choice survives leaving and rejoining. The level-up halo and sound play when a level is gained.
 - [ ] Mastery progress is earned from real XP (use the skill for a while) and is not earned by reading a skill book.
 - [ ] (2026-11-10) Foraging at level 10 **without** a mastery that lists it: no "Foraging XP" text over the head. With

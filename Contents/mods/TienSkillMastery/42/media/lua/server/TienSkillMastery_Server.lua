@@ -104,7 +104,10 @@ end
 local function activeMasteriesOf(player, perk)
     local list = {}
     for _, id in ipairs(M.masteriesOf[perk:getId()] or {}) do
-        if M.isPicked(player, id) and M.membersAt10(player, id) then table.insert(list, id) end
+        -- A contribution of 0 (sandbox) means the mastery takes nothing from this skill: no points, no decay, no park.
+        if M.isPicked(player, id) and M.membersAt10(player, id) and M.contribution(id, perk) > 0 then
+            table.insert(list, id)
+        end
     end
     return list
 end
@@ -170,8 +173,7 @@ local function onAddXP(player, perk, amount)
             -- Mastery is experience, never reading: take a skill book multiplier back out.
             local mult = player:getXp():getMultiplier(perk)
             local earned = mult > 1 and amount / mult or amount
-            local points = M.pointsFor(perk, earned)
-            for _, id in ipairs(earners) do addPoints(player, id, points) end
+            for _, id in ipairs(earners) do addPoints(player, id, M.pointsFor(perk, earned, id)) end
         end
         -- No earner left (a pick removed, a member dropped below 10 before the pass saw it): back to vanilla's cap.
         if #earners > 0 then park(player, perk) else unpark(player, perk) end
@@ -181,19 +183,20 @@ local function onAddXP(player, perk, amount)
     -- Negative XP (decay): Conditioning slows it, then every earning mastery listing the skill pays what it can.
     -- The skill stays at 10 while at least one paid in full.
     local need = -amount * M.less(player, "Conditioning.Decay")
-    local needPts = M.pointsFor(perk, need)
+    -- Each mastery pays in its own points (its contribution for this skill); what counts is the most XP one covered.
     local e = M.entry(player, true)
-    local paid = 0
+    local paidXp = 0
     for _, id in ipairs(earners) do
+        local needPts = M.pointsFor(perk, need, id)
         local pay = math.min(e.points[id] or 0, needPts)
         if pay > 0 then addPoints(player, id, -pay) end
-        paid = math.max(paid, pay)
+        paidXp = math.max(paidXp, needPts > 0 and need * pay / needPts or need)
     end
-    if paid >= needPts - 0.000001 then
+    if paidXp >= need - 0.0001 then
         park(player, perk)
         return
     end
-    local rest = M.xpForPoints(perk, needPts - paid)
+    local rest = need - paidXp
     -- Back to vanilla's state: total(10), then the rest through AddXP so its lose-level loop drops the skill.
     if setRawXp(player, perk, M.total10(perk)) and rest > 0 then
         adjusting = true
@@ -327,7 +330,7 @@ local MAX_POINTS = 1e7
 function M.pick(player, masteryId)
     if not player or type(masteryId) ~= "string" or not M.masteryById[masteryId] then return false end
     local e = M.entry(player, true)
-    if M.COMING_SOON[masteryId] or M.isPicked(player, masteryId) or #e.picks >= M.MAX_PICKS
+    if M.COMING_SOON[masteryId] or M.isPicked(player, masteryId) or #e.picks >= M.maxPicks()
         or not M.membersAt10(player, masteryId) then
         print("[TienSkillMastery] refused pick of " .. masteryId .. " by " .. tostring(player:getUsername()))
         return false
@@ -336,7 +339,7 @@ function M.pick(player, masteryId)
     e.points[masteryId] = 0
     markDirty(player)
     print(string.format("[TienSkillMastery] %s picked %s (%d of %d)", tostring(player:getUsername()), masteryId,
-        #e.picks, M.MAX_PICKS))
+        #e.picks, M.maxPicks()))
     return true
 end
 

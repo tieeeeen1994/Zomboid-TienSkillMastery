@@ -60,8 +60,10 @@ Still to do, in order:
 6. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
 
 Releasing: bump `modversion` in `mod.info`, drop "(coming soon)" from `README.md` for anything opened, remove the id from
-`M.COMING_SOON`, run `py scripts/make_workshop.py`, `py tests/run_all.py --release`. Commit on master, upload in
-game. The summary goes in `workshop.txt` (Steam caps it at 8000 characters) and the full text in `forum.txt`, the pinned
+`M.COMING_SOON`, write `changenotes.txt` (repo root; user, 2026-11-20: every release), run `py scripts/make_workshop.py`,
+`py tests/run_all.py --release`. Commit on master, upload in game. `changenotes.txt` is the Workshop change note for
+subscribers: plain text (no BBCode), overwritten each release, first line the `modversion`, then what changed since the
+last upload in short headed groups of `- ` lines (Guns of Tien's format); the release report checks the version line. The summary goes in `workshop.txt` (Steam caps it at 8000 characters) and the full text in `forum.txt`, the pinned
 Discussions thread, which the user pastes in; keep `README.md` the full source and never trim features to fit.
 
 ### The user's standing rules
@@ -81,10 +83,32 @@ are in `docs/working-rules.md` (2026-11-11, user: keep every memory in the repos
   settles it (user, 2026-11-10, about safe falls); keep in-game checks for feel, timing and visuals.
 - **Findings go next to the code:** in the header or a comment of the file that relies on them, plus a short line here.
 - **No over-the-head text as feature feedback** (`HaloTextHelper`), except the vanilla-style level-up halo, which is wanted.
-- **No timers just to notice sandbox option changes.** This mod has no sandbox options for now (user: "I want to control the values").
+- **No timers just to notice sandbox option changes.** Sandbox options since 2026-11-20 (user: "we need to implement sandbox options"): `MaxMasteries`
+  (Masteries Per Character, 1-21, default 3, read live through `M.maxPicks()`) and, the same day (user: "sandbox
+  options for each mastery value so everything is flexible"), **every effect value**: `TienSkillMastery.<Mastery>_<Name>`
+  (double: amount at mastery 10, or a signature's amount when its def has a `unit`; boolean for the other signatures;
+  `_Step<i>Level` / `_Step<i>` for step effects), plus (same day, user: "how much masteries are needed to level up ...
+  the additive value and the base" / "the contribution strength of each skill per mastery should also be editable")
+  `MasteryCostBase` / `MasteryCostGrowth` (general page, `M.costSettings()`, cost cache keyed by them) and
+  `<Mastery>_Skill_<perk id>` (a multiplier on the skill's step for that mastery, default `M.PACE` or 1, through
+  `M.contribution`; `M.pointsFor` / `M.xpForPoints` take the mastery id; 0 = the server's `activeMasteriesOf` leaves
+  that mastery out for the skill: no points, no decay, no park). 226 options on pages TienSkillMastery +
+  TienSkillMastery<Group>. Only points are stored, so a cost change moves everyone's levels at once.
+  Live in single player too only thanks to `client/TienSkillMastery_SandboxRefresh.lua`: the in-game sandbox window
+  (`ISServerSandboxOptionsUI:settingsFromUI`) only `set`s the Java options there and never calls `toLua()` (MP does it
+  on the server and every client through `receiveSandboxOptions`), so `SandboxVars` stayed stale until a reload.
+  The defs in the core are the defaults; read live through `M.at10` / `M.stepAt` / `M.valueAt` (`M.amount(id)` when
+  no player is at hand: trap signatures); 0 / off makes `M.enabled` false (gone from the panel). Signature labels
+  with an amount take it as `%1`. **After adding, removing or changing a def, run `python -I scripts/make_options.py`**
+  (writes sandbox-options.txt and Sandbox.json from the defs via lupa); `tests/options_test.py` fails when they disagree.
+  Renaming an effect renames its option, which resets it on existing servers.
 - **TODO files hold open work only.** No "check in game" lists for built features there; `docs/test-checklist.md` was asked for
   separately and is deleted once done.
 - **Workshop preview text** states only what plays, no real-world trivia.
+- **Every percentage shows its %** (user, 2026-11-20), in the Mastery tab, the Skills tab, the README and the change
+  notes: chances in percentage points too ("hit chance +5%"). Plain numbers are amounts only; a "1 in N" roll is shown as
+  what the level changes and the chance now, "-5.2% (now 3.3%)" (format "delta"; `climbFail`, `bumpFall`,
+  `wearChance` in SkillEffectsBody.lua).
 - Lua sees a Java class's methods and static fields only: instance fields read as nil, so look for getters.
 
 Windows tools: Python is `py` (since 2026-11-20 only `python` is on the PATH: `python -I scripts/...`). The game is at `C:/Program Files (x86)/Steam/steamapps/common/ProjectZomboid`; its `jre64/bin/java.exe`
@@ -145,7 +169,7 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   `M.weaponMastery(weapon)` (Firearms for aimed firearms), `M.valFor(player, map, perk, name)`.
 - Storage `TienSkillMastery[username] = { picks = { ids }, points = { [id] = n }, hours }` (v1 `xp` entries are
   dropped on read; v1 was never played). Client cache has the same shape. `M.state` = picked / inactive / available /
-  locked / closed; `M.level` is 0 unless picked and every member at 10; `M.MAX_PICKS` = 3 (code constant).
+  locked / closed; `M.level` is 0 unless picked and every member at 10; `M.maxPicks()` = sandbox option MaxMasteries (default `M.MAX_PICKS` = 3; since 2026-11-20).
 - Points: a gain on a parked skill adds `amount / xp10 x 100` to every picked, active mastery listing it (none =
   lost). Level n costs `100 x base% x (1 + growth% x n)` points (rounded to 0.1; 105, 110 .. 150, 1-10 = 1275). Decay
   (x `Conditioning.Decay`) is paid by every earning mastery listing the skill; the skill stays at 10 while one paid
@@ -575,7 +599,10 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   `M.SETTINGS` (empty) and returns the caller's default, so every value lives in the code: `MasteryCostBase` 100,
   `MasteryCostGrowth` 5, `BonusStrength` 100, one % per skill (perk id) 100, `NimbleStrafe` true.
   sandbox-options.txt and Translate/EN/Sandbox.json were deleted; `scripts/make_options.py` regenerates both if the
-  options come back (then make `M.option` read `SandboxVars.TienSkillMastery` again). History: the cost options were
+  options come back (then make `M.option` read `SandboxVars.TienSkillMastery` again). Superseded 2026-11-20: costs,
+  contributions (in place of the per-skill %) and every effect are sandbox options now (see the rules above), and
+  `M.SETTINGS` / `M.option` / `M.scale` (BonusStrength and a % per mastery, always 100) were removed the same day at
+  the user's request ("Remove them"); effect values are the options' numbers with nothing on top. History: the cost options were
   renamed from CostBase / CostGrowth once because a test world kept the old 50 / 25 defaults (a renamed option takes
   its default in existing saves).
 - **Level-up feedback** (user, 2026-11-06): a mastery level gained (experience or the mastery cheat) shows vanilla's
@@ -858,8 +885,8 @@ Bonus amounts all come from `M.val / more / less / roll / int / scaleInt(player,
   - Firearm range is capped 4.5 tiles inside the server copy's `getMaxRange()` (`AntiCheatHitWeapon`: +5 slack).
   - **Nimble does nothing in single player**: `calculateWalkSpeed` rewrites `StrafeSpeed` later in the same update,
     right before `postupdate` runs the animator, with no Lua event in between. MP: owner client sets it every update
-    (also fixes the 2 s `PlayerInjuriesPacket` lag). Sandbox `NimbleStrafe` (boolean, default on; user 2026-11-05)
-    turns both off to match single player; the def carries `option = "NimbleStrafe"`, which `M.enabled` checks.
+    (also fixes the 2 s `PlayerInjuriesPacket` lag). The old `NimbleStrafe` switch is gone (no def carries `option`
+    any more, and `M.enabled` no longer checks one, 2026-11-20); the effect's own sandbox option at 0 turns it off.
 - `shared/TienSkillMastery_Reload.lua`: `ISReloadWeaponAction.setReloadSpeed` times the bonus (both sides).
 - `server/TienSkillMastery_Physical.lua`: endurance give-back per tick (Fitness always, Sprinting while running,
   heavy-weapon skill while not running with that weapon in hand), carry weight through `maxWeightDelta` (whole kg),

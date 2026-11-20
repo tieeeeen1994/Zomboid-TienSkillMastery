@@ -28,7 +28,8 @@ seed, remove grass / bush); plant info shows water and health from 3, more from 
 season recipes learned at 10 (XpUpdate.onLoad). The sandbox yield option does nothing in 42.21.
 Animal Care (Husbandry): acceptance gains x (1 + L / 10) (IsoAnimal ~2469 / ~2571); petting calms by rand(7, 11) + L,
 cooldown 15000-25000 - 200 L (~2497); hand feeding rand(2, 4) + L / 5 (~2487); milking / shearing stress the animal
-1 in (L + 3) up to level 5 (~1825 / ~1871), stressed animals fight back less (chance - 5 L, none above 7; ISMilkAnimal
+1 in (L + 3) up to level 5 (~1825 / ~1871), stressed animals fight back less (chance - 5 L, none above 7; milking overwrote it with 120 until
+TienSkillMastery_MilkingStress.lua; ISMilkAnimal
 ~17, ISShearAnimal ~16); shearing time per litre - 2 L (ISShearAnimal ~159); animal info: acceptance and pregnancy from
 3, eggs from 4, more from 5 (ISAnimalUI ~102..202, NetworkPlayerAI ~209).
 Butchering: part counts x (1 + floor(L / 2) / 10) (ButcheringUtil.addAnimalPart ~227); part chance x L / 7

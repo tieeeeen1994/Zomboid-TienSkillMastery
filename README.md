@@ -2,10 +2,10 @@
 
 Skills stay vanilla, levels 0 to 10. On top of them come **masteries**: named groups of skills, such as **Firearms**
 (Aiming and Reloading) or **Construction** (Carpentry and Masonry), each with effects of its own. Once every skill in a
-mastery is at level 10 you can pick it. A character holds at most **three** masteries, so choose what your survivor
-is known for.
+mastery is at level 10 you can pick it. A character holds at most **three** masteries (a sandbox option), so choose what your
+survivor is known for.
 
-- **Picks are permanent.** Once three are taken, every other mastery is closed for that character. An admin can
+- **Picks are permanent.** Once every slot is taken, every other mastery is closed for that character. An admin can
   remove a pick (its progress goes with it).
 - **Experience only.** A picked mastery grows from the experience you earn in its skills after you pick it: mastery
   levels 1 to 10, each giving a tenth of its effects, then endless **prestige**. Reading never counts: a skill book's
@@ -32,16 +32,28 @@ is known for.
 - **Admin cheats.** Right-click a picked mastery in the Mastery tab to change its points or level, or remove the
   pick; right-click a skill's name in the Skills tab to change its XP or level, or max every skill. Own character only: in multiplayer
   for roles allowed to add XP, in single player with -debug.
+- **Sandbox options.** *Masteries Per Character* (page Tien's Skill Mastery, 1 to 21, default 3) sets how many
+  masteries a character can pick. Raising it opens slots at once; lowering it never takes a mastery away.
+  *Mastery Cost Base* (default 100%) and *Mastery Cost Growth* (default 5%) on the same page set what a mastery level
+  costs, and every mastery has one option per skill for how much that skill's experience counts towards it (the
+  5 and 3 times above are those defaults; 0 means the skill feeds that mastery nothing). Only progress is kept, so a
+  cost change moves every character's mastery levels at once.
+  Every number below is a sandbox option too, on the pages Skill Mastery: Combat, Body, Crafting and Field: each
+  effect's amount at mastery 10, each signature's amount, the mastery level each step starts at, and an on / off for
+  signatures without an amount. 0 or off takes an effect away; changes apply at once. The numbers below are the defaults.
+- **Milking fix.** A stressed animal breaks off milking only as often as its stress, your Animal Care and its trust
+  in you say, as shearing does; vanilla made it fail every time below Animal Care 8.
 - **Multiplayer.** Masteries are kept on the server and work on dedicated servers. Your skill panel, Skill Journal
   and other mods still see level 10 skills as full.
 
 ## Masteries and their effects at mastery 10
 
-Each mastery level gives a tenth. Plain numbers without % are percentage points on a chance. A weapon mastery's
+Each mastery level gives a tenth. On a chance, a % is added to the chance itself (hit chance +5% turns 60% into
+65%); anywhere else it is a share of the vanilla amount. Numbers without % are amounts. A weapon mastery's
 effects apply with a weapon of its kind.
 
-- **Firearms** (Aiming, Reloading): damage +10%, fire rate +10% (Gunworks guns too), jams -25%, hit chance +5,
-  critical hit chance +5, range +10%, aim-in speed +15%, reload and rack speed +15%, 20% chance to undo firearm wear.
+- **Firearms** (Aiming, Reloading): damage +10%, fire rate +10% (Gunworks guns too), jams -25%, hit chance +5%,
+  critical hit chance +5%, range +10%, aim-in speed +15%, reload and rack speed +15%, 20% chance to undo firearm wear.
 - **Axemanship** (Axe, Strength): damage +10%, attack speed +10%, 10% chance to reroll a hit that did not crit, reach
   +10%, knockback +20%, endurance used swinging -15%, 20% chance to undo axe wear, damage to trees +20%.
 - **Bludgeoning** (Long Blunt, Strength): damage +10%, attack speed +10%, 5% crit reroll, knockback +15%, endurance
@@ -61,33 +73,33 @@ effects apply with a weapon of its kind.
   Fitness decay -25%, muscle strain from everything (fighting, climbing, carrying, farming, exercise) -25%.
 - **Freerunning** (Sprinting, Lightfooted): sprinting speed +15%, running speed +10%, crouched walking and running speed +5%, endurance used running -15%, 20% of attacks by zombies and players miss you (no damage, no wound, no flinch; animals still hit), drop one floor without harm from mastery 3, two from 6 and three from 9, and from those levels any higher fall lands as if it were one floor lower.
 - **Stealth** (Sneaking, Lightfooted): noise of your work -50% (building, barricading, digging, clearing glass, bushes and grass, moving furniture, fishing), noise of your melee swings -50%.
-- **Smithing** (Metalworking, Welding, Maintenance): crafting time -25% and dismantling return +10 on metalworking
+- **Smithing** (Metalworking, Welding, Maintenance): crafting time -25% and dismantling return chance +10% on metalworking
   and welding, 20% chance to undo tool wear on forging, metalworking and welding recipes, 20% chance to get back each burnt charcoal and
   each blowtorch use, iron from ore and blooms +15%.
-- **Construction** (Carpentry, Masonry): crafting time -25% and dismantling return +10 on carpentry and masonry,
-  built structure health +30%, unbarricading time -15%, window break chance when picking up -5, 15%
+- **Construction** (Carpentry, Masonry): crafting time -25% and dismantling return chance +10% on carpentry and masonry,
+  built structure health +30%, unbarricading time -15%, window break chance when picking up -5%, 15%
   chance to get each build material back.
-- **Engineering** (Mechanics, Electrical): crafting time -25% and dismantling return +10 on electrical, part install
-  and uninstall time -25%, engine repair +1 condition per part, hotwire success +10, hotwiring time -15%, 25% chance
+- **Engineering** (Mechanics, Electrical): crafting time -25% and dismantling return chance +10% on electrical, part install
+  and uninstall time -25%, engine repair +1 condition per part, hotwire success chance +10%, hotwiring time -15%, 25% chance
   of an extra electronics scrap when dismantling electronics, top speed and engine power +15% while you drive.
 - **Handicraft** (Carving, Knapping, Glassmaking, Pottery): crafting time -25% on their recipes, 20% chance to undo
   tool wear on them; 15% chance of one more item from simple knapping, carving and clay press recipes.
 - **Mending** (Tailoring, Maintenance): tailoring crafting time -25%, patching time -25%, fabric recovery chance
-  +10, +1 material from ripping clothes, +1 aramid thread use, patches protect 50% more, repairs restore 15% more
+  +10%, +1 material from ripping clothes, +1 aramid thread use, patches protect 50% more, repairs restore 15% more
   and a failed one costs no condition.
 - **Field Medicine** (First Aid, Tailoring): treatment time -25%, treatment strength +25% (bandages, poultices,
   splints, stitches, bullet removal), disinfecting uses 50% less, stitching hurts 75% less, crash injuries -15% for
   everyone in your car.
 - **Provisioning** (Cooking, Butchering): cooking crafting time -25%, nutrition from added ingredients +15%, time to
   add ingredients -15%, butchering time -15%, food you cook or butcher stays fresh 25% longer.
-- **Hunting** (Tracking, Trapping, Butchering): track finding +20%, track inspection time -15%, trap catch chance +5
+- **Hunting** (Tracking, Trapping, Butchering): track finding +20%, track inspection time -15%, trap catch chance +5%
   on traps you place, meat, sinew and bones from butchering +10%, chance of better cuts +15%.
-- **Angling** (Fishing, Foraging): line tension limit +15%, natural bait kept +10, big fish +10, junk catches -20%,
-  trophy fish +5, worms and insects found more often when foraging, fishing nets catch 25% more.
+- **Angling** (Fishing, Foraging): line tension limit +15%, chance to keep natural bait +10%, big fish chance +10%, junk catches -20%,
+  trophy fish chance +5%, worms and insects found more often when foraging, fishing nets catch 25% more.
 - **Fieldcraft** (Foraging, Tracking): search radius +15%, spotting time -20%, found item size +10%, search mode's
   darkness, weather and moving penalties fade (gone at mastery 10).
 - **Homesteading** (Farming, Animal Care): harvest +15%, cure strength +15%, best month bonus
-  yield chance +10, risk month curse chance -10, fertilizing effect chance +10, back strain -15%, acceptance gained
+  yield chance +10%, risk month curse chance -10%, fertilizing effect chance +10%, back strain -15%, acceptance gained
   by petting and hand feeding +15%, calming +15%, shearing time -15%, milking time -15%, animals near you gain 15% less stress.
 
 Whole-number bonuses (carry weight, condition, extra items) build up as a chance: +1 condition at mastery 10 is a

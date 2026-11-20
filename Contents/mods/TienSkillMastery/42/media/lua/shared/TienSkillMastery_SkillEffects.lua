@@ -6,8 +6,11 @@ Data files (`TienSkillMastery_SkillEffects<Group>.lua`, loading after this one) 
 Each entry:
 - `name`: the label is the translation `IGUI_TienSkillMastery_Effect_<perkId>_<name>`.
 - `value = function(level, player) return number end`: what the level gives; nil hides the line. `format` says how
-  to print it: "pts" signed points ("+21"), "pct" signed percent ("+20%", "-15%"), "mult" a multiplier ("x1.20"),
-  "chance" an unsigned percent ("45%"), "num" a signed plain number ("+3"), "plain" an unsigned number ("20").
+  to print it: "pts" signed percentage points on a chance rolled out of 100 ("+21%"), "pct" signed percent of the
+  vanilla amount ("+20%", "-15%"), "mult" a multiplier ("x1.20"), "chance" an unsigned percent ("45%"), "num" a signed
+  plain number ("+3"), "plain" an unsigned number ("20"), "delta" for a "1 in N" roll: `value` returns the change
+  this level makes to the chance and the chance now, printed "-5.2% (now 3.3%)". Every percent shows its % (user,
+  2026-11-20).
 - or `unlock = n`: a feature gained at level n (no value); shown as gained, or greyed with the level it needs.
 - optional `note`: a translation key appended in brackets (e.g. "with a weapon of this skill").
 Formulas follow the 42.21 jar and Lua (each data file's header cites them).
@@ -42,9 +45,14 @@ end
 --- The printed value of an entry at `level`, or nil when the line is hidden.
 function M.formatEffect(e, level, player)
     if e.unlock then return nil end
-    local ok, v = pcall(e.value, level, player)
+    local ok, v, now = pcall(e.value, level, player)
     if not ok or type(v) ~= "number" then return nil end
-    if e.format == "pct" then return signed(v) .. "%" end
+    if e.format == "delta" then
+        -- What this level changes, then the chance now (both percent; "1 in N" rolls, SkillEffectsBody.lua).
+        if type(now) ~= "number" then return nil end
+        return signed(v) .. "% (" .. getText("IGUI_TienSkillMastery_EffectNow", trim(now) .. "%") .. ")"
+    end
+    if e.format == "pct" or e.format == "pts" then return signed(v) .. "%" end
     if e.format == "mult" then return "x" .. string.format("%.2f", v) end
     if e.format == "chance" then return trim(v) .. "%" end
     if e.format == "plain" then return trim(v) end
