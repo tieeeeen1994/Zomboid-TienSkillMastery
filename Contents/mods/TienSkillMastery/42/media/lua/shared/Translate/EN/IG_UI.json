@@ -326,7 +326,7 @@
     "IGUI_TienSkillMastery_Mastery_Angling": "Angling",
     "IGUI_TienSkillMastery_Mastery_Fieldcraft": "Fieldcraft",
     "IGUI_TienSkillMastery_Mastery_Homesteading": "Homesteading",
-    "IGUI_TienSkillMastery_Bonus_FireRate": "Fire rate",
+    "IGUI_TienSkillMastery_Bonus_FireRate": "Fire rate (single fire)",
     "IGUI_TienSkillMastery_Bonus_JamChance": "Jam chance",
     "IGUI_TienSkillMastery_Bonus_TreeDamage": "Damage to trees",
     "IGUI_TienSkillMastery_Bonus_StompDamage": "Stomp damage",

@@ -1,0 +1,10 @@
+0.4.5
+
+Firearms: Fire Rate
+- The fire rate bonus now applies to single fire only: single shots (and guns with only one fire mode) fire faster, full auto and burst keep their normal rate
+- Gunworks guns now really get it in single fire: Gunworks' own fire rate limit ignored the bonus before
+
+Firearms: Running Reload
+- Updated for the latest Gunworks and Guns of Marz: the jungle-mag flip is covered, and the lever-action and break-action rack animations match the new ones
+- Guns that use Hot Brass's reload animations (its double-barrel, lever-gun and roller-delayed reloads) now keep them on the run too
+- Flipping a jungle magazine no longer stops when you start running

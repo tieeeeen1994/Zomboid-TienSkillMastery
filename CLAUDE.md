@@ -5,6 +5,10 @@
 The notes below grew as a log, and v1 sections are marked superseded. This section is the current state.
 
 - **Version 0.4.4** (2026-11-20: the balance pass, the triage stitch fix and the running reload animation), on `master` (the only branch; `v2-draft` deleted 2026-11-11), Workshop item 3836051294, **unlisted by choice**.
+- **0.4.5 prepared, not committed or uploaded** (2026-11-23, after the Gunworks / GoM / Hot Brass updates of
+  2026-11-22/23): `mod.info` and `changenotes.txt` say 0.4.5. Fire Rate for single fire only and reaching Gunworks
+  guns at last (`client/*_Combat.lua` header), Gunworks' `ISStackedMagazine` in the run-and-gun reload list
+  (`shared/*_Signatures.lua`), the run-reload nodes regenerated with Hot Brass VCEF added (item 5 below). Not played.
 - **Masteries:** 21, all open (Freerunning opened in 0.4.2, 2026-11-10; Stealth in 0.4.3, 2026-11-11). Salvaging, the
   last Coming Soon, was removed on 2026-11-14 (user: too narrow); its design and ideas are in `docs/v2-draft.md`.
 - **Next:** play `docs/test-checklist.md` on a dedicated server with two players, then fix what it finds.
@@ -51,10 +55,14 @@ Still to do, in order:
    look perfect")** (user: vanilla + Gunworks + Guns of Marz from the start,
    kept up to date by a script). `shared/*_RunReload.lua` (header has the 42.22.2 trace) sets `RightHandMask =
    TsmRunReload` on a master reloading in the `run` / `sprint` state, own and remote (server list
-   `runReloadMasters`); `scripts/make_run_reload.py` writes 226 nodes (34 vanilla, 3 Gunworks, 189 GoM) into
-   `AnimSets/player/maskingright/TsmRunReload/`, resolved in full with the mask condition. **Re-run the script and
-   commit whenever the game, Gunworks or Guns of Marz change their reload animations** (it reads the Steam install
-   and the subscribed Workshop items; `tests/runreload_test.py` checks the output). Still to check on the dedicated
+   `runReloadMasters`); `scripts/make_run_reload.py` writes 243 nodes (34 vanilla, 14 Hot Brass VCEF, 3 Gunworks,
+   192 GoM; 2026-11-23, after the Gunworks / GoM / Hot Brass updates of 2026-11-22/23, and with Hot Brass VCEF
+   `HBVCEFb42` added first in the load order: its DblBarrel, DblBarrelSawnoff, Levergun and RollerDelay reload
+   files are not replaced by Gunworks or GoM) into `AnimSets/player/maskingright/TsmRunReload/`, resolved in full
+   with the mask condition. **Re-run the script and commit whenever the game, Hot Brass, Gunworks or Guns of Marz
+   change their reload animations** (it reads the Steam install and the subscribed Workshop items;
+   `tests/runreload_test.py` checks the output and, since 2026-11-23, regenerates into a temporary folder and fails
+   on any difference from the files in the repo). Still to check on the dedicated
    server: other players seeing it, sounds not doubled at a change of gait. Known: the clip
    starts over at each change of gait and runs on its own clock against the timed reload.
 6. `scripts/make_workshop.py` writes `forum.txt` and `workshop.txt` with LF; put CRLF back after running it, or fix the script.
@@ -232,7 +240,11 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   already in the next position when `OnPlayerUpdate` fires and `setX` overwrote it: a stop-start stutter until
   2026-11-12). (`client/*_BuildNoise.lua`, Construction's building noise,
   removed 2026-11-11, user: it stacked with Stealth's Quiet Work, which covers building.) Extended: Combat (fire rate: shoot speed variables + recoil-delay drain floored at
-  150 ms per shot for `AntiCheatHitWeapon`; Gunworks via its `getWeaponRPM` during `canFire`; Knifework's melee-delay
+  150 ms per shot for `AntiCheatHitWeapon`; Gunworks via its `getWeaponRPM` during `canFire`; **since 2026-11-23
+  single fire only** (user: no bonus for auto or burst; `isSingleFire` = any fire mode but Auto / Burst / RealAuto /
+  RealBurst, so Single, RealSingle, none and GoM's "Bore" count), and Gunworks' `RateOfFire` is reached with
+  `pcall(require, "WeaponSystems/Utils/RateOfFire")`: it is a module, never a global, so the old global lookup
+  meant Gunworks guns never got the bonus and took the vanilla path; `tests/firerate_test.py`; Knifework's melee-delay
   drain; stomp via the shoes' `setStompPower`; Executioner finds the close-kill target itself because
   `AttackVars.closeKill` has no getter), Physical (sneak-run endurance, recovery, muscle strain, wear undo over both
   hands and marked worn items, animal stress, crash safety from `OnPlayerGetDamage` "CARCRASHDAMAGE"), Crafting
@@ -264,11 +276,14 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   MP server rebuilds the action with the short time; the put-away of whatever is in hand before a pistol draw is
   quick too (user, 2026-11-07: `ISHotbar:equipItem` is marked while it queues it, since the put-away begins before
   the draw is queued; plus a 3-action look-ahead in the queue); deft hands via
-  `ISBaseTimedAction:adjustMaxTime` x0.9). **Never wrap a timed action's `new` here**: Gunworks (and Hot Brass)
-  replace the reload actions' `new` with extra parameters (`gunworksRackPhase`, `gunworksReloadStep`, `ammoLimit`,
-  `ammoTypeOverride`, `gunworksReloadAiming`), and the MP server rebuilds an action from the outermost `new`'s
+  `ISBaseTimedAction:adjustMaxTime` x0.9). **Never wrap a timed action's `new` here**: Gunworks replaces the
+  reload actions' `new` with extra parameters (`gunworksRackPhase`, `gunworksReloadStep`, `ammoLimit`,
+  `ammoTypeOverride`, `gunworksReloadAiming`; Hot Brass VCEF's B42 folder replaces none, only its B41 root folder
+  overrides `ISRackFirearm:new`, corrected 2026-11-23), and the MP server rebuilds an action from the outermost `new`'s
   parameter names; the first version wrapped them with vanilla's names and Gunworks reloads looped (rack, rack,
-  reload again; reported 2026-11-07). Running still restarted the reload: the `run` / `sprint` action states have no
+  reload again; reported 2026-11-07). Since 2026-11-23 the reload list also has Gunworks' `ISStackedMagazine` (the
+  jungle-mag flip, new in its 2026-11-22 update); its class can load after this mod, so the single player
+  `start` / `animEvent` wrappers are applied at file load and again at `OnGameStart`. Running still restarted the reload: the `run` / `sprint` action states have no
   `to_actions.xml` and no `actions` child tag (idle and walk do), so the reload clip's substate is dropped and
   re-entered from frame 0, and single player advances the reload on the clip's events. **Action groups cannot be
   modded** (`ActionGroup.load` reads only `ZomboidFileSystem.getMediaFile`, the game folder; mod files there are
@@ -531,7 +546,8 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   2026-11-11; its older quiet hands plan gave way to the noise rework the same day.
 - MP checks owed (from reading only): whether stomp's
   `ItemBodyLocation.SHOES` lookup works from Lua, `OnWeaponHitCharacter` on the attacker for a remote zombie, the
-  strafe / sneak nudge feel, Gunworks bursts with the RPM wrap (where combat muscle strain lands in MP: traced 2026-11-08, on the
+  strafe / sneak nudge feel, ~~Gunworks bursts with the RPM wrap~~ (moot since 2026-11-23: bursts and auto get no
+  fire-rate bonus, and the wrap never ran before then, see Combat above; where combat muscle strain lands in MP: traced 2026-11-08, on the
   server, see Physical.lua's header); for 3a:
   reload animation while running, quickdraw look, the lunge distance and feel, fish
   counts between clients, a second live animal from a double catch, triage's merged queue with two patients; for 3b: whether a Lua-set stagger / knockdown

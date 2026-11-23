@@ -189,10 +189,13 @@ class. The build and release steps live in the fork (`D:\PZ_Optimization`, `tiee
 ### Mods this one meets on the user's server
 
 Guns of Marz (Workshop 3722134990) with the Gunworks gang framework (mod id `SWMG`, 3722064198, Lua under
-`WeaponSystems/`), VWP2GoM, Hot Brass Tactical Reload (3610677934), Plysken Attachments Reborn, and the user's own
-TienMagazineBag, TienInspectWeapon, Guns of Tien and Zomboid Fixes B42. A fix for behaviour another of the user's mods
-triggers belongs in that mod. Gunworks matters here for Firearms' signatures (its reload hooks and `new` parameters,
-see `shared/TienSkillMastery_Signatures.lua`) and for the throw (its grenade numbers set Distraction Throw's range).
+`WeaponSystems/`), VWP2GoM, Hot Brass (3610677934: Visible Casing Ejection Framework, mod id `HBVCEFb42`, loaded
+before Gunworks and GoM, plus Tactical Reload), Plysken Attachments Reborn, and the user's own TienMagazineBag,
+TienInspectWeapon, Guns of Tien and Zomboid Fixes B42. A fix for behaviour another of the user's mods triggers belongs
+in that mod. Gunworks matters here for Firearms' signatures (its reload hooks and `new` parameters, see
+`shared/TienSkillMastery_Signatures.lua`), its fire-rate gate (`client/TienSkillMastery_Combat.lua`) and the throw
+(its grenade numbers set Distraction Throw's range); Hot Brass VCEF for its reload animations
+(`scripts/make_run_reload.py`).
 
 ## This mod's history in short
 

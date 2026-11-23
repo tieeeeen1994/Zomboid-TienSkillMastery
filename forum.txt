@@ -20,7 +20,7 @@ Skills stay vanilla, levels 0 to 10. On top of them come [b]masteries[/b]: named
 [h2]Masteries and their effects at mastery 10[/h2]
 Each mastery level gives a tenth. On a chance, a % is added to the chance itself (hit chance +5% turns 60% into 65%); anywhere else it is a share of the vanilla amount. Numbers without % are amounts. A weapon mastery's effects apply with a weapon of its kind.
 [list]
-[*][b]Firearms[/b] (Aiming, Reloading): damage +10%, fire rate +10% (Gunworks guns too), jams -25%, hit chance +5%, critical hit chance +5%, range +10%, aim-in speed +15%, reload and rack speed +15%, 20% chance to undo firearm wear.
+[*][b]Firearms[/b] (Aiming, Reloading): damage +10%, fire rate +10% in single fire (not auto or burst; Gunworks guns too), jams -25%, hit chance +5%, critical hit chance +5%, range +10%, aim-in speed +15%, reload and rack speed +15%, 20% chance to undo firearm wear.
 [*][b]Axemanship[/b] (Axe, Strength): damage +10%, attack speed +10%, 10% chance to reroll a hit that did not crit, reach +10%, knockback +20%, endurance used swinging -15%, 20% chance to undo axe wear, damage to trees +20%.
 [*][b]Bludgeoning[/b] (Long Blunt, Strength): damage +10%, attack speed +10%, 5% crit reroll, knockback +15%, endurance used swinging -15%, 20% chance to undo wear; with the sandbox option to hit several zombies on: +1 target per swing from mastery 5, +2 at 10; with it off: reach +5% from mastery 5, +10% at 10.
 [*][b]Swordsmanship[/b] (Long Blade, Nimble): damage +10%, attack speed +10%, 5% crit reroll, reach +10%, endurance used swinging -15%, 20% chance to undo wear, strafe speed while aiming +15%.
@@ -47,7 +47,7 @@ Whole-number bonuses (carry weight, condition, extra items) build up as a chance
 [h2]Signature abilities[/h2]
 Each mastery also unlocks a signature ability (a few have two or three), each with its own name, in full from the moment it is picked (it does not grow with mastery levels).
 [list]
-[*][b]Firearms:[/b] [i]Quickdraw[/i]: one-handed guns drawn and holstered 4 times faster. [i]Running Reload[/i]: reloading does not stop when you run, and your arms keep reloading while you run (vanilla, Gunworks and Guns of Marz guns).
+[*][b]Firearms:[/b] [i]Quickdraw[/i]: one-handed guns drawn and holstered 4 times faster. [i]Running Reload[/i]: reloading does not stop when you run, and your arms keep reloading while you run (vanilla, Gunworks and Guns of Marz guns, and Hot Brass's reload animations).
 [*][b]Bludgeoning:[/b] [i]Wild Swing[/i]: every swing with a long blunt weapon also staggers back the zombies in front of you that it did not hit, for a little endurance each.
 [*][b]Swordsmanship:[/b] [i]Hamstring[/i]: sneaking and aiming with a long blade, every hit leaves the zombie crawling.
 [*][b]Street Fighting:[/b] [i]Battering Ram[/i]: sprinting into a zombie knocks it down instead of tripping you, for a little endurance each. The first endurance moodle is a warning; from the second you stumble again.

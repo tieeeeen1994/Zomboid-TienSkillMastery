@@ -100,7 +100,9 @@ a hook (and tracing where noted); everything else reuses a built v1 hook with th
     `SwipeStatePlayer.enter` right before `OnWeaponSwing`. Hook: drain the extra share in `OnPlayerUpdate` (as aim-in)
     and scale both variables in `OnWeaponSwing`. Gunworks guns are gated by its own RPM interval instead
     (`RateOfFire.canFire`, per-player `RateOfFire.lastFireTime[playerNum]`, "Real" modes pin RecoilDelay to 1), which
-    only moving `lastFireTime` or wrapping its RPM lookup reaches.
+    only moving `lastFireTime` or wrapping its RPM lookup reaches. (2026-11-23, user: single fire only, no bonus
+    for auto or burst; and Gunworks' `RateOfFire` is a `require` module, not a global: header of
+    `client/TienSkillMastery_Combat.lua`.)
     Anti-cheat (42.21 `AntiCheatHitWeapon.isRateExceeded`, corrected 2026-11-06: an earlier note said there was
     none): per player, hits within 3 x T must not exceed 3 x maxHits, T = 400 ms melee, 150 ms single-fire
     firearm, 15 ms auto; maxHits = the **server copy's** `getProjectileCount() x getMaxHitCount()`, at least 3

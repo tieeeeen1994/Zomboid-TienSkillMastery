@@ -1,11 +1,14 @@
 """Runs the real RunReload file against mocks: the RightHandMask set on a master reloading in the run or sprint state
 and nowhere else, set again after the game clears it, cleared once the reload or the run ends (only when it is ours),
-remote masters from the server's list, the server's list itself; then checks the generated maskingright nodes.
+remote masters from the server's list, the server's list itself; then checks the generated maskingright nodes, and
+that a fresh run of scripts/make_run_reload.py gives exactly the committed ones.
 
 Breaks: noclear (the mask is never cleared), noremote (remote masters ignored), nostate (any action state)."""
 import os
 import re
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 here = Path(__file__).resolve().parent
@@ -215,12 +218,34 @@ for f, t in texts:
     for target in re.findall(r'<m_Target>(.*?)</m_Target>', t):
         if target.lower() not in names:
             gen_bad.append('target:%s->%s' % (f.name, target))
+# ---- Up to date: a fresh run of the generator (into a temporary folder) must give exactly the committed files, so
+# a game, Hot Brass, Gunworks or Guns of Marz update that changes a reload animation fails here until the script is
+# re-run and its output committed. Needs the Steam install and the subscribed mods (the script exits otherwise).
+stale = []
+with tempfile.TemporaryDirectory() as tmp:
+    fresh = Path(tmp) / 'TsmRunReload'
+    r = subprocess.run([sys.executable, '-I', str(repo / 'scripts/make_run_reload.py'), '--out', str(fresh)],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        stale.append('generator failed: ' + (r.stdout + r.stderr).strip().splitlines()[-1])
+    else:
+        def tree(root):
+            return {p.relative_to(root).as_posix(): p.read_bytes().replace(b'\r\n', b'\n')
+                    for p in root.rglob('*') if p.is_file()}
+        old, new = tree(gen), tree(fresh)
+        stale += ['missing:' + k for k in sorted(set(new) - set(old))]
+        stale += ['extra:' + k for k in sorted(set(old) - set(new))]
+        stale += ['differs:' + k for k in sorted(set(old) & set(new)) if old[k] != new[k]]
+
 lines = result.split('\n')
 lines.append('generatedNodes=%d' % len(files))
 lines.append('generatedClean=%s' % ('true' if not gen_bad else 'false'))
+lines.append('generatedUpToDate=%s' % ('true' if not stale else 'false'))
 print('\n'.join(lines))
 if gen_bad:
     print('  ' + ', '.join(gen_bad[:10]))
+if stale:
+    print('  stale (run scripts/make_run_reload.py and commit): ' + ', '.join(stale[:10]))
 bad = [l for l in lines if l.endswith('=false') or l.endswith('=0')]
 if 'serverBroadcastOnce=1' not in lines:
     bad.append('serverBroadcastOnce!=1')

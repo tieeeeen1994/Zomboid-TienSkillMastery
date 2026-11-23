@@ -168,7 +168,7 @@ These come from reading the code and were never confirmed on a server.
 - [ ] Knifework's bonus against zombies not targeting you works on B's zombies.
 - [ ] Street Fighting's stomp and shove damage work with something in hand.
 - [ ] *Battering Ram* really stops the sprint trip, including with two zombies at once.
-- [ ] Firearms with Gunworks: bursts and fire rate behave, and there are no anti-cheat kicks. *Running Reload* and *Quickdraw* look right.
+- [ ] Firearms with Gunworks: a master's single fire is faster (Gunworks' Single and guns with one fire mode), auto and burst keep their own rate, and there are no anti-cheat kicks. *Running Reload* (also the jungle-mag flip, and Hot Brass's double barrels, lever guns and roller-delayed guns) and *Quickdraw* look right.
 - [ ] *Running Reload* on the run, seen from B: A's arms reload over the run and sprint (vanilla and Guns of Marz guns), and reload sounds do not play twice when A slows to a walk or speeds up again.
 - [ ] Firearms crit: a master's shots crit a little more often (+5 at mastery 10); with Guns of Tien's Gun Critical Hits on Old or Enhanced, shotgun pellets after the first get it too.
 - [ ] *Lunge*: distance and feel at 1.5 tiles, on your own and on B's zombies.

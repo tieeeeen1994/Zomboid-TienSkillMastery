@@ -6,16 +6,22 @@ filling the arguments from the client table's values of the outermost `new`'s pa
 reads the function's locvars), and other mods replace these `new`s with parameters of their own. Gunworks (42.13):
 `ISReloadWeaponAction:new(character, gun, ammoLimit, ammoTypeOverride, gunworksReloadAiming, gunworksReloadStep)`,
 `ISRackFirearm:new(character, gun, gunworksRackPhase)`, `gunworksReloadAiming` on ISInsertMagazine / ISEjectMagazine /
-ISUnloadBulletsFromFirearm, `ammoLimit, ammoTypeOverride` on ISLoadBulletsInMagazine; Hot Brass also overrides
-`ISRackFirearm:new`. The first version wrapped them with vanilla's names only, which dropped those arguments on both
-sides: Gunworks lost its rack phase and reload step and looped (rack, rack, reload again). So:
+ISUnloadBulletsFromFirearm, `ammoLimit, ammoTypeOverride` on ISLoadBulletsInMagazine, and Gunworks' own
+`ISStackedMagazine:new(character, gun, gunworksReloadAiming)`. Hot Brass VCEF's B42 folder (42.15) replaces no `new`
+(it wraps `ISRackFirearm` / `ISReloadWeaponAction` / `ISInsertMagazine` methods such as `animEvent`,
+`SpentCasingPhysics/TimedActionsHooks.lua`); only its B41 root folder (`media/lua/client/HBVCEF_Overrites.lua`, not
+loaded by B42) overrides `ISRackFirearm:new`. The first version wrapped them with vanilla's names only, which dropped
+those arguments on both sides: Gunworks lost its rack phase and reload step and looped (rack, rack, reload again). So:
 
 - Firearms.SigRunReload (run-and-gun reload): every reload action sets `stopOnRun = true` in `new`
   (ISReloadWeaponAction ~292, ISInsertMagazine ~146, ISEjectMagazine ~107, ISLoadBulletsInMagazine ~166,
-  ISRackFirearm ~210, ISUnloadBulletsFromFirearm ~129, ISUnloadBulletsFromMagazine ~146), read by Java `BaseAction`
-  on the client only. It is set false in `ISBaseTimedAction:create` (~78, the client's / single player's step that
-  builds the Java action, right after `new`; none of these classes override it), by the action's `Type`.
-  `stopOnWalk` / `stopOnAim` are already false.
+  ISRackFirearm ~210, ISUnloadBulletsFromFirearm ~129, ISUnloadBulletsFromMagazine ~146; Gunworks' ISStackedMagazine
+  ~237, the jungle-mag flip, 2026-11-22), read by Java `BaseAction` on the client only. It is set false in
+  `ISBaseTimedAction:create` (~78, the client's / single player's step that builds the Java action, right after `new`;
+  none of these classes override it), by the action's `Type`. `stopOnWalk` / `stopOnAim` are already false.
+  The class wrappers for the single player timing below need the class table, and ISStackedMagazine is a global of
+  Gunworks' shared Lua, which may load after this file (mod order), so they are applied at file load and again at
+  `OnGameStart` (idempotent per class); the `create` check goes by `Type` and needs no class.
   That alone still restarted the reload when running (reported twice, 2026-11-07). Why: the reload clips are nodes
   of the `actions` substate (AnimSets/player/actions), which the `idle` and `movement` (walking) states enter through
   their `to_actions.xml` and keep through `childTags.xml`; `run` and `sprint` have neither. Starting to run drops the
@@ -72,7 +78,8 @@ local M = TienSkillMastery
 
 local RELOAD = { ISReloadWeaponAction = true, ISInsertMagazine = true, ISEjectMagazine = true,
     ISLoadBulletsInMagazine = true, ISRackFirearm = true, ISUnloadBulletsFromFirearm = true,
-    ISUnloadBulletsFromMagazine = true }
+    ISUnloadBulletsFromMagazine = true,
+    ISStackedMagazine = true }   -- Gunworks (jungle-mag flip); its class may not exist yet, see wrapReloadClasses
 local EQUIP = { ISEquipWeaponAction = true, ISUnequipAction = true }
 
 local function quickdrawApplies(character, item)
@@ -204,23 +211,29 @@ Events.OnTick.Add(function()
     end
 end)
 
-for name in pairs(RELOAD) do
-    local class = _G[name]
-    if class and class.start and class.animEvent and not rawget(class, "__tsmTimed") then
-        rawset(class, "__tsmTimed", true)
-        local vanillaStart, vanillaEvent = class.start, class.animEvent
-        class.start = function(self, ...)
-            local r = { vanillaStart(self, ...) }
-            if self.tsmTimed then startTimers(self) end
-            return unpack(r)
-        end
-        class.animEvent = function(self, event, parameter, ...)
-            -- The timers own these events; the animation's copies would restart with the clip.
-            if self.tsmTimed and self.tsmEvents and self.tsmEvents[event] and not self.tsmFiring then return end
-            return vanillaEvent(self, event, parameter, ...)
+--- Wraps `start` / `animEvent` of every reload class that exists now and is not wrapped yet. Run at file load and
+--- again at OnGameStart, for classes of mods loaded after this file (Gunworks' ISStackedMagazine).
+local function wrapReloadClasses()
+    for name in pairs(RELOAD) do
+        local class = _G[name]
+        if type(class) == "table" and class.start and class.animEvent and not rawget(class, "__tsmTimed") then
+            rawset(class, "__tsmTimed", true)
+            local vanillaStart, vanillaEvent = class.start, class.animEvent
+            class.start = function(self, ...)
+                local r = { vanillaStart(self, ...) }
+                if self.tsmTimed then startTimers(self) end
+                return unpack(r)
+            end
+            class.animEvent = function(self, event, parameter, ...)
+                -- The timers own these events; the animation's copies would restart with the clip.
+                if self.tsmTimed and self.tsmEvents and self.tsmEvents[event] and not self.tsmFiring then return end
+                return vanillaEvent(self, event, parameter, ...)
+            end
         end
     end
 end
+wrapReloadClasses()
+Events.OnGameStart.Add(wrapReloadClasses)
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Deft hands

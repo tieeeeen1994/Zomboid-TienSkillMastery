@@ -11,11 +11,13 @@ empty), vanilla's layer for a bag, torch or umbrella held while moving. AnimSet 
 
 The route:
 - `scripts/make_run_reload.py` copies every reload node (PerformingAction Reload, InsertBullets, RemoveBullets) of
-  vanilla, Gunworks and Guns of Marz into `AnimSets/player/maskingright/TsmRunReload/`, resolved in full, renamed
+  vanilla, Hot Brass VCEF, Gunworks and Guns of Marz (their load order) into
+  `AnimSets/player/maskingright/TsmRunReload/`, resolved in full, renamed
   `TsmRun_*`, with one more condition: RightHandMask = TsmRunReload. Same clip, speed (ReloadSpeed), events (sounds,
   Gunworks' magazine and casing events, model swaps) and bone weights; a node without its own weights gets the game's
   default upper-body ones (`AnimNode.Parse`: Spine1 0.5, Neck, BackPack, Prop1, Prop2 1.0), the same that layer the
-  reload over walking. Re-run the script when the game, Gunworks or Guns of Marz change their reload nodes.
+  reload over walking. Re-run the script when the game, Hot Brass, Gunworks or Guns of Marz change their reload
+  nodes (`tests/runreload_test.py` fails until then).
 - This file sets RightHandMask = TsmRunReload on a master who is in the `run` or `sprint` action state
   (`getCurrentActionContextStateName`) while performing a reload (`IsPerformingAnAction` and `PerformingAction`), and
   clears it otherwise. The variable's setter (`IsoGameCharacter.setPrimaryHandMask`) wins over the held item's mask

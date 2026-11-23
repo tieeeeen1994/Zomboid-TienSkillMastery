@@ -52,8 +52,9 @@ Each mastery level gives a tenth. On a chance, a % is added to the chance itself
 65%); anywhere else it is a share of the vanilla amount. Numbers without % are amounts. A weapon mastery's
 effects apply with a weapon of its kind.
 
-- **Firearms** (Aiming, Reloading): damage +10%, fire rate +10% (Gunworks guns too), jams -25%, hit chance +5%,
-  critical hit chance +5%, range +10%, aim-in speed +15%, reload and rack speed +15%, 20% chance to undo firearm wear.
+- **Firearms** (Aiming, Reloading): damage +10%, fire rate +10% in single fire (not auto or burst; Gunworks guns
+  too), jams -25%, hit chance +5%, critical hit chance +5%, range +10%, aim-in speed +15%, reload and rack speed +15%,
+  20% chance to undo firearm wear.
 - **Axemanship** (Axe, Strength): damage +10%, attack speed +10%, 10% chance to reroll a hit that did not crit, reach
   +10%, knockback +20%, endurance used swinging -15%, 20% chance to undo axe wear, damage to trees +20%.
 - **Bludgeoning** (Long Blunt, Strength): damage +10%, attack speed +10%, 5% crit reroll, knockback +15%, endurance
@@ -111,7 +112,8 @@ Each mastery also unlocks a signature ability (a few have two or three), each wi
 moment it is picked (it does not grow with mastery levels).
 
 - **Firearms:** *Quickdraw*: one-handed guns drawn and holstered 4 times faster. *Running Reload*: reloading does
-  not stop when you run, and your arms keep reloading while you run (vanilla, Gunworks and Guns of Marz guns).
+  not stop when you run, and your arms keep reloading while you run (vanilla, Gunworks and Guns of Marz guns, and
+  Hot Brass's reload animations).
 - **Bludgeoning:** *Wild Swing*: every swing with a long blunt weapon also staggers back the zombies in front of you
   that it did not hit, for a little endurance each.
 - **Swordsmanship:** *Hamstring*: sneaking and aiming with a long blade, every hit leaves the zombie crawling.

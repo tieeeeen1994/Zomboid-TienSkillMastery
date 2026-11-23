@@ -30,7 +30,7 @@
     "Sandbox_TienSkillMastery_Firearms_WearUndo": "Firearms: Chance to undo firearm wear (+%%)",
     "Sandbox_TienSkillMastery_Firearms_WearUndo_tooltip": "Chance to undo firearm wear.\\nPercentage points added to the chance at mastery 10; each mastery level gives a tenth. Default 20, 0 turns it off. An effect that is off is no longer listed in the Mastery tab. Changes apply at once.",
     "Sandbox_TienSkillMastery_Firearms_FireRate": "Firearms: Fire rate (+%%)",
-    "Sandbox_TienSkillMastery_Firearms_FireRate_tooltip": "Fire rate.\\nPercent added to the vanilla amount at mastery 10; each mastery level gives a tenth. Default 10, 0 turns it off. An effect that is off is no longer listed in the Mastery tab. Changes apply at once.",
+    "Sandbox_TienSkillMastery_Firearms_FireRate_tooltip": "Fire rate (single fire).\\nPercent added to the vanilla amount at mastery 10; each mastery level gives a tenth. Default 10, 0 turns it off. An effect that is off is no longer listed in the Mastery tab. Changes apply at once.",
     "Sandbox_TienSkillMastery_Firearms_JamChance": "Firearms: Jam chance (-%%)",
     "Sandbox_TienSkillMastery_Firearms_JamChance_tooltip": "Jam chance.\\nPercent taken off the vanilla amount at mastery 10; each mastery level gives a tenth. Default 25, 0 turns it off. An effect that is off is no longer listed in the Mastery tab. Changes apply at once.",
     "Sandbox_TienSkillMastery_Axemanship_Skill_Axe": "Axemanship: Axe experience (x)",

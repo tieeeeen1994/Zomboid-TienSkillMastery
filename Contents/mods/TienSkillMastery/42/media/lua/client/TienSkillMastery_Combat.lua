@@ -51,15 +51,31 @@ Where 42.21 decides each thing (all on the attacking client; in MP the hit packe
   (client/TienSkillMastery_Movement.lua).
 
 Phase 2 (2026-11-07):
-- Fire rate (Firearms.FireRate). Vanilla: semi-auto waits for the character's recoil delay
-  (`HandWeapon.getRecoilDelay(owner)`, set in `pressedAttack` ~3209) and plays at the `singleShootSpeed` variable;
-  full auto at `autoShootSpeed`; both variables are set in `SwipeStatePlayer.enter` right before `OnWeaponSwing`,
-  which scales them. The recoil delay drains 0.625 x multiplier per update (`IsoGameCharacter` ~8644, after
+- Fire rate (Firearms.FireRate), **single fire only** (user, 2026-11-23: no bonus for auto or burst). Single fire =
+  `isSingleFire`: the gun's `getFireMode()` is anything but Auto / Burst in either naming (vanilla "Single", Gunworks'
+  "RealSingle", no fire mode at all = a gun with one mode such as bolt, pump or semi-only, GoM's double-barrel "Bore").
+  That is vanilla's own split: Java treats only "Auto" as automatic (`SwipeStatePlayer.enter` ~183,
+  `AntiCheatHitWeapon` ~63, `CombatManager` ~1469), everything else as single shots.
+  Vanilla (42.22): a single shot waits for the character's recoil delay (`IsoPlayer` ~2562 / ~4476 call
+  `AttemptAttack` only at `getRecoilDelay() <= 0`; set from `HandWeapon.getRecoilDelay(owner)` in `DoAttack`) and
+  for the shot animation (`attackStarted`, set in `pressedAttack`, cleared when `SwipeStatePlayer` exits ~444), which
+  plays at the `singleShootSpeed` variable (`SwipeStatePlayer.enter` sets it right before `OnWeaponSwing`, which
+  scales it; `autoShootSpeed` is left alone). The recoil delay drains 0.625 x multiplier per update (after
   `OnPlayerUpdate`), so the extra share is drained there like aim-in. Anti-cheat (`AntiCheatHitWeapon.isRateExceeded`):
   single-fire hits must average 150 ms or more, so the extra drain never lets a shot come sooner than 150 ms after
-  the last one. Gunworks guns (`RateOfFire.IsWeaponRegistered`) are gated by Gunworks' own RPM interval instead
-  (`RateOfFire.canFire`, which also hands its interval to bursts): while `canFire` runs for a local master, its
-  `getWeaponRPM` lookup returns the RPM x (1 + bonus), never pushing an interval of 150 ms or more under 150 ms.
+  the last one.
+  Gunworks guns (`RateOfFire.IsWeaponRegistered`): Gunworks' `WeaponSystems/Utils/RateOfFire.lua` is a module
+  (`local RateOfFire = {} ... return RateOfFire`), never a global, so it is reached with `require` (cached; before
+  2026-11-23 this file read a global `RateOfFire` that never exists, so Gunworks guns got no bonus and took the
+  vanilla path). Its attack hook (`CustomSystemHooks.lua` ~784, `ISReloadWeaponAction.RAFattackHook`, client) calls
+  `RateOfFire.canFire` through the module table, which gates every shot by `60000 / getWeaponRPM(weapon)` ms and
+  hands that interval to bursts; in RealSingle the trigger also latches (one shot per pull) and nothing fires while
+  `isAttackStarted()` (the shot animation, sped up by `singleShootSpeed` as above), and Gunworks sets RecoilDelay to
+  1 for its Real* modes (`RateOfFire.lua` ~410), so the vanilla recoil delay barely gates them. So while `canFire`
+  runs for a local master holding a single-fire gun, `getWeaponRPM` returns the RPM x (1 + bonus), never pushing an
+  interval of 150 ms or more under 150 ms; the recoil-delay drain runs for every single-fire firearm (it is the real
+  gate for a registered gun without a Real* mode, e.g. "Bore"). Each gate is the slower of the two, so applying the
+  bonus to both gives the bonus once. Bursts and full auto keep Gunworks' own RPM.
 - Knifework's attack speed also drains the melee delay faster (`setMeleeDelay`, the stab's `SetMeleeDelay` 8 at
   its end, drained at the same rate as the recoil delay): CombatSpeed alone gives only about two thirds of it.
 - Stomp (StreetFighting.StompDamage, any weapon): `CombatManager` ~1043 computes stomp damage after this event as
@@ -106,9 +122,25 @@ end
 local lastShot = {}   -- [player num] = getTimestampMs() of the last firearm swing
 local startLunge      -- defined with the lunge below
 
-local function isGunworksGun(weapon)
-    return RateOfFire ~= nil and type(RateOfFire.IsWeaponRegistered) == "function"
-        and RateOfFire.IsWeaponRegistered(weapon) == true
+--- Gunworks' RateOfFire module (a `require` module, not a global; see the header), or nil without Gunworks. Looked
+--- up only once the game runs (every Lua file is loaded by then, whatever the mod order) and cached.
+local rateOfFireModule = nil
+local rateOfFireLooked = false
+local function rateOfFire()
+    if not rateOfFireLooked then
+        rateOfFireLooked = true
+        local ok, mod = pcall(require, "WeaponSystems/Utils/RateOfFire")
+        if ok and type(mod) == "table" then rateOfFireModule = mod end
+    end
+    return rateOfFireModule
+end
+
+--- Single fire (the only mode Firearms.FireRate speeds up; see the header): anything but Auto / Burst, vanilla's
+--- names or Gunworks' "Real" ones. No fire mode at all is a one-mode gun (bolt, pump, semi-only).
+local MULTI_SHOT = { auto = true, burst = true, realauto = true, realburst = true }
+local function isSingleFire(weapon)
+    local mode = weapon and weapon:getFireMode()
+    return mode == nil or not MULTI_SHOT[string.lower(tostring(mode))]
 end
 
 -- ---------------------------------------------------------------------------------------------------------------
@@ -343,13 +375,11 @@ end
 local function onFirearmSwing(player, weapon)
     lastShot[player:getPlayerNum()] = getTimestampMs()
     firearmCrit(player, weapon)
+    -- Fire rate: single fire only (user, 2026-11-23), so only the single-shot animation is sped up.
     local rate = M.val(player, "Firearms.FireRate")
-    if rate <= 0 then return end
-    local f = 1 + rate / 100
-    for _, var in ipairs({ "singleShootSpeed", "autoShootSpeed" }) do
-        local v = player:getVariableFloat(var, 0)
-        if v > 0 then player:setVariable(var, v * f) end
-    end
+    if rate <= 0 or not isSingleFire(weapon) then return end
+    local v = player:getVariableFloat("singleShootSpeed", 0)
+    if v > 0 then player:setVariable("singleShootSpeed", v * (1 + rate / 100)) end
 end
 
 local function onWeaponSwing(player, weapon)
@@ -645,8 +675,9 @@ local function onPlayerUpdate(player)
         lastDelay[num] = nil
     end
 
-    -- Fire rate: the recoil delay, never letting a shot come sooner than MIN_SHOT_MS after the last.
-    if weapon and instanceof(weapon, "HandWeapon") and weapon:isAimedFirearm() and not isGunworksGun(weapon) then
+    -- Fire rate, single fire only: the recoil delay, never letting a shot come sooner than MIN_SHOT_MS after the
+    -- last. Gunworks guns too (their RPM gate is the wrap below; a Real* mode's recoil delay is only 1).
+    if weapon and instanceof(weapon, "HandWeapon") and weapon:isAimedFirearm() and isSingleFire(weapon) then
         local bonus = M.val(player, "Firearms.FireRate")
         local now = player:getRecoilDelay()
         local shot = lastShot[num]
@@ -673,13 +704,13 @@ end
 Events.OnPlayerUpdate.Add(onPlayerUpdate)
 
 -- ---------------------------------------------------------------------------------------------------------------
--- Gunworks: its RPM gate (see the header). Wrapped once its tables exist.
+-- Gunworks: its RPM gate, single fire only (see the header). Wrapped at game start, when its module exists.
 -- ---------------------------------------------------------------------------------------------------------------
 
 local rpmPlayer = nil   -- the local player whose canFire is running
 
 local function wrapGunworks()
-    local rof = RateOfFire
+    local rof = rateOfFire()
     if type(rof) ~= "table" or rof.__tsmWrapped then return end
     if type(rof.canFire) ~= "function" or type(rof.getWeaponRPM) ~= "function" then return end
     rof.__tsmWrapped = true
@@ -687,7 +718,8 @@ local function wrapGunworks()
     rof.getWeaponRPM = function(weapon, ...)
         local rpm = getRPM(weapon, ...)
         local player = rpmPlayer
-        if player and type(rpm) == "number" and rpm > 0 and weapon == player:getPrimaryHandItem() then
+        if player and type(rpm) == "number" and rpm > 0 and weapon == player:getPrimaryHandItem()
+            and isSingleFire(weapon) then
             local bonus = M.val(player, "Firearms.FireRate")
             if bonus > 0 then
                 local interval = 60000 / rpm
