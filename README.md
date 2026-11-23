@@ -22,7 +22,8 @@ survivor is known for.
   lose a level.
 - **Level-ups like vanilla's.** Every mastery level shows the "+1 Firearms Mastery" halo with the green arrow (+1
   Prestige past 10) and plays vanilla's level-up sound.
-- **Mastery belongs to the character.** It is gone when the character dies.
+- **Mastery belongs to the character.** It is gone when the character dies, and it is saved with the character, so
+  restoring a server backup or a crash between world saves no longer resets it.
 - **Mastery tab** next to Skills in the character window, laid out like the Skills tab: the masteries by group, each
   with its skills (green once at 10), a Pick button when it is ready, ten boxes once picked (hover for the points).
   Click a mastery to see its effects now and at mastery 10. Long lines here and in the Skills tab's effect lists wrap;
@@ -30,8 +31,11 @@ survivor is known for.
 - **What your skills do.** Click a skill's name in the vanilla Skills tab to see what its current level gives in
   vanilla: every effect with its number, and the features later levels unlock. Click again to close.
 - **Admin cheats.** Right-click a picked mastery in the Mastery tab to change its points or level, or remove the
-  pick; right-click a skill's name in the Skills tab to change its XP or level, or max every skill. Own character only: in multiplayer
+  pick; right-click a skill's name in the Skills tab to change its XP or level, or max every skill. In multiplayer
   for roles allowed to add XP, in single player with -debug.
+- **Mastery admin window** for any player, online or offline: right-click in the Mastery tab and choose *Mastery
+  admin (any player)*. Pick a player, then pick a mastery for them, add or
+  remove points, set its level, clear it or remove the pick. An offline player gets the change when they log in.
 - **Sandbox options.** *Masteries Per Character* (page Tien's Skill Mastery, 1 to 21, default 3) sets how many
   masteries a character can pick. Raising it opens slots at once; lowering it never takes a mastery away.
   *Mastery Cost Base* (default 100%) and *Mastery Cost Growth* (default 5%) on the same page set what a mastery level

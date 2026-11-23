@@ -506,11 +506,25 @@ local function askNumber(self, title, default, onNumber)
     box:bringToTop()
 end
 
---- Opens the mastery cheat menu for `masteryId` at the mouse, if the player may use it. Returns true when shown.
+M.askNumber = function(title, default, onNumber) askNumber(nil, title, default, onNumber) end
+
+--- "Mastery admin..." (client/TienSkillMastery_Admin.lua: every player's mastery), at the end of the menu.
+local function addAdminOption(context, playerNum)
+    if M.openAdmin then
+        context:addOption(getText("IGUI_TienSkillMastery_Admin_Open"), playerNum, M.openAdmin, nil)
+    end
+end
+
+--- Opens the mastery cheat menu for `masteryId` at the mouse (nil: only "Mastery admin..."), if the player may use
+--- it. Returns true when shown.
 function M.showCheatMenu(playerNum, masteryId)
     local player = getSpecificPlayer(playerNum)
-    if not M.masteryById[masteryId] or not canCheat(player) then return false end
+    if not canCheat(player) then return false end
     local context = ISContextMenu.get(playerNum, getMouseX(), getMouseY())
+    if not M.masteryById[masteryId] then
+        addAdminOption(context, playerNum)
+        return true
+    end
     local picked = M.isPicked(player, masteryId)
     local name = masteryName(masteryId)
     local function opt(key, fn)
@@ -544,6 +558,7 @@ function M.showCheatMenu(playerNum, masteryId)
     opt("IGUI_TienSkillMastery_Cheat_Unpick", function()
         applyCheat(player, { mastery = masteryId, op = "unpick" })
     end)
+    addAdminOption(context, playerNum)
     return true
 end
 
@@ -586,7 +601,7 @@ end
 
 function TienSkillMasteryPanel:onRightMouseUp(x, y)
     local _, r = self:rowAt(y)
-    if r then M.showCheatMenu(self.playerNum, r.id) end
+    M.showCheatMenu(self.playerNum, r and r.id)
     return true
 end
 

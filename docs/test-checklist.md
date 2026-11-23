@@ -35,6 +35,12 @@ they pass. When one fails, write what you saw under it, then give this file to C
       Angling or Fieldcraft picked, the text shows and the mastery grows. Remove the pick: the text stops within a second.
 - [ ] (2026-11-10) Mastery costs read 105, 110, 115... in the Mastery tab tooltip; mastery 10 costs 150.
 - [ ] No XP anti-cheat kick on the first login after the update (every level-10 skill goes back up 240 XP once).
+- [ ] (0.4.6) Backups: with a pick and some points, wait for a periodic backup (or kill the server without /save),
+  restore it / restart, log in: the pick and points are still there (server log: "mastery restored from the
+  player's save" when the world save was older).
+- [ ] (0.4.6) Mastery admin window: A right-clicks in the Mastery tab, "Mastery admin (any player)...", picks B. Pick a mastery for B, set
+  level 3, add points: B's Mastery tab follows within a second. With B offline (chosen from the list), add points;
+  B logs in and has them. A role without Add XP does not see the menu option.
 
 ## 2. Today's sync fixes
 

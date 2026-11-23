@@ -1,10 +1,8 @@
-0.4.5
+0.4.6
 
-Firearms: Fire Rate
-- The fire rate bonus now applies to single fire only: single shots (and guns with only one fire mode) fire faster, full auto and burst keep their normal rate
-- Gunworks guns now really get it in single fire: Gunworks' own fire rate limit ignored the bonus before
+Fixes
+- Restoring a server backup, or a server crash, no longer resets masteries. The server only wrote masteries to disk in a full world save, while characters are saved as you play, so a backup or a crash brought back characters without their newer masteries. Masteries are now also saved with each character, and the newer copy wins when the server starts.
 
-Firearms: Running Reload
-- Updated for the latest Gunworks and Guns of Marz: the jungle-mag flip is covered, and the lever-action and break-action rack animations match the new ones
-- Guns that use Hot Brass's reload animations (its double-barrel, lever-gun and roller-delayed reloads) now keep them on the run too
-- Flipping a jungle magazine no longer stops when you start running
+Admins
+- Mastery admin window: change any player's mastery, online or offline. Right-click in the Mastery tab and choose Mastery admin (any player). Pick a mastery for them, add or remove points, set its level, clear it or remove the pick. Offline players get the change when they log in.
+- Use it to put back masteries lost to a backup restored before this update.

@@ -5,10 +5,16 @@
 The notes below grew as a log, and v1 sections are marked superseded. This section is the current state.
 
 - **Version 0.4.4** (2026-11-20: the balance pass, the triage stitch fix and the running reload animation), on `master` (the only branch; `v2-draft` deleted 2026-11-11), Workshop item 3836051294, **unlisted by choice**.
-- **0.4.5 prepared, not committed or uploaded** (2026-11-23, after the Gunworks / GoM / Hot Brass updates of
-  2026-11-22/23): `mod.info` and `changenotes.txt` say 0.4.5. Fire Rate for single fire only and reaching Gunworks
+- **0.4.5 committed and handed over for upload** (2026-11-23, after the Gunworks / GoM / Hot Brass updates of
+  2026-11-22/23). Fire Rate for single fire only and reaching Gunworks
   guns at last (`client/*_Combat.lua` header), Gunworks' `ISStackedMagazine` in the run-and-gun reload list
   (`shared/*_Signatures.lua`), the run-reload nodes regenerated with Hot Brass VCEF added (item 5 below). Not played.
+- **0.4.6 (2026-11-23, not played):** masteries reset after a restored backup (reported). Global mod data is written
+  only in a full world save, players.db as the server goes, and periodic backups wait only for players.db, so a
+  backup or a crash pairs current characters with old mastery. Each entry is now mirrored into the player's modData
+  with a real-time `stamp`, read back once per server start when newer (`server/*_Server.lua` header,
+  `tests/restore_test.py`). Plus the Mastery admin window for any player, online or offline
+  (`client/*_Admin.lua`, server `M.adminChange` with `target`, `M.adminState`), asked for the same day.
 - **Masteries:** 21, all open (Freerunning opened in 0.4.2, 2026-11-10; Stealth in 0.4.3, 2026-11-11). Salvaging, the
   last Coming Soon, was removed on 2026-11-14 (user: too narrow); its design and ideas are in `docs/v2-draft.md`.
 - **Next:** play `docs/test-checklist.md` on a dedicated server with two players, then fix what it finds.
@@ -600,6 +606,8 @@ Engine facts are from the 42.21 jar (Vineflower, recipe in ZomboidFixesB42's CLA
   clamped by Java and shows vanilla's "+1 skill" halo once.
 - **Storage**: global mod data `TienSkillMastery[username] = { xp = { [perkId] = n }, hours }`, never player modData:
   a client's `transmitModData()` of its player (`ObjectModDataPacket`) replaces the server's whole player modData.
+  (Since 0.4.6 a stamped mirror in player modData too, only read back once per server start: global mod data is
+  saved only by `ServerMap.QueuedSaveAll`, so backups and crashes lost mastery.)
   Cleared on death (`OnCharacterDeath`); reset when the same name shows up with fewer hours survived. The server
   sends the owner `state` on request (client repeats until answered) and at most once a second after a change.
 - **Cost** (user, 2026-11-06: never the bare step; no XP boosters reach mastery, so it stays tough. Changed

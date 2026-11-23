@@ -12,7 +12,24 @@ Tien's Skill Mastery: server core (also runs in single player). See shared/TienS
 - Not experience: Skill Journal's restore (lait, 3776641628) calls the 6-argument `AddXP`, which fires the event too;
   `SkillJournal.restore` is wrapped to ignore gains while it runs. Admin `/addxp` cannot be told apart.
 - Mastery belongs to the character: cleared on death (`OnCharacterDeath`, fires on the server for players), and
-  reset when a character with fewer hours survived than recorded shows up under the same name.
+  reset when a character with fewer hours survived than recorded shows up under the same name (only a character
+  with no mirror, below: a mirror proves it is the same character).
+- Backups and crashes (42.22.2, traced 2026-11-23; reported: masteries back to 0 after restoring a backup). Global mod
+  data reaches the disk only in a full world save (`GlobalModData.save` from `ServerMap.QueuedSaveAll`: quit, /save,
+  SaveWorldEveryMinutes, default 0 = never), while players.db rows are written as the server goes
+  (`ServerPlayerDB`, which serialises the server's own IsoPlayer, its modData included). A periodic backup
+  (`ZipBackup.onPeriod`) only waits for players.db (`saveFinishWait`) and zips the save folder as it is, so it holds
+  the players as of the backup next to `global_mod_data.bin` from the last full save (often the server's start):
+  every pick and point earned since is missing. A crash loses them the same way. So each entry also lives in the
+  player's own modData (`MIRROR`), stamped with the real time of its last change (`stamp`, `getTimestampMs`); the
+  first time the server sees a player after starting (`serverLoadNetworkCharacter` loads the IsoPlayer from
+  players.db, so this is the saved copy), the newer of the two wins. After that the mirror is only written: a
+  client's `transmitModData()` replaces the server's player modData with its copy from login (see the shared
+  header), and the next pass writes the mirror again when its stamp differs.
+- Admins (`Capability.AddXP`, like /addxp; single player: -debug) can change any player's mastery, online or not,
+  from the Mastery admin window (client/TienSkillMastery_Admin.lua): "adminState" lists every known player and one
+  player's entry, "adminChange" with `target` = a username. An offline player's entry is changed in the store;
+  its newer stamp beats the mirror when they log in.
 ]]
 
 if isClient() then return end
@@ -72,18 +89,72 @@ end
 -- Entries
 -- ---------------------------------------------------------------------------------------------------------------
 
-local function markDirty(player)
-    dirty[player:getUsername()] = true
+--- A change to `name`'s entry: stamped (the mirror follows on the next pass) and sent to the owner.
+local function touch(name, e)
+    if e then e.stamp = getTimestampMs() end
+    dirty[name] = true
 end
 
-local function checkCharacter(player, e)
+local function markDirty(player)
+    touch(player:getUsername(), M.entry(player, false))
+end
+
+local MIRROR = "TienSkillMastery"
+local checked = {}   -- [username] = true: mirror and store compared since the server started
+
+local function copyEntry(e)
+    local c = { stamp = e.stamp or 0, hours = e.hours, picks = {}, points = {} }
+    for i, id in ipairs(e.picks) do c.picks[i] = id end
+    for k, v in pairs(e.points) do c.points[k] = v end
+    return c
+end
+
+--- The store entry rebuilt from a player's mirror (saved tables come back with double keys: picks rebuilt in order).
+local function fromMirror(m)
+    local e = { stamp = tonumber(m.stamp) or 0, hours = tonumber(m.hours), picks = {}, points = {} }
+    if type(m.picks) == "table" then
+        local i = 1
+        while m.picks[i] ~= nil do
+            if type(m.picks[i]) == "string" then table.insert(e.picks, m.picks[i]) end
+            i = i + 1
+        end
+    end
+    if type(m.points) == "table" then
+        for k, v in pairs(m.points) do
+            if type(k) == "string" and tonumber(v) then e.points[k] = tonumber(v) end
+        end
+    end
+    return e
+end
+
+--- Store, mirror and character checks for one player (every pass, and on "request"). Returns the entry.
+local function checkCharacter(player)
+    local name = player:getUsername()
+    local e = M.entry(player, true)
+    if not e then return nil end
+    local modData = player:getModData()
+    local m = modData[MIRROR]
+    if type(m) ~= "table" then m = nil end
+    if not checked[name] then
+        checked[name] = true
+        if m and (tonumber(m.stamp) or 0) > (e.stamp or 0) then
+            -- The player's save is newer than global mod data: a restored backup or a crash since the last world save.
+            M.store()[name] = fromMirror(m)
+            e = M.entry(player, true)
+            dirty[name] = true
+            print(string.format("[TienSkillMastery] %s: mastery restored from the player's save (%d picks)", name,
+                #e.picks))
+        end
+    end
     local hours = player:getHoursSurvived()
-    if e.hours and hours + 0.5 < e.hours then
-        print("[TienSkillMastery] " .. tostring(player:getUsername()) .. " is a new character, mastery reset")
+    if not m and e.hours and hours + 0.5 < e.hours then
+        print("[TienSkillMastery] " .. tostring(name) .. " is a new character, mastery reset")
         e.picks, e.points = {}, {}
-        markDirty(player)
+        touch(name, e)
     end
     e.hours = hours
+    if not m or m.stamp ~= (e.stamp or 0) then modData[MIRROR] = copyEntry(e) end
+    return e
 end
 
 --- A mastery level gained from experience: vanilla's level-up feedback on the owner's screen. Vanilla's own
@@ -267,8 +338,7 @@ end
 local function passPlayer(player)
     M.installXpWrapper(player)
     M.noteOwner(player)
-    local e = M.entry(player, true)
-    checkCharacter(player, e)
+    checkCharacter(player)
     if player:isAsleep() then return end
     for _, perk in ipairs(M.perks()) do
         if player:getPerkLevel(perk) >= 10 then
@@ -343,15 +413,49 @@ function M.pick(player, masteryId)
     return true
 end
 
---- args: { mastery = id, op = "add" | "remove" | "level" | "clear" | "unpick", amount = points, level = n }, on a
---- picked mastery of the admin's own character. Removing a pick takes its progress too (user, 2026-11-07).
---- Returns true when applied.
-function M.adminChange(player, args)
-    if type(args) ~= "table" or not player then return false end
+--- The living character called `name`: online players on a server, local players in single player.
+function M.findPlayer(name)
+    local found
+    M.eachPlayer(function(p)
+        if not found and p:getUsername() == name then found = p end
+    end)
+    return found
+end
+
+--- Stands in for an offline player in M.entry / M.isPicked (they only ask for the username without `create`).
+local function nameOnly(name)
+    return { getUsername = function() return name end }
+end
+
+local function isIn(list, value)
+    for _, v in ipairs(list) do
+        if v == value then return true end
+    end
+    return false
+end
+
+--- args: { target = username (default: the admin), mastery = id, op = "pick" | "add" | "remove" | "level" | "clear"
+--- | "unpick", amount = points, level = n }. "pick" takes a free slot without the member check (an admin putting
+--- back a pick); every other op needs the mastery picked. Removing a pick takes its progress too (user, 2026-11-07).
+--- The target may be offline: its stored entry is changed. Returns true when applied.
+function M.adminChange(admin, args)
+    if type(args) ~= "table" or not admin then return false end
+    local name = type(args.target) == "string" and args.target ~= "" and args.target or admin:getUsername()
+    local target = M.findPlayer(name)
+    local e = target and M.entry(target, true) or M.entry(nameOnly(name), false)
     local id = args.mastery
-    if type(id) ~= "string" or not M.masteryById[id] or not M.isPicked(player, id) then return false end
-    local e = M.entry(player, true)
+    if not e or type(id) ~= "string" or not M.masteryById[id] then return false end
+    local who = tostring(admin:getUsername()) .. (name == admin:getUsername() and "" or (" for " .. name))
     local before = e.points[id] or 0
+    if args.op == "pick" then
+        if isIn(e.picks, id) or M.COMING_SOON[id] or #e.picks >= M.maxPicks() then return false end
+        table.insert(e.picks, id)
+        e.points[id] = 0
+        touch(name, e)
+        print(string.format("[TienSkillMastery] admin %s picked %s (%d of %d)", who, id, #e.picks, M.maxPicks()))
+        return true
+    end
+    if not isIn(e.picks, id) then return false end
     local points = before
     local amount = math.max(0, math.min(MAX_POINTS, tonumber(args.amount) or 0))
     if args.op == "add" then
@@ -368,21 +472,55 @@ function M.adminChange(player, args)
             if e.picks[i] == id then table.remove(e.picks, i) end
         end
         e.points[id] = nil
-        markDirty(player)
-        print(string.format("[TienSkillMastery] %s removed own pick %s (%.1f points)", tostring(player:getUsername()),
-            id, before))
+        touch(name, e)
+        print(string.format("[TienSkillMastery] admin %s removed pick %s (%.1f points)", who, id, before))
         return true
     else
         return false
     end
     e.points[id] = points
-    markDirty(player)
+    touch(name, e)
     -- Same level-up feedback as earned mastery (user, 2026-11-06), once for the new level, only when it went up.
     local levelBefore, levelAfter = M.levelInfo(before), M.levelInfo(points)
-    if levelAfter > levelBefore and M.membersAt10(player, id) then M.notifyLevelUp(player, id, levelAfter) end
-    print(string.format("[TienSkillMastery] %s set own %s mastery points %.1f -> %.1f (%s)",
-        tostring(player:getUsername()), id, before, points, tostring(args.op)))
+    if target and levelAfter > levelBefore and M.membersAt10(target, id) then
+        M.notifyLevelUp(target, id, levelAfter)
+    end
+    print(string.format("[TienSkillMastery] admin %s set %s mastery points %.1f -> %.1f (%s)", who, id, before,
+        points, tostring(args.op)))
     return true
+end
+
+--- What the admin window shows: every player the store knows plus everyone online (sorted), and `target`'s entry:
+--- { target, online, names, picks, points, active = { [id] = members at 10 } (online only), maxPicks }.
+function M.adminState(admin, target)
+    local names, seen = {}, {}
+    for name in pairs(M.store()) do
+        if type(name) == "string" and not seen[name] then
+            seen[name] = true
+            table.insert(names, name)
+        end
+    end
+    M.eachPlayer(function(p)
+        local name = p:getUsername()
+        if name and not seen[name] then
+            seen[name] = true
+            table.insert(names, name)
+        end
+    end)
+    table.sort(names, function(a, b) return a:lower() < b:lower() end)
+    local name = type(target) == "string" and target ~= "" and target or admin:getUsername()
+    local player = M.findPlayer(name)
+    local e = player and M.entry(player, true) or M.entry(nameOnly(name), false)
+    local state = { target = name, online = player ~= nil, names = names, picks = {}, points = {}, active = {},
+        maxPicks = M.maxPicks() }
+    if e then
+        for i, id in ipairs(e.picks) do state.picks[i] = id end
+        for k, v in pairs(e.points) do state.points[k] = v end
+    end
+    if player then
+        for _, m in ipairs(M.masteries) do state.active[m.id] = M.membersAt10(player, m.id) end
+    end
+    return state
 end
 
 --- Admin "Max All": every skill below 10 goes to 10, mastery untouched. `XP.AddXP` runs `LevelPerk` once per level
@@ -463,18 +601,31 @@ local function onClientCommand(module, command, player, args)
     if command == "request" then
         M.installXpWrapper(player)
         M.noteOwner(player)
-        checkCharacter(player, M.entry(player, true))
+        checkCharacter(player)
         send(player)
     elseif command == "pick" then
         if M.pick(player, type(args) == "table" and args.mastery) then send(player) end
-    elseif command == "adminChange" or command == "adminSkill" then
+    elseif command == "adminChange" or command == "adminSkill" or command == "adminState" then
         local role = player and player:getRole()
         if not (role and role:hasCapability(Capability.AddXP)) then
             print("[TienSkillMastery] refused " .. command .. " from " .. tostring(player and player:getUsername()))
             return
         end
         if command == "adminChange" then
-            if M.adminChange(player, args) then send(player) end
+            if M.adminChange(player, args) then
+                local name = type(args.target) == "string" and args.target ~= "" and args.target or player:getUsername()
+                local target = M.findPlayer(name)
+                if target then
+                    dirty[name] = nil
+                    send(target)
+                end
+            end
+            if type(args.target) == "string" then
+                sendServerCommand(player, M.MODULE, "adminState", M.adminState(player, args.target))
+            end
+        elseif command == "adminState" then
+            sendServerCommand(player, M.MODULE, "adminState",
+                M.adminState(player, type(args) == "table" and args.target or nil))
         else
             M.adminSkill(player, args)
         end

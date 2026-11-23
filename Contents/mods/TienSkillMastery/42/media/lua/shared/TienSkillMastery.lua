@@ -34,9 +34,11 @@ How XP past 10 is caught ("parking", server / single player only):
   already 10). No vanilla award comes near it.
 
 Storage: global mod data `TienSkillMastery` (server / single player), keyed by username:
-`{ picks = { mastery ids }, points = { [mastery id] = n }, hours }`. Not player modData: a
+`{ picks = { mastery ids }, points = { [mastery id] = n }, hours, stamp }`. Not player modData: a
 client's `transmitModData()` of its player (vanilla hotbar, crafting favourites) sends an `ObjectModDataPacket` that
 replaces the server's whole player modData with the client's copy. Clients get their own entry by server command.
+The server also keeps a stamped copy in the player's modData, only read back once per server start, because global
+mod data is saved far less often than players (backups, crashes: server/TienSkillMastery_Server.lua header).
 ]]
 
 TienSkillMastery = TienSkillMastery or {}
@@ -294,7 +296,8 @@ end
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Data. Server / single player: global mod data. Client (MP): what the server last sent, per local player.
--- Both have the same shape: { picks = { mastery ids in pick order }, points = { [mastery id] = n }, hours }.
+-- Both have the same shape: { picks = { mastery ids in pick order }, points = { [mastery id] = n }, hours }
+-- (the server's entry also has `stamp`, the real time of its last change).
 -- ---------------------------------------------------------------------------------------------------------------
 
 M.clientCache = M.clientCache or {}   -- [username] = { picks = {}, points = {} }
