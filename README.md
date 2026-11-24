@@ -116,8 +116,8 @@ Each mastery also unlocks a signature ability (a few have two or three), each wi
 moment it is picked (it does not grow with mastery levels).
 
 - **Firearms:** *Quickdraw*: one-handed guns drawn and holstered 4 times faster. *Running Reload*: reloading does
-  not stop when you run, and your arms keep reloading while you run (vanilla, Gunworks and Guns of Marz guns, and
-  Hot Brass's reload animations).
+  not stop when you run, taking the magazine or the rounds out of a bag included, and your arms keep reloading while
+  you run (vanilla, Gunworks and Guns of Marz guns, and Hot Brass's reload animations).
 - **Bludgeoning:** *Wild Swing*: every swing with a long blunt weapon also staggers back the zombies in front of you
   that it did not hit, for a little endurance each.
 - **Swordsmanship:** *Hamstring*: sneaking and aiming with a long blade, every hit leaves the zombie crawling.

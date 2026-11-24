@@ -39,6 +39,18 @@ those arguments on both sides: Gunworks lost its rack phase and reload step and 
   reload keeps its pace through running, walking and standing; the clip itself starts over at each change of gait
   (the walking and the running copy are separate nodes). An MP server already does this, so MP clients are left alone. `serverStart`'s side effects
   repeat `start`'s (`initVars` sets the reload speed again; ISRackFirearm ejects spent rounds again, by then none).
+  The magazine or the rounds out of a bag (2026-11-24; reported: a reload pressed while running did nothing, or
+  ejected and never inserted). The reload key queues `ISInventoryPaneContextMenu.transferIfNeeded` before the
+  insert or the load (vanilla and Gunworks `BeginAutomaticReload`, the radial menu, `transferBullets`): a vanilla
+  `ISInventoryTransferAction`, `stopOnRun = true` for every transfer (~787), and Java stops the whole queue when the
+  action at its front has it (`IsoPlayer` ~2674 → `StopAllActionQueueRunning`). With the gun's magazine in, the
+  eject ran and the transfer behind it ended the reload; with none in, the transfer came first and nothing
+  happened. Java reads the flag once, in `create`, and a transfer added to an empty queue is created before the
+  reload action behind it is queued, so `create` cannot tell what it is for. So a master's transfer inside their
+  own inventory (both containers `isInCharacterInventory`, vanilla's own no-stop-on-walk rule) is created with
+  `stopOnRun = false`, and `OnPlayerUpdate` stops it the way Java would have (`forceStop`, a frame later) when the
+  master runs with no reload action behind it in the queue. Only the exact class: Tien's Ammo Bags' transfer
+  (`MagazineBag_TransferAction`) asks the signature itself.
 - Firearms.SigQuickdraw: `ISEquipWeaponAction` / `ISUnequipAction`: the caller passes the time (`maxTimeInit`); from a
   hotbar slot `animSpeed` = maxTime / `adjustMaxTime(maxTime)`, and with maxTime -1 the action ends on the anim
   event. For a one-handed firearm (`isRanged()`, not `isTwoHandWeapon()` / `isRequiresEquippedBothHands()`) held by
@@ -131,6 +143,13 @@ if ISBaseTimedAction and ISBaseTimedAction.create and not ISBaseTimedAction.__ts
         if RELOAD[t] and self.character and M.sig(self.character, "Firearms.SigRunReload") then
             self.stopOnRun = false
             runReload = true
+        elseif t == "ISInventoryTransferAction" and self.character and self.srcContainer and self.destContainer
+            and self.srcContainer:isInCharacterInventory(self.character)
+            and self.destContainer:isInCharacterInventory(self.character)
+            and M.sig(self.character, "Firearms.SigRunReload") then
+            -- Perhaps the magazine or the rounds a reload waits for: stopRunTransfer decides once the queue is known.
+            self.stopOnRun = false
+            self.tsmRunTransfer = true
         elseif EQUIP[t] and not self.tsmQuick and (quickdrawApplies(self.character, self.item)
             or (t == "ISUnequipAction" and drawFollows(self))) then
             self.tsmQuick = true
@@ -146,6 +165,21 @@ if ISBaseTimedAction and ISBaseTimedAction.create and not ISBaseTimedAction.__ts
         return vanillaCreate(self, ...)
     end
 end
+
+--- A master's transfer kept through running (see `create`) that no reload waits for stops as vanilla's would.
+local function stopRunTransfer(player)
+    local queue = ISTimedActionQueue.queues[player]
+    local list = queue and queue.queue
+    local action = list and list[1]
+    if not action or not action.tsmRunTransfer or not action.action then return end
+    if not (player:isRunning() or player:isSprinting()) or not player:isPlayerMoving() then return end
+    for i = 2, #list do
+        if RELOAD[list[i].Type] then return end
+    end
+    action.tsmRunTransfer = nil
+    action:forceStop()
+end
+if not isServer() then Events.OnPlayerUpdate.Add(stopRunTransfer) end
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Single player: a master's reload driven by time (the server's emulated events), so running cannot restart it

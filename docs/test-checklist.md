@@ -35,6 +35,10 @@ they pass. When one fails, write what you saw under it, then give this file to C
       Angling or Fieldcraft picked, the text shows and the mastery grows. Remove the pick: the text stops within a second.
 - [ ] (2026-11-10) Mastery costs read 105, 110, 115... in the Mastery tab tooltip; mastery 10 costs 150.
 - [ ] No XP anti-cheat kick on the first login after the update (every level-10 skill goes back up 240 XP once).
+- [ ] (0.4.7) Running Reload with the spare magazine in a bag: press Reload while running with a magazine in the gun
+  (eject, magazine out of the bag, insert, rack without slowing down) and with none in it (the reload starts). Without
+  the signature both still stop. As a master, move something between your own bags while running with no reload
+  queued: it stops as before.
 - [ ] (0.4.6) Backups: with a pick and some points, wait for a periodic backup (or kill the server without /save),
   restore it / restart, log in: the pick and points are still there (server log: "mastery restored from the
   player's save" when the world save was older).

@@ -9,6 +9,17 @@ The notes below grew as a log, and v1 sections are marked superseded. This secti
   2026-11-22/23). Fire Rate for single fire only and reaching Gunworks
   guns at last (`client/*_Combat.lua` header), Gunworks' `ISStackedMagazine` in the run-and-gun reload list
   (`shared/*_Signatures.lua`), the run-reload nodes regenerated with Hot Brass VCEF added (item 5 below). Not played.
+- **0.4.7 (2026-11-24, not played):** Running Reload stopped at the transfer (reported: pressed while running it
+  did nothing, or ejected and never inserted). The reload key queues a vanilla `ISInventoryTransferAction` for a
+  magazine or rounds in a bag (`transferIfNeeded`), `stopOnRun = true` for every transfer, and Java stops the whole
+  queue when the front action has it. Java reads the flag once, in `create`, and a transfer added to an empty queue
+  is created before the reload action behind it is queued. So `shared/*_Signatures.lua` creates a master's transfer
+  inside their own inventory with it off (`tsmRunTransfer`) and an `OnPlayerUpdate` handler `forceStop`s it when the
+  master runs with no reload action behind it in the queue (vanilla's stop, a frame later). Exact class only: Tien's
+  Ammo Bags' `MagazineBag_TransferAction` asks the signature itself. Test `tests/runtransfer_test.py`.
+  Related, fixed in Guns of Tien's `GoMFixes.lua` the same day: a change of gait restarts the rack clip while the
+  server's rack timer runs on, so the server's Done lands between the clip's `rackStart` and `rackEnd` and Gunworks'
+  bolt flag stayed open ("Chamber is open"); the bolt is now closed when a full rack ends.
 - **0.4.6 (2026-11-23, not played):** masteries reset after a restored backup (reported). Global mod data is written
   only in a full world save, players.db as the server goes, and periodic backups wait only for players.db, so a
   backup or a crash pairs current characters with old mastery. Each entry is now mirrored into the player's modData

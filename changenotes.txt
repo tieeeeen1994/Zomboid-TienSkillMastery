@@ -1,8 +1,4 @@
-0.4.6
+0.4.7
 
 Fixes
-- Restoring a server backup, or a server crash, no longer resets masteries. The server only wrote masteries to disk in a full world save, while characters are saved as you play, so a backup or a crash brought back characters without their newer masteries. Masteries are now also saved with each character, and the newer copy wins when the server starts.
-
-Admins
-- Mastery admin window: change any player's mastery, online or offline. Right-click in the Mastery tab and choose Mastery admin (any player). Pick a mastery for them, add or remove points, set its level, clear it or remove the pick. Offline players get the change when they log in.
-- Use it to put back masteries lost to a backup restored before this update.
+- Running Reload: a reload started while running, or one whose next magazine is in a bag, no longer stops. Taking the magazine or the rounds out of a bag was the one step that still stopped on running, so the reload ejected and never inserted, or did nothing at all with no magazine in the gun.
