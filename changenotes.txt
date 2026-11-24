@@ -1,4 +1,0 @@
-0.4.7
-
-Fixes
-- Running Reload: a reload started while running, or one whose next magazine is in a bag, no longer stops. Taking the magazine or the rounds out of a bag was the one step that still stopped on running, so the reload ejected and never inserted, or did nothing at all with no magazine in the gun.
